@@ -6,8 +6,8 @@ prog: build/top.bit
 build/top.bit: base.py
 	python3 $<
 
-toplevel.il: adder.py
+toplevel.il: clocky.py
 	python3 $< generate -t il >$@
 
-toplevel_bmc/PASS: toplevel.il
+toplevel_bmc/PASS: toplevel.il toplevel.sby
 	sby -f toplevel.sby
