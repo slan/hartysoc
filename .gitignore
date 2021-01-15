@@ -1,3 +1,4 @@
+.vscode/
 build/
 toplevel_*/
 toplevel.il
