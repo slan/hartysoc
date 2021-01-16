@@ -4,30 +4,40 @@ from nmigen.build import Platform
 from nmigen.cli import main_parser, main_runner
 from nmigen.back.pysim import Simulator, ClockSignal, ResetSignal
 from nmigen.asserts import Assert, Cover, Past
+from nmigen_boards.arty_a7 import ArtyA7Platform
+from argparse import ArgumentParser
 
 
 class Core(Elaboratable):
-    def __init__(self):
+    def __init__(self, data_len):
         self.pc = Signal(32)
         self.instr = Signal(32)
         self.stage = Signal(3)
-        self.mem = Memory(width=32, depth=16, init=[i for i in range(0, 16)])
-        self.rom = self.mem.read_port(transparent=False)
-        self.ram = self.mem.write_port()
+        self.addr = Signal(32)
+        self.data = Signal(32)
+        self.data_len = data_len
+        self.counter = Signal(25)
 
     def elaborate(self, platform: Platform) -> Module:
         m = Module()
 
         with m.If(self.stage == 0):
-            m.d.sync += self.rom.addr.eq(self.pc)
-            m.d.sync += self.rom.en.eq(1)
+            m.d.sync += self.addr.eq(self.pc)
             m.d.sync += self.stage.eq(1)
         with m.If(self.stage == 1):
-            m.d.sync += self.instr.eq(self.rom.data)
+            m.d.sync += self.instr.eq(self.data)
             m.d.sync += self.stage.eq(2)
         with m.If(self.stage == 2):
-            m.d.sync += self.pc.eq(self.pc+1)
-            m.d.sync += self.stage.eq(0)
+            m.d.sync += self.pc.eq(Mux(self.pc ==
+                                       self.data_len-1, 0, self.pc+1))
+            m.d.sync += self.counter.eq(
+                int(platform.default_clk_frequency if platform is not None else 10)-4)
+            m.d.sync += self.stage.eq(3)
+        with m.If(self.stage == 3):
+            with m.If(self.counter == 0):
+                m.d.sync += self.stage.eq(0)
+            with m.Else():
+                m.d.sync += self.counter.eq(self.counter-1)
 
         return m
 
@@ -35,49 +45,77 @@ class Core(Elaboratable):
         return [self.pc, self.instr]
 
 
+class Rom(Elaboratable):
+    def __init__(self):
+        init = [
+            0b1000,
+            0b0100,
+            0b0010,
+            0b0001,
+            0b0010,
+            0b0100,
+        ]
+        self._mem = Memory(width=32, depth=1024, init=init)
+        self.data = Signal(32)
+        self.addr = Signal(32)
+        self.len = len(init)
+
+    def elaborate(self, platform: Platform) -> Module:
+        m = Module()
+
+        m.submodules.rp = rp = self._mem.read_port()
+        m.d.comb += self.data.eq(rp.data)
+        m.d.comb += rp.addr.eq(self.addr)
+
+        return m
+
+
+class Soc(Elaboratable):
+    def elaborate(self, platform: Platform) -> Module:
+        m = Module()
+
+        m.submodules.rom = rom = Rom()
+        m.submodules.core = core = Core(rom.len)
+
+        m.d.comb += rom.addr.eq(core.addr)
+        m.d.comb += core.data.eq(rom.data)
+
+        if platform is not None:
+            for i in range(4):
+                m.d.comb += platform.request('led', i).eq(core.instr[i])
+
+        return m
+
+    def ports(self) -> List[Signal]:
+        return []
+
+
 if __name__ == "__main__":
+
     parser = main_parser()
     args = parser.parse_args()
 
-    top = Module()
-    core = Core()
-    top.submodules.core = core
+    top = Soc()
 
-    # top.d.comb += Assert(clocky.x <= 100)
-    # with top.If(~Past(clocky.load)):
-    #     with top.If(clocky.x == 0):
-    #         pass
-    #     with top.Else():
-    #         top.d.sync += Assert(clocky.x == (Past(clocky.x)+1))
+    if args.action is None:
+        # top.d.comb += Assert(clocky.x <= 100)
+        # with top.If(~Past(clocky.load)):
+        #     with top.If(clocky.x == 0):
+        #         pass
+        #     with top.Else():
+        #         top.d.sync += Assert(clocky.x == (Past(clocky.x)+1))
+        ArtyA7Platform().build(top, do_program=False)
 
-    # main_runner(parser, args, top, ports=[]+clocky.ports())
+    else:
 
-    def process():
-        yield core.ram.addr.eq(3)
-        yield core.ram.data.eq(3)
-        yield core.ram.en.eq(1)
-        yield core.pc.eq(0x0)
-        value = yield core.rom.data
-        print(value)
-        value = yield core.rom.data
-        print(value)
-        value = yield core.rom.data
-        print(value)
-        value = yield core.rom.data
-        print(value)
-        value = yield core.rom.data
-        print(value)
-        yield
-        yield
-        yield
-        yield
-        yield
-        yield
-        yield
-        yield
+        main_runner(parser, args, top, ports=[]+top.ports())
 
-    sim = Simulator(top)
-    sim.add_clock(1e-6)
-    sim.add_sync_process(process)
-    with sim.write_vcd('toplevel.vcd', None, traces=[]+core.ports()):
-        sim.run()
+        # def process():
+        #     for i in range(20):
+        #         yield
+
+        # sim = Simulator(top)
+        # sim.add_clock(1e-6)
+        # sim.add_sync_process(process)
+        # with sim.write_vcd('toplevel.vcd', None, traces=top.ports()):
+        #     sim.run()

@@ -1,4 +1,15 @@
-formal: toplevel_bmc/PASS toplevel_cover/PASS
+all: sim
+
+vivado: build/top.bit
+
+formal: toplevel.il toplevel.sby
+	sby -f toplevel.sby
+
+toplevel.il: toplevel.py
+	python3 $< generate -t il >$@
+
+sim: toplevel.py
+	python3 $< simulate -c 100 -v toplevel.vcd
 
 prog: build/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
@@ -6,8 +17,5 @@ prog: build/top.bit
 build/top.bit: toplevel.py
 	python3 $<
 
-toplevel_bmc/PASS toplevel_cover/PASS: toplevel.il toplevel.sby
-	sby -f toplevel.sby
-
-toplevel.il: toplevel.py
-	python3 $< generate -t il >$@
+clean:
+	rm -rf toplevel.vcd build
