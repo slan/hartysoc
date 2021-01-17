@@ -118,15 +118,15 @@ class Blinky(Elaboratable):
 class MultiBlinky(Elaboratable):
     def elaborate(self, platform):
         m = Module()
-        if platform is not None:
+        if platform is None:
+            cycles = 9
+            m.domains += [ClockDomain('cd1'), ClockDomain('cd2')]
+        else:
             m.submodules.pll = Pll()
-
-        m.submodules.b0 = Blinky(
-            int(platform.default_clk_frequency)-1 if platform is not None else 9, 0)
-        m.submodules.b1 = Blinky(
-            int(platform.default_clk_frequency)-1 if platform is not None else 9, 1, 'cd1')
-        m.submodules.b2 = Blinky(
-            int(platform.default_clk_frequency)-1 if platform is not None else 9, 2, 'cd2')
+            cycles = int(platform.default_clk_frequency)-1
+        m.submodules.b0 = Blinky(cycles, 0)
+        m.submodules.b1 = Blinky(cycles, 1, 'cd1')
+        m.submodules.b2 = Blinky(cycles, 2, 'cd2')
 
         return m
 
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     top = MultiBlinky()
-    
+
     if args.action is None:
         # top.d.comb += Assert(clocky.x <= 100)
         # with top.If(~Past(clocky.load)):

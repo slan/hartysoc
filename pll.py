@@ -25,8 +25,8 @@ class Pll(Elaboratable):
                        p_CLKIN1_PERIOD=10.0,
                        # CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for each CLKOUT (1-128)
                        p_CLKOUT0_DIVIDE=10,
-                       p_CLKOUT1_DIVIDE=9,
-                       p_CLKOUT2_DIVIDE=8,
+                       p_CLKOUT1_DIVIDE=20,
+                       p_CLKOUT2_DIVIDE=5,
                        p_CLKOUT3_DIVIDE=1,
                        p_CLKOUT4_DIVIDE=1,
                        p_CLKOUT5_DIVIDE=1,
