@@ -1,5 +1,5 @@
 from typing import List
-from nmigen import ClockDomain, Elaboratable, Memory, Module, Mux, Signal
+from nmigen import ClockDomain, Const, Elaboratable, Memory, Module, Mux, Signal
 from nmigen.build import Platform
 from nmigen.cli import main_parser, main_runner
 from nmigen.back.pysim import Simulator, ClockSignal, ResetSignal
@@ -83,19 +83,52 @@ class Soc(Elaboratable):
         m.d.comb += rom.addr.eq(core.addr)
         m.d.comb += core.data.eq(rom.data)
 
-        pll = Pll()
-        m.domains += pll.domain
-        m.submodules.pll = pll
-
         if platform is not None:
-            m.d.comb += pll.clk_pin.eq(platform.request(platform.default_clk, dir='-'))
             for i in range(4):
                 m.d.comb += platform.request('led', i).eq(core.instr[i])
 
         return m
 
-    def ports(self) -> List[Signal]:
-        return []
+
+class Blinky(Elaboratable):
+    def __init__(self, reset_value: int, id, domain_name='sync'):
+        self.reset_value = reset_value
+        self.counter = Signal(32, reset=reset_value)
+        self.led = Signal()
+        self.id = id
+        self.domain_name = domain_name
+
+    def elaborate(self, platform: Platform) -> Module:
+        m = Module()
+
+        domain = m.d[self.domain_name]
+
+        with m.If(self.counter == 0):
+            domain += self.counter.eq(self.reset_value)
+            domain += self.led.eq(~self.led)
+        with m.Else():
+            domain += self.counter.eq(self.counter - 1)
+
+        if platform is not None:
+            m.d.comb += platform.request('led', self.id).eq(self.led)
+
+        return m
+
+
+class MultiBlinky(Elaboratable):
+    def elaborate(self, platform):
+        m = Module()
+        if platform is not None:
+            m.submodules.pll = Pll()
+
+        m.submodules.b0 = Blinky(
+            int(platform.default_clk_frequency)-1 if platform is not None else 9, 0)
+        m.submodules.b1 = Blinky(
+            int(platform.default_clk_frequency)-1 if platform is not None else 9, 1, 'cd1')
+        m.submodules.b2 = Blinky(
+            int(platform.default_clk_frequency)-1 if platform is not None else 9, 2, 'cd2')
+
+        return m
 
 
 if __name__ == "__main__":
@@ -103,8 +136,8 @@ if __name__ == "__main__":
     parser = main_parser()
     args = parser.parse_args()
 
-    top = Soc()
-
+    top = MultiBlinky()
+    
     if args.action is None:
         # top.d.comb += Assert(clocky.x <= 100)
         # with top.If(~Past(clocky.load)):
@@ -115,15 +148,12 @@ if __name__ == "__main__":
         ArtyA7Platform().build(top, do_program=False)
 
     else:
+        main_runner(parser, args, top)
 
-        main_runner(parser, args, top, ports=[]+top.ports())
+        sim = Simulator(top)
+        sim.add_clock(.1, phase=.1)
+        sim.add_clock(.2, phase=.2, domain='cd1')
+        sim.add_clock(.05, phase=.05, domain='cd2')
 
-        # def process():
-        #     for i in range(20):
-        #         yield
-
-        # sim = Simulator(top)
-        # sim.add_clock(1e-6)
-        # sim.add_sync_process(process)
-        # with sim.write_vcd('toplevel.vcd', None, traces=top.ports()):
-        #     sim.run()
+        with sim.write_vcd('toplevel.vcd', traces=[]):
+            sim.run_until(4, run_passive=True)

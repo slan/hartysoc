@@ -4,15 +4,8 @@ from nmigen.lib.cdc import ResetSynchronizer
 
 
 class Pll(Elaboratable):
-    def __init__(self, domain_name='sync'):
+    def __init__(self):
         self.clk_pin = Signal()
-        self.domain_name = domain_name
-        self.domain = ClockDomain(domain_name)
-        self.ports = [
-            self.clk_pin,
-            self.domain.clk,
-            self.domain.rst,
-        ]
 
     def elaborate(self, platform: Platform) -> Module:
         clk_fbin = Signal()
@@ -32,8 +25,8 @@ class Pll(Elaboratable):
                        p_CLKIN1_PERIOD=10.0,
                        # CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for each CLKOUT (1-128)
                        p_CLKOUT0_DIVIDE=10,
-                       p_CLKOUT1_DIVIDE=1,
-                       p_CLKOUT2_DIVIDE=1,
+                       p_CLKOUT1_DIVIDE=9,
+                       p_CLKOUT2_DIVIDE=8,
                        p_CLKOUT3_DIVIDE=1,
                        p_CLKOUT4_DIVIDE=1,
                        p_CLKOUT5_DIVIDE=1,
@@ -58,10 +51,9 @@ class Pll(Elaboratable):
                        p_STARTUP_WAIT="TRUE",
 
                        # Clock Outputs: 1-bit (each) output: User configurable clock outputs
-                       # 1-bit output: CLKOUT0
-                       o_CLKOUT0=ClockSignal(self.domain_name),
-                       #                       o_CLKOUT1=CLKOUT1,  # 1-bit output: CLKOUT1
-                       #                       o_CLKOUT2=CLKOUT2,  # 1-bit output: CLKOUT2
+                       o_CLKOUT0=ClockSignal(),       # 1-bit output: CLKOUT0
+                       o_CLKOUT1=ClockSignal("cd1"),  # 1-bit output: CLKOUT1
+                       o_CLKOUT2=ClockSignal("cd2"),  # 1-bit output: CLKOUT2
                        #                       o_CLKOUT3=CLKOUT3,  # 1-bit output: CLKOUT3
                        #                       o_CLKOUT4=CLKOUT4,  # 1-bit output: CLKOUT4
                        #                       o_CLKOUT5=CLKOUT5,  # 1-bit output: CLKOUT5
@@ -76,7 +68,13 @@ class Pll(Elaboratable):
                        # Feedback Clocks: 1-bit (each) input: Clock feedback ports
                        i_CLKFBIN=clk_fbin  # 1-bit input: Feedback clock
                        )
-        rs = ResetSynchronizer(~pll_lock, domain=self.domain_name)
+        rs = ResetSynchronizer(~pll_lock)
+
         m = Module()
+        m.domains += [ClockDomain('sync'), ClockDomain('cd1'), ClockDomain('cd2')]
         m.submodules += [bufg, pll, rs]
+
+        m.d.comb += self.clk_pin.eq(
+            platform.request(platform.default_clk, dir='-'))
+
         return m
