@@ -1,5 +1,5 @@
 from typing import List
-from nmigen import Elaboratable, Module, Signal, Mux, Memory
+from nmigen import ClockDomain, Elaboratable, Memory, Module, Mux, Signal
 from nmigen.build import Platform
 from nmigen.cli import main_parser, main_runner
 from nmigen.back.pysim import Simulator, ClockSignal, ResetSignal
@@ -7,12 +7,14 @@ from nmigen.asserts import Assert, Cover, Past
 from nmigen_boards.arty_a7 import ArtyA7Platform
 from argparse import ArgumentParser
 
+from pll import Pll
+
 
 class Core(Elaboratable):
     def __init__(self, data_len):
         self.pc = Signal(32)
         self.instr = Signal(32)
-        self.stage = Signal(3)
+        self.stage = Signal(2)
         self.addr = Signal(32)
         self.data = Signal(32)
         self.data_len = data_len
@@ -31,7 +33,7 @@ class Core(Elaboratable):
             m.d.sync += self.pc.eq(Mux(self.pc ==
                                        self.data_len-1, 0, self.pc+1))
             m.d.sync += self.counter.eq(
-                int(platform.default_clk_frequency if platform is not None else 10)-4)
+                int(platform.default_clk_frequency if platform is not None else 4)-4)
             m.d.sync += self.stage.eq(3)
         with m.If(self.stage == 3):
             with m.If(self.counter == 0):
@@ -73,14 +75,20 @@ class Rom(Elaboratable):
 class Soc(Elaboratable):
     def elaborate(self, platform: Platform) -> Module:
         m = Module()
-
-        m.submodules.rom = rom = Rom()
-        m.submodules.core = core = Core(rom.len)
+        rom = rom = Rom()
+        core = core = Core(rom.len)
+        m.submodules.rom = rom
+        m.submodules.core = core
 
         m.d.comb += rom.addr.eq(core.addr)
         m.d.comb += core.data.eq(rom.data)
 
+        pll = Pll()
+        m.domains += pll.domain
+        m.submodules.pll = pll
+
         if platform is not None:
+            m.d.comb += pll.clk_pin.eq(platform.request(platform.default_clk, dir='-'))
             for i in range(4):
                 m.d.comb += platform.request('led', i).eq(core.instr[i])
 
