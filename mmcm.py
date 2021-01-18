@@ -82,12 +82,14 @@ class MMCM(Elaboratable):
         m.submodules.mmcm = mmcm
         m.submodules.rs = ResetSynchronizer(~locked, domain='pxl')
 
-        clk = platform.request(platform.default_clk, dir='-')
+        if platform is not None:
+            clk = platform.request(platform.default_clk, dir='-')
+            m.d.comb += self.clk_pin.eq(clk)
+            # Override sync clock domain
+            m.domains.sync = ClockDomain()
+            m.d.comb += ClockSignal().eq(clk)
 
-        m.domains.sync = ClockDomain()
-        m.d.comb += ClockSignal().eq(clk)
-
+        # Create pxl clock domain
         m.domains.pxl = ClockDomain()
-        m.d.comb += self.clk_pin.eq(clk)
 
         return m

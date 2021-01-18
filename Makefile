@@ -11,6 +11,9 @@ toplevel.il: toplevel.py
 sim: toplevel.py
 	python3 $< simulate -c 100 -v toplevel.vcd
 
+gen: toplevel.py
+	@python3 $< generate
+
 prog: build/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
@@ -19,3 +22,5 @@ build/top.bit: toplevel.py pll.py mmcm.py
 
 clean:
 	rm -rf toplevel.vcd build
+
+.PHONY: all vivado formal sim gen prog clean

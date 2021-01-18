@@ -178,36 +178,11 @@ class Screen(Elaboratable):
     def __init__(self):
         self.x = Signal(12)  # 0-2200
         self.y = Signal(11)  # 0-1125
+        self.hsync = Signal()
+        self.vsync = Signal()
 
     def elaborate(self, platform):
-        vgaPmod = [
-            Resource("hsync", 0, Pins("7", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
-            Resource("vsync", 0, Pins("8", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
-            Resource("r3", 0, Pins("4", dir="o", conn=("pmod", 1)), Attrs(IOSTANDARD="LVCMOS33")),
-            Resource("g3", 0, Pins("4", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
-            Resource("b3", 0, Pins("10", dir="o", conn=("pmod", 1)), Attrs(IOSTANDARD="LVCMOS33")),
-        ]
-        platform.add_resources(vgaPmod)
-
         m = Module()
-
-        r3 = platform.request("r3")
-        g3 = platform.request("g3")
-        b3 = platform.request("b3")
-
-        with m.If((self.x>148+50) & (self.x < 1920+148-50) & (self.y>36+28) & (self.y < 1080+36-28)):
-            with m.If(self.x < 640+148):
-                m.d.comb += r3.eq(0)
-                m.d.comb += g3.eq(0)
-                m.d.comb += b3.eq(1)
-            with m.Elif(self.x < 640+640+148):
-                m.d.comb += r3.eq(1)
-                m.d.comb += g3.eq(1)
-                m.d.comb += b3.eq(1)
-            with m.Else():
-                m.d.comb += r3.eq(1)
-                m.d.comb += g3.eq(0)
-                m.d.comb += b3.eq(0)
 
         with m.If(self.x == 2200-1):
             m.d.pxl += self.x.eq(0)
@@ -218,8 +193,30 @@ class Screen(Elaboratable):
         with m.Else():
             m.d.pxl += self.x.eq(self.x+1)
 
-        m.d.comb += platform.request("hsync").eq((self.x >= 148+1920+88) & (self.x < 148+1920+88+44))
-        m.d.comb += platform.request("vsync").eq((self.y >= 36+1080+4) & (self.y < 36+1080+4+45))
+        m.d.comb += self.hsync.eq((self.x >= 1920+88) & (self.x < 1920+88+44))
+        m.d.comb += self.vsync.eq((self.y >= 1080+4) & (self.y < 1080+4+5))
+
+        if platform is not None:
+            r3 = platform.request("r3")
+            g3 = platform.request("g3")
+            b3 = platform.request("b3")
+
+            with m.If((self.x>=50) & (self.x < 1920-50) & (self.y>=28) & (self.y < 1080-28)):
+                with m.If(self.x < 640):
+                    m.d.comb += r3.eq(0)
+                    m.d.comb += g3.eq(0)
+                    m.d.comb += b3.eq(1)
+                with m.Elif(self.x < 640+640):
+                    m.d.comb += r3.eq(1)
+                    m.d.comb += g3.eq(1)
+                    m.d.comb += b3.eq(1)
+                with m.Else():
+                    m.d.comb += r3.eq(1)
+                    m.d.comb += g3.eq(0)
+                    m.d.comb += b3.eq(0)
+
+            m.d.comb += platform.request("hsync").eq(self.hsync)
+            m.d.comb += platform.request("vsync").eq(self.vsync)
 
         return m
 
@@ -230,7 +227,7 @@ class VGA(Elaboratable):
 
         screen = Screen()
 
-        m.submodules += MMCM() 
+        m.submodules.pxlgen = MMCM()
         m.submodules.screen = screen
 
         return m
@@ -250,15 +247,18 @@ if __name__ == "__main__":
         #         pass
         #     with top.Else():
         #         top.d.sync += Assert(clocky.x == (Past(clocky.x)+1))
-        ArtyA7Platform().build(top, do_program=False)
+        platform = ArtyA7Platform()
+        
+        vgaPmod = [
+            Resource("hsync", 0, Pins("7", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
+            Resource("vsync", 0, Pins("8", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
+            Resource("r3", 0, Pins("4", dir="o", conn=("pmod", 1)), Attrs(IOSTANDARD="LVCMOS33")),
+            Resource("g3", 0, Pins("4", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
+            Resource("b3", 0, Pins("10", dir="o", conn=("pmod", 1)), Attrs(IOSTANDARD="LVCMOS33")),
+        ]
+        platform.add_resources(vgaPmod)
+
+        platform.build(top, do_program=False)
 
     else:
         main_runner(parser, args, top)
-
-        sim = Simulator(top)
-        sim.add_clock(.1, phase=.1)
-        sim.add_clock(.2, phase=.2, domain='cd1')
-        sim.add_clock(.05, phase=.05, domain='cd2')
-
-        with sim.write_vcd('toplevel.vcd', traces=[]):
-            sim.run_until(4, run_passive=True)
