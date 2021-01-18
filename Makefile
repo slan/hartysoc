@@ -17,10 +17,10 @@ gen: toplevel.py
 prog: build/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
-build/top.bit: toplevel.py pll.py mmcm.py
+build/top.bit: toplevel.py vga.py
 	python3 $<
 
 clean:
-	rm -rf toplevel.vcd build
+	rm -rf toplevel.vcd build vivado
 
 .PHONY: all vivado formal sim gen prog clean
