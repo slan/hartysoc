@@ -201,7 +201,7 @@ class Screen(Elaboratable):
             g3 = platform.request("g3")
             b3 = platform.request("b3")
 
-            with m.If((self.x>=50) & (self.x < 1920-50) & (self.y>=28) & (self.y < 1080-28)):
+            with m.If((self.x < 1920) & (self.y < 1080)):
                 with m.If(self.x < 640):
                     m.d.comb += r3.eq(0)
                     m.d.comb += g3.eq(0)
