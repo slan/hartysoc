@@ -8,6 +8,7 @@ from nmigen_boards.arty_a7 import ArtyA7Platform
 from argparse import ArgumentParser
 
 from pll import Pll
+from nmigen.build.dsl import Attrs, Pins, Resource, Subsignal
 
 
 class Core(Elaboratable):
@@ -125,8 +126,111 @@ class MultiBlinky(Elaboratable):
             m.submodules.pll = Pll()
             cycles = int(platform.default_clk_frequency)-1
         m.submodules.b0 = Blinky(cycles, 0)
-        m.submodules.b1 = Blinky(cycles, 1, 'cd1')
-        m.submodules.b2 = Blinky(cycles, 2, 'cd2')
+        m.submodules.b1 = Blinky(cycles, 1, 'pxl')
+
+        return m
+
+
+#    Name        1920x1080p60
+#    Standard      SMPTE 274M
+#    VIC                   16
+#    Short Name         1080p
+#    Aspect Ratio        16:9
+#
+#    Pixel Clock        148.5 MHz
+#    TMDS Clock       1,485.0 MHz
+#    Pixel Time           6.7 ns ±0.5%
+#    Horizontal Freq.  67.500 kHz
+#    Line Time           14.8 μs
+#    Vertical Freq.    60.000 Hz
+#    Frame Time          16.7 ms
+#
+#    Horizontal Timings
+#    Active Pixels       1920
+#    Front Porch           88
+#    Sync Width            44
+#    Back Porch           148
+#    Blanking Total       280
+#    Total Pixels        2200
+#    Sync Polarity        pos
+#
+#    Vertical Timings
+#    Active Lines        1080
+#    Front Porch            4
+#    Sync Width             5
+#    Back Porch            36
+#    Blanking Total        45
+#    Total Lines         1125
+#    Sync Polarity        pos
+#
+#    Active Pixels  2,073,600
+#    Data Rate           3.56 Gbps
+#
+#    Frame Memory (Kbits)
+#     8-bit Memory     16,200
+#    12-bit Memory     24,300
+#    24-bit Memory     48,600
+#    32-bit Memory     64,800
+
+
+class Screen(Elaboratable):
+    def __init__(self):
+        self.x = Signal(12)  # 0-2200
+        self.y = Signal(11)  # 0-1125
+
+    def elaborate(self, platform):
+        vgaPmod = [
+            Resource("hsync", 0, Pins("7", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
+            Resource("vsync", 0, Pins("8", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
+            Resource("r3", 0, Pins("4", dir="o", conn=("pmod", 1)), Attrs(IOSTANDARD="LVCMOS33")),
+            Resource("g3", 0, Pins("4", dir="o", conn=("pmod", 2)), Attrs(IOSTANDARD="LVCMOS33")),
+            Resource("b3", 0, Pins("10", dir="o", conn=("pmod", 1)), Attrs(IOSTANDARD="LVCMOS33")),
+        ]
+        platform.add_resources(vgaPmod)
+
+        m = Module()
+
+        r3 = platform.request("r3")
+        g3 = platform.request("g3")
+        b3 = platform.request("b3")
+
+        with m.If((self.x>148+50) & (self.x < 1920+148-50) & (self.y>36) & (self.y < 1080+36)):
+            with m.If(self.x < 640+148):
+                m.d.comb += r3.eq(0)
+                m.d.comb += g3.eq(0)
+                m.d.comb += b3.eq(1)
+            with m.Elif(self.x < 640+640+148):
+                m.d.comb += r3.eq(1)
+                m.d.comb += g3.eq(1)
+                m.d.comb += b3.eq(1)
+            with m.Else():
+                m.d.comb += r3.eq(1)
+                m.d.comb += g3.eq(0)
+                m.d.comb += b3.eq(0)
+
+        with m.If(self.x == 2200-1):
+            m.d.pxl += self.x.eq(0)
+            with m.If(self.y == 1125-1):
+                m.d.pxl += self.y.eq(0)
+            with m.Else():
+                m.d.pxl += self.y.eq(self.y+1)
+        with m.Else():
+            m.d.pxl += self.x.eq(self.x+1)
+
+        m.d.comb += platform.request("hsync").eq((self.x >= 148+1920+88) & (self.x < 148+1920+88+44))
+        m.d.comb += platform.request("vsync").eq((self.y >= 36+1080+4) & (self.y < 36+1080+4+45))
+
+        return m
+
+
+class VGA(Elaboratable):
+    def elaborate(self, platform):
+        m = Module()
+
+        screen = Screen()
+
+        m.submodules.pll = Pll()
+        m.submodules.screen = screen
 
         return m
 
@@ -136,7 +240,7 @@ if __name__ == "__main__":
     parser = main_parser()
     args = parser.parse_args()
 
-    top = MultiBlinky()
+    top = VGA()
 
     if args.action is None:
         # top.d.comb += Assert(clocky.x <= 100)
