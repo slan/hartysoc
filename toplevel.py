@@ -8,6 +8,7 @@ from nmigen_boards.arty_a7 import ArtyA7Platform
 from argparse import ArgumentParser
 
 from pll import Pll
+from mmcm import MMCM
 from nmigen.build.dsl import Attrs, Pins, Resource, Subsignal
 
 
@@ -194,7 +195,7 @@ class Screen(Elaboratable):
         g3 = platform.request("g3")
         b3 = platform.request("b3")
 
-        with m.If((self.x>148+50) & (self.x < 1920+148-50) & (self.y>36) & (self.y < 1080+36)):
+        with m.If((self.x>148+50) & (self.x < 1920+148-50) & (self.y>36+28) & (self.y < 1080+36-28)):
             with m.If(self.x < 640+148):
                 m.d.comb += r3.eq(0)
                 m.d.comb += g3.eq(0)
@@ -229,7 +230,7 @@ class VGA(Elaboratable):
 
         screen = Screen()
 
-        m.submodules.pll = Pll()
+        m.submodules += MMCM() 
         m.submodules.screen = screen
 
         return m

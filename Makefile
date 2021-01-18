@@ -14,7 +14,7 @@ sim: toplevel.py
 prog: build/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
-build/top.bit: toplevel.py pll.py
+build/top.bit: toplevel.py pll.py mmcm.py
 	python3 $<
 
 clean:

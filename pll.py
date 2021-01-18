@@ -53,7 +53,7 @@ class Pll(Elaboratable):
                        # Clock Outputs: 1-bit (each) output: User configurable clock outputs
                        o_CLKOUT0=ClockSignal(),       # 1-bit output: CLKOUT0
                        o_CLKOUT1=ClockSignal("pxl"),  # 1-bit output: CLKOUT1
-                       #o_CLKOUT2=ClockSignal("cd2"),  # 1-bit output: CLKOUT2
+                       # o_CLKOUT2=ClockSignal("cd2"),  # 1-bit output: CLKOUT2
                        #                       o_CLKOUT3=CLKOUT3,  # 1-bit output: CLKOUT3
                        #                       o_CLKOUT4=CLKOUT4,  # 1-bit output: CLKOUT4
                        #                       o_CLKOUT5=CLKOUT5,  # 1-bit output: CLKOUT5
@@ -74,7 +74,6 @@ class Pll(Elaboratable):
         m.domains += [ClockDomain('sync'), ClockDomain('pxl')]
         m.submodules += [bufg, pll, rs]
 
-        m.d.comb += self.clk_pin.eq(
-            platform.request(platform.default_clk, dir='-'))
+        m.d.comb += self.clk_pin.eq(platform.request(platform.default_clk, dir='-'))
 
         return m
