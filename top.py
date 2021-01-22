@@ -86,11 +86,10 @@ class Soc(Elaboratable):
         m.d.comb += rom.addr.eq(core.addr)
         m.d.comb += core.data.eq(rom.data)
 
-        if isinstance(platform, SimPlatform):
-            m.submodules.mb = MultiBlinky()
-        else:
-            for i in range(4):
-                m.d.comb += platform.request('led', i).eq(core.instr[i])
+        for i in range(4):
+            m.d.comb += platform.request('led', i).eq(core.instr[i])
+
+        if not isinstance(platform, SimPlatform):
             m.submodules.vga = VGA()
 
         return m
@@ -124,7 +123,7 @@ class MultiBlinky(Elaboratable):
         m.submodules.pll = PLL()
         cycles = int(platform.default_clk_frequency)-1
 
-        domain_names = ['sync', None, 'cd2', 'cd4']
+        domain_names = ['sync', 'cd1', 'cd2', 'cd4']
         for i, domain_name in enumerate(domain_names):
             if domain_name is not None:
                 counter = Counter(cycles, domain_name)
@@ -136,50 +135,32 @@ class MultiBlinky(Elaboratable):
 
 if __name__ == '__main__':
 
-    top = Soc()
+    top = MultiBlinky()
 
-    if len(sys.argv) > 1 and sys.argv[1] == 'sim':
-        print('sim')
+    platform_name = sys.argv[1] if len(sys.argv) > 1 else None
+
+    if platform_name == 'sim':
         platform = SimPlatform()
-
-        root = 'sim'
-        os.makedirs(root, exist_ok=True)
-        cwd = os.getcwd()
-        try:
-            os.chdir(root)
-
-            fragment = Fragment.get(top, platform)
-            with open('top.il', 'w', encoding='utf-8') as f:
-                f.write(rtlil.convert(fragment))
-            with open('top.v', 'w', encoding='utf-8') as f:
-                f.write(verilog.convert(fragment))
-
-            sim = pysim.Simulator(fragment)
-
-            period = 1/platform.default_clk_frequency
-
-            sim.add_clock(period/1, domain='sync')
-            sim.add_clock(period/2, domain='cd2')
-            sim.add_clock(period/4, domain='cd4')
-
-            with sim.write_vcd('top.vcd'):
-                sim.run_until(4, run_passive=True)
-        finally:
-            os.chdir(cwd)
-
-    else:
-        print('arty')
+        additional_resources = [
+            Resource('led', 0, Pins('led0', dir='o')),
+            Resource('led', 1, Pins('led1', dir='o')),
+            Resource('led', 2, Pins('led2', dir='o')),
+            Resource('led', 3, Pins('led3', dir='o')),
+        ]
+    elif platform_name == 'arty':
         platform = ArtyA7Platform()
+        additional_resources = [Resource('vgapmod', 0,
+                                         Subsignal('hsync', Pins('7', dir='o', conn=('pmod', 2)), Attrs(IOSTANDARD='LVCMOS33')),
+                                         Subsignal('vsync', Pins('8', dir='o', conn=('pmod', 2)), Attrs(IOSTANDARD='LVCMOS33')),
+                                         Subsignal('r', Pins('1 2 3 4', dir='o', conn=('pmod', 1)), Attrs(IOSTANDARD='LVCMOS33')),
+                                         Subsignal('g', Pins('1 2 3 4', dir='o', conn=('pmod', 2)), Attrs(IOSTANDARD='LVCMOS33')),
+                                         Subsignal('b', Pins('7 8 9 10', dir='o', conn=('pmod', 1)), Attrs(IOSTANDARD='LVCMOS33')),
+                                         )
+                                ]
 
-        vga_pmod = [Resource('vgapmod', 0,
-                             Subsignal('hsync', Pins('7', dir='o', conn=('pmod', 2)), Attrs(IOSTANDARD='LVCMOS33')),
-                             Subsignal('vsync', Pins('8', dir='o', conn=('pmod', 2)), Attrs(IOSTANDARD='LVCMOS33')),
-                             Subsignal('r', Pins('1 2 3 4', dir='o', conn=('pmod', 1)), Attrs(IOSTANDARD='LVCMOS33')),
-                             Subsignal('g', Pins('1 2 3 4', dir='o', conn=('pmod', 2)), Attrs(IOSTANDARD='LVCMOS33')),
-                             Subsignal('b', Pins('7 8 9 10', dir='o', conn=('pmod', 1)), Attrs(IOSTANDARD='LVCMOS33')),
-                             )
-                    ]
-        platform.add_resources(vga_pmod)
+    if platform is None:
+        exit()
 
-        fragment = Fragment.get(top, platform)
-        platform.build(fragment, do_program=False)
+    platform.add_resources(additional_resources)
+    fragment = Fragment.get(top, platform)
+    platform.build(fragment, build_dir='build/{}'.format(platform_name), do_program=False)

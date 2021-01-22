@@ -1,25 +1,24 @@
-SRCS := top.py pll.py vga.py
+SRCS := top.py pll.py vga.py simplatform.py
 
 all: sim
 
-sim: sim/top.vcd
+sim: build/sim/top.vcd
 
-sim/top.vcd: ${SRCS}
+build/sim/top.vcd: ${SRCS}
 	python3 top.py sim
 
-bitfile: build/top.bit
+arty: build/arty/top.bit
 
-build/top.bit: ${SRCS}
-	python3 top.py
+build/arty/top.bit: ${SRCS}
+	python3 top.py arty
 
-prog: build/top.bit
+prog: build/arty/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
-formal: sim/top.il sim/top.sby
-	sby -f top.sby
+formal: build/sim/top.il build/sim/top.sby
+	sby -f build/sim/top.sby
 
 clean:
-	rm -rf build sim
+	rm -rf build
 
-.PHONY: all sim bitfile prog formal clean
-
+.PHONY: all sim arty prog formal clean

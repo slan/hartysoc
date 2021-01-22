@@ -26,9 +26,9 @@ class PLL(Elaboratable):
                        # Phase offset in degrees of CLKFB, (-360.000-360.000).
                        p_CLKFBOUT_PHASE=0.0,
                        # Input clock period in ns to ps resolution (i.e. 33.333 is 30 MHz).
-                       p_CLKIN1_PERIOD=10.0,
+                       p_CLKIN1_PERIOD=1e9/platform.default_clk_frequency,
                        # CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for each CLKOUT (1-128)
-                       #  p_CLKOUT0_DIVIDE=1,
+                       p_CLKOUT0_DIVIDE=8,
                        #  p_CLKOUT1_DIVIDE=4,
                        p_CLKOUT2_DIVIDE=4,
                        #  p_CLKOUT3_DIVIDE=1,
@@ -56,7 +56,7 @@ class PLL(Elaboratable):
 
                        # Clock Outputs: 1-bit (each) output: User configurable clock outputs
                        #  o_CLKOUT0=ClockSignal('cd0'),  # 1-bit output: CLKOUT0
-                       #  o_CLKOUT1=ClockSignal('cd1'),  # 1-bit output: CLKOUT1
+                       o_CLKOUT1=ClockSignal('cd1'),  # 1-bit output: CLKOUT1
                        o_CLKOUT2=ClockSignal('cd2'),  # 1-bit output: CLKOUT2
                        #  o_CLKOUT3=ClockSignal('cd3'),  # 1-bit output: CLKOUT3
                        o_CLKOUT4=ClockSignal('cd4'),  # 1-bit output: CLKOUT4
@@ -75,7 +75,7 @@ class PLL(Elaboratable):
 
         m = Module()
 
-        for domain_name in ['cd2', 'cd4']:
+        for domain_name in ['cd1', 'cd2', 'cd4']:
             m.submodules['rss_{}'.format(domain_name)] = ResetSynchronizer(~pll_lock, domain=domain_name)
             m.domains += ClockDomain(domain_name)
 
@@ -84,5 +84,10 @@ class PLL(Elaboratable):
 
         if isinstance(platform, SimPlatform):
             m.d.comb += pll_lock.eq(1)
-        
+            platform.add_resources([
+                Resource('cd1', 0, Pins('cd1', dir='i'), Clock(1*platform.default_clk_frequency)),
+                Resource('cd2', 0, Pins('cd2', dir='i'), Clock(2*platform.default_clk_frequency)),
+                Resource('cd4', 0, Pins('cd4', dir='i'), Clock(4*platform.default_clk_frequency)),
+            ])
+
         return m
