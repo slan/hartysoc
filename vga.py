@@ -1,4 +1,4 @@
-from nmigen import ClockDomain, ClockSignal, Const, Elaboratable, Instance, Module, ResetSignal, Signal
+from nmigen import ClockDomain, ClockSignal, Const, Elaboratable, Instance, Module, Mux, ResetSignal, Signal
 from nmigen.lib.cdc import ResetSynchronizer
 from nmigen.vendor.xilinx_7series import Xilinx7SeriesPlatform
 
@@ -135,10 +135,7 @@ class VGA(Elaboratable):
 
         with m.If(x == x_max):
             m.d.pxl += x.eq(0)
-            with m.If(y == y_max):
-                m.d.pxl += y.eq(0)
-            with m.Else():
-                m.d.pxl += y.eq(y+1)
+            m.d.pxl += y.eq(Mux(y == y_max, 0, y+1))
         with m.Else():
             m.d.pxl += x.eq(x+1)
 

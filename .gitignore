@@ -1,7 +1,4 @@
 .vscode/
 __pycache__/
 build/
-vivado/
-*.vcd
-toplevel_*/
-toplevel.il
+sim/

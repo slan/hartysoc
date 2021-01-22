@@ -1,26 +1,25 @@
+SRCS := top.py pll.py vga.py
+
 all: sim
 
-vivado: build/top.bit
+sim: sim/top.vcd
 
-formal: toplevel.il toplevel.sby
-	sby -f toplevel.sby
+sim/top.vcd: ${SRCS}
+	python3 top.py sim
 
-toplevel.il: toplevel.py
-	python3 $< generate -t il >$@
+bitfile: build/top.bit
 
-sim: toplevel.py
-	python3 $< simulate -c 100 -v toplevel.vcd
-
-gen: toplevel.py
-	@python3 $< generate
+build/top.bit: ${SRCS}
+	python3 top.py
 
 prog: build/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
-build/top.bit: toplevel.py vga.py
-	python3 $<
+formal: sim/top.il sim/top.sby
+	sby -f top.sby
 
 clean:
-	rm -rf toplevel.vcd build vivado
+	rm -rf build sim
 
-.PHONY: all vivado formal sim gen prog clean
+.PHONY: all sim bitfile prog formal clean
+
