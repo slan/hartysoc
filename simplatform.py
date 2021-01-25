@@ -1,11 +1,12 @@
-from nmigen.build.dsl import Attrs, Pins, Resource
-from nmigen.build import Platform, Clock
-from nmigen.build.run import BuildPlan
-from nmigen.back.pysim import Simulator
-from nmigen import ClockDomain, Module
-from nmigen.back import pysim, rtlil, verilog
 import os
 from collections import OrderedDict
+
+from nmigen import ClockDomain, Module
+from nmigen.back import pysim, rtlil, verilog
+from nmigen.back.pysim import Simulator
+from nmigen.build import Clock, Platform
+from nmigen.build.dsl import Attrs, Pins, Resource
+from nmigen.build.run import BuildPlan
 
 
 class SimPlatform(Platform):

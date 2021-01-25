@@ -1,4 +1,4 @@
-SRCS := top.py pll.py vga.py simplatform.py
+SRCS := core.py counter.py multiblinky.py pll.py rom.py simplatform.py soc.py top.py
 
 all: sim
 
@@ -19,6 +19,6 @@ formal: build/sim/top.il build/sim/top.sby
 	sby -f build/sim/top.sby
 
 clean:
-	rm -rf build
+	rm -rf build __pycache__
 
 .PHONY: all sim arty prog formal clean

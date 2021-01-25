@@ -1,8 +1,10 @@
-from nmigen import ClockDomain, ClockSignal, Const, Elaboratable, Instance, Module, ResetSignal, Signal
+from nmigen import (ClockDomain, ClockSignal, Const, Elaboratable, Instance,
+                    Module, ResetSignal, Signal)
 from nmigen.build import Platform
-from nmigen.lib.cdc import ResetSynchronizer
-from simplatform import SimPlatform
 from nmigen.build.dsl import Attrs, Clock, Pins, Resource
+from nmigen.lib.cdc import ResetSynchronizer
+
+from simplatform import SimPlatform
 
 
 class PLL(Elaboratable):

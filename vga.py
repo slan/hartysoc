@@ -1,6 +1,6 @@
-from nmigen import ClockDomain, ClockSignal, Const, Elaboratable, Instance, Module, Mux, ResetSignal, Signal
+from nmigen import (ClockDomain, ClockSignal, Const, Elaboratable, Instance,
+                    Module, Mux, ResetSignal, Signal)
 from nmigen.lib.cdc import ResetSynchronizer
-from nmigen.vendor.xilinx_7series import Xilinx7SeriesPlatform
 
 #    Name        1920x1080p60
 #    Standard      SMPTE 274M
