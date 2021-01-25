@@ -1,4 +1,4 @@
-from nmigen import Elaboratable, Memory, Module, Signal
+from nmigen import *
 
 
 class Rom(Elaboratable):

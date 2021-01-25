@@ -1,11 +1,11 @@
-from nmigen import Elaboratable, Module
+from nmigen import *
 
-from counter import Counter
-from pll import PLL
+from .counter import *
+from .pll import *
 
 
 class MultiBlinky(Elaboratable):
-    def elaborate(self, platform: Platform) -> Module:
+    def elaborate(self, platform):
         m = Module()
 
         m.submodules.pll = PLL()

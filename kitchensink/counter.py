@@ -1,4 +1,4 @@
-from nmigen import Elaboratable, Module, Signal
+from nmigen import *
 
 
 class Counter(Elaboratable):
@@ -8,7 +8,7 @@ class Counter(Elaboratable):
         self._counter = Signal(range(max_value))
         self.out = Signal()
 
-    def elaborate(self, platform: Platform) -> Module:
+    def elaborate(self, platform):
         m = Module()
 
         domain = m.d[self._domain_name]

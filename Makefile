@@ -1,4 +1,4 @@
-SRCS := core.py counter.py multiblinky.py pll.py rom.py simplatform.py soc.py top.py
+SRCS := top.py $(wildcard kitchensink/*.py)
 
 all: sim
 
