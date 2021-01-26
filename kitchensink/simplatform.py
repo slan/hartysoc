@@ -6,7 +6,7 @@ from nmigen.back import *
 
 
 class SimPlatform(Platform):
-    def __init__(self, default_frequency=10):
+    def __init__(self, default_frequency=100):
         super().__init__()
         self.add_resources(
             [Resource("sync", 0, Pins("", dir="i"), Clock(default_frequency))]

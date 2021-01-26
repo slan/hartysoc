@@ -19,6 +19,6 @@ formal: build/sim/top.il build/sim/top.sby
 	sby -f build/sim/top.sby
 
 clean:
-	rm -rf build __pycache__
+	rm -rf build __pycache__ kitchensink/__pycache__
 
 .PHONY: all sim arty prog formal clean
