@@ -16,8 +16,6 @@ class RAM(Elaboratable):
         clk_fb = Signal()
         pll_locked = Signal()
 
-        m.domains += [ClockDomain("ref"), ClockDomain("sys"), ClockDomain("ui")]
-
         m.submodules.pll = Instance(
             "PLLE2_BASE",
             p_BANDWIDTH="OPTIMIZED",  # OPTIMIZED, HIGH, LOW
@@ -75,6 +73,7 @@ class RAM(Elaboratable):
             },
         )
 
+        mig_ui_clk_sync_rst = Signal()
         m.submodules.mig = Instance(
             "mig_7series_0",
             o_ddr3_addr=ddr3.a,
@@ -111,24 +110,39 @@ class RAM(Elaboratable):
             o_app_ref_ack=Signal(1, name="app_ref_ack"),
             o_app_zq_ack=Signal(1, name="app_zq_ack"),
             o_ui_clk=ClockSignal("ui"),
-            o_ui_clk_sync_rst=Signal(1, name="ui_clk_sync_rst"),
+            o_ui_clk_sync_rst=mig_ui_clk_sync_rst,
             i_app_wdf_mask=Const(0),
             i_sys_clk_i=ClockSignal("sys"),
             i_clk_ref_i=ClockSignal("ref"),
-            i_sys_rst=pll_locked,
+            i_sys_rst=~ResetSignal("sys"),
         )
 
-        counter_ui = Counter(int(500e6 / 6) - 1, "ui")      #  83.333 MHz
-        counter_sync = Counter(int(100e6) - 1, "sync")      # 100.000 MHz
-        counter_sys = Counter(int(500e6 / 3) - 1, "sys")    # 166.666 MHz
-        counter_ref = Counter(int(200e6) - 1, "ref")        # 200.000 MHz
+        combined_rst = ResetSignal() | ~pll_locked
 
-        m.submodules += [counter_ui, counter_sync, counter_sys, counter_ref]
+        m.submodules.rs_sys = ResetSynchronizer(combined_rst, domain="sys")
+        m.submodules.rs_ref = ResetSynchronizer(combined_rst, domain="ref")
+        m.submodules.rs_ui = ResetSynchronizer(mig_ui_clk_sync_rst, domain="ui")
 
-        m.d.comb += platform.request("led", 0).eq(counter_ui.out)
-        m.d.comb += platform.request("led", 1).eq(counter_sync.out)
-        m.d.comb += platform.request("led", 2).eq(counter_sys.out)
-        m.d.comb += platform.request("led", 3).eq(counter_ref.out)
+        m.domains += [ClockDomain("ref"), ClockDomain("sys"), ClockDomain("ui")]
+
+        if True:
+            m.submodules.counter_ui = counter_ui = Counter(
+                int(500e6 / 6) - 1, "ui"
+            )  # 83.333 MHz
+            m.submodules.counter_sync = counter_sync = Counter(
+                int(100e6) - 1, "sync"
+            )  # 100.000 MHz
+            m.submodules.counter_sys = counter_sys = Counter(
+                int(500e6 / 3) - 1, "sys"
+            )  # 166.666 MHz
+            m.submodules.counter_ref = counter_ref = Counter(
+                int(200e6) - 1, "ref"
+            )  # 200.000 MHz
+
+            m.d.comb += platform.request("led", 0).eq(counter_ui.out)
+            m.d.comb += platform.request("led", 1).eq(counter_sync.out)
+            m.d.comb += platform.request("led", 2).eq(counter_sys.out)
+            m.d.comb += platform.request("led", 3).eq(counter_ref.out)
 
         return m
 
