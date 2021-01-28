@@ -65,10 +65,10 @@ class PLL(Elaboratable):
 
         for domain_name in domain_names:
             m.domains += ClockDomain(domain_name)
-            m.submodules["rss_{}".format(domain_name)] = ResetSynchronizer(
+            m.submodules[f"rss_{domain_name}"] = ResetSynchronizer(
                 ~pll_locked, domain=domain_name
             )
-            m.submodules["bufg_{}".format(domain_name)] = Instance(
+            m.submodules[f"bufg_{domain_name}"] = Instance(
                 "BUFG", i_I=clks_out[domain_name], o_O=ClockSignal(domain_name)
             )
 

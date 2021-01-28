@@ -53,7 +53,6 @@ class RAM(Elaboratable):
             i_CLKFBIN=clk_fb,  # 1-bit input: Feedback clock
         )
 
-        calib = Signal()
         ddr3 = platform.request(
             "ddr3",
             dir={
@@ -73,7 +72,22 @@ class RAM(Elaboratable):
             },
         )
 
+        mig_init_calib_complete = Signal()
         mig_ui_clk_sync_rst = Signal()
+
+        app_addr = Signal(28)
+        app_cmd = Signal(3)
+        app_en = Signal()
+        app_wdf_data = Signal(128)
+        app_wdf_end = Signal()
+        app_wdf_wren = Signal()
+        app_rd_data = Signal(128)
+        app_rd_data_end = Signal()
+        app_rd_data_valid = Signal()
+        app_rdy = Signal()
+        app_wdf_rdy = Signal()
+        app_wdf_mask = Signal(16)
+
         m.submodules.mig = Instance(
             "mig_7series_0",
             o_ddr3_addr=ddr3.a,
@@ -88,21 +102,21 @@ class RAM(Elaboratable):
             io_ddr3_dq=ddr3.dq,
             io_ddr3_dqs_n=ddr3.dqs.n,
             io_ddr3_dqs_p=ddr3.dqs.p,
-            o_init_calib_complete=calib,
+            o_init_calib_complete=mig_init_calib_complete,
             o_ddr3_cs_n=ddr3.cs,
             o_ddr3_dm=ddr3.dm,
             o_ddr3_odt=ddr3.odt,
-            i_app_addr=Const(0),
-            i_app_cmd=Const(0),
-            i_app_en=Const(0),
-            i_app_wdf_data=Const(0),
-            i_app_wdf_end=Const(0),
-            i_app_wdf_wren=Const(0),
-            o_app_rd_data=Signal(128, name="app_rd_data"),
-            o_app_rd_data_end=Signal(1, name="app_rd_data_end"),
-            o_app_rd_data_valid=Signal(1, name="app_rd_data_valid"),
-            o_app_rdy=Signal(1, name="app_rdy"),
-            o_app_wdf_rdy=Signal(1, name="app_wdf_rdy"),
+            i_app_addr=app_addr,
+            i_app_cmd=app_cmd,
+            i_app_en=app_en,
+            i_app_wdf_data=app_wdf_data,
+            i_app_wdf_end=app_wdf_end,
+            i_app_wdf_wren=app_wdf_wren,
+            o_app_rd_data=app_rd_data,
+            o_app_rd_data_end=app_rd_data_end,
+            o_app_rd_data_valid=app_rd_data_valid,
+            o_app_rdy=app_rdy,
+            o_app_wdf_rdy=app_wdf_rdy,
             i_app_sr_req=Const(0),
             i_app_ref_req=Const(0),
             i_app_zq_req=Const(0),
@@ -111,7 +125,7 @@ class RAM(Elaboratable):
             o_app_zq_ack=Signal(1, name="app_zq_ack"),
             o_ui_clk=ClockSignal("ui"),
             o_ui_clk_sync_rst=mig_ui_clk_sync_rst,
-            i_app_wdf_mask=Const(0),
+            i_app_wdf_mask=app_wdf_mask,
             i_sys_clk_i=ClockSignal("sys"),
             i_clk_ref_i=ClockSignal("ref"),
             i_sys_rst=~ResetSignal("sys"),
@@ -121,28 +135,69 @@ class RAM(Elaboratable):
 
         m.submodules.rs_sys = ResetSynchronizer(combined_rst, domain="sys")
         m.submodules.rs_ref = ResetSynchronizer(combined_rst, domain="ref")
-        m.submodules.rs_ui = ResetSynchronizer(mig_ui_clk_sync_rst, domain="ui")
+        m.submodules.rs_ui = ResetSynchronizer(
+            mig_init_calib_complete & mig_ui_clk_sync_rst, domain="ui"
+        )
 
         m.domains += [ClockDomain("ref"), ClockDomain("sys"), ClockDomain("ui")]
 
-        if True:
-            m.submodules.counter_ui = counter_ui = Counter(
-                int(500e6 / 6) - 1, "ui"
-            )  # 83.333 MHz
-            m.submodules.counter_sync = counter_sync = Counter(
-                int(100e6) - 1, "sync"
-            )  # 100.000 MHz
-            m.submodules.counter_sys = counter_sys = Counter(
-                int(500e6 / 3) - 1, "sys"
-            )  # 166.666 MHz
-            m.submodules.counter_ref = counter_ref = Counter(
-                int(200e6) - 1, "ref"
-            )  # 200.000 MHz
+        m.submodules.counter_ui = counter_ui = Counter(
+            int(500e6 / 6) - 1, "ui"
+        )  # 83.333 MHz
+        m.submodules.counter_sync = counter_sync = Counter(
+            int(100e6) - 1, "sync"
+        )  # 100.000 MHz
+        m.submodules.counter_sys = counter_sys = Counter(
+            int(500e6 / 3) - 1, "sys"
+        )  # 166.666 MHz
+        m.submodules.counter_ref = counter_ref = Counter(
+            int(200e6) - 1, "ref"
+        )  # 200.000 MHz
 
-            m.d.comb += platform.request("led", 0).eq(counter_ui.out)
-            m.d.comb += platform.request("led", 1).eq(counter_sync.out)
-            m.d.comb += platform.request("led", 2).eq(counter_sys.out)
-            m.d.comb += platform.request("led", 3).eq(counter_ref.out)
+        # m.d.comb += platform.request("led", 0).eq(counter_ui.out)
+        # m.d.comb += platform.request("led", 1).eq(counter_sync.out)
+        # m.d.comb += platform.request("led", 2).eq(counter_sys.out)
+        # m.d.comb += platform.request("led", 3).eq(counter_ref.out)
+
+        data = Signal(128)
+
+        with m.FSM(domain="ui"):
+            with m.State("WAIT_WRDY"):
+                with m.If(app_rdy & app_wdf_rdy):
+                    m.d.ui += app_cmd.eq(0)  # write
+                    m.d.ui += app_addr.eq(0)
+                    m.d.ui += app_en.eq(1)
+                    m.d.ui += app_wdf_data.eq(
+                        0x32345678_90abcdef_fedcba09_87654322
+                    )  # 123456789abcdef0123456789abcde5)
+                    m.d.ui += app_wdf_mask.eq(0)
+                    m.d.ui += app_wdf_wren.eq(1)
+                    m.d.ui += app_wdf_end.eq(1)
+                    m.next = "WAIT_WACK"
+            with m.State("WAIT_WACK"):
+                with m.If(app_rdy):
+                    m.d.ui += app_en.eq(0)
+                    m.d.ui += app_wdf_wren.eq(0)
+                    m.next = "WAIT_RRDY"
+            with m.State("WAIT_RRDY"):
+                with m.If(app_rdy):
+                    m.d.ui += app_cmd.eq(1)  # read
+                    m.d.ui += app_addr.eq(0)
+                    m.d.ui += app_en.eq(1)
+                    m.next = "WAIT_RACK"
+            with m.State("WAIT_RACK"):
+                with m.If(app_rdy):
+                    m.d.ui += app_en.eq(0)
+                    with m.If(app_rd_data_valid):
+                        m.d.ui += data.eq(app_rd_data)
+                        m.next = "DONE"
+            with m.State("DONE"):
+                pass
+
+        m.d.comb += platform.request("led", 0).eq(data[0])  # LBS
+        m.d.comb += platform.request("led", 1).eq(data[1])
+        m.d.comb += platform.request("led", 2).eq(data[-1])  # MSB
+        m.d.comb += platform.request("led", 3).eq(counter_ui.out)
 
         return m
 
@@ -208,7 +263,7 @@ if __name__ == "__main__":
     fragment = Fragment.get(top, platform)
     platform.build(
         fragment,
-        build_dir="build/{}".format(platform_name),
+        build_dir=f"build/{platform_name}",
         run_script=False,
         do_program=False,
         script_after_read="add_files ../../../vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",

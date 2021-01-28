@@ -15,7 +15,7 @@ class MultiBlinky(Elaboratable):
         for i, domain_name in enumerate(domain_names):
             if domain_name is not None:
                 counter = Counter(cycles, domain_name)
-                m.submodules["counter_{}".format(domain_name)] = counter
+                m.submodules[f"counter_{domain_name}"] = counter
                 m.d.comb += platform.request("led", i).eq(counter.out)
 
         return m
