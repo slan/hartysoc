@@ -160,6 +160,7 @@ class RAM(Elaboratable):
         # m.d.comb += platform.request("led", 3).eq(counter_ref.out)
 
         data = Signal(128)
+        m.submodules.counter = counter = Counter(max_value=int(50e6))
 
         with m.FSM(domain="ui"):
             with m.State("WAIT_WRDY"):
@@ -168,7 +169,7 @@ class RAM(Elaboratable):
                     m.d.ui += app_addr.eq(0)
                     m.d.ui += app_en.eq(1)
                     m.d.ui += app_wdf_data.eq(
-                        0x32345678_90abcdef_fedcba09_87654322
+                        0x32345678_90ABCDEF_FEDCBA09_87654322
                     )  # 123456789abcdef0123456789abcde5)
                     m.d.ui += app_wdf_mask.eq(0)
                     m.d.ui += app_wdf_wren.eq(1)
@@ -192,12 +193,15 @@ class RAM(Elaboratable):
                         m.d.ui += data.eq(app_rd_data)
                         m.next = "DONE"
             with m.State("DONE"):
+                m.d.comb += platform.request("rgb_led", 0).g.eq(counter.out)
                 pass
+        
 
-        m.d.comb += platform.request("led", 0).eq(data[0])  # LBS
-        m.d.comb += platform.request("led", 1).eq(data[1])
-        m.d.comb += platform.request("led", 2).eq(data[-1])  # MSB
-        m.d.comb += platform.request("led", 3).eq(counter_ui.out)
+
+        # m.d.comb += platform.request("led", 0).eq(data[0])  # LBS
+        # m.d.comb += platform.request("led", 1).eq(data[1])
+        # m.d.comb += platform.request("led", 2).eq(data[-1])  # MSB
+        # m.d.comb += platform.request("led", 3).eq(counter_ui.out)
 
         return m
 
@@ -255,6 +259,7 @@ if __name__ == "__main__":
                 ),
             )
         ]
+        
 
     if platform is None:
         exit()
@@ -264,7 +269,9 @@ if __name__ == "__main__":
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
-        run_script=False,
+        run_script=True,
         do_program=False,
-        script_after_read="add_files ../../../vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
+        script_after_read="""
+add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+        """,
     )
