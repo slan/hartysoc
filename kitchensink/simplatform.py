@@ -2,7 +2,7 @@ import os
 from nmigen import *
 from nmigen.build import *
 from nmigen.sim import *
-from nmigen.back import *
+from nmigen.back import rtlil, verilog
 
 
 class SimPlatform(Platform):
@@ -39,7 +39,7 @@ class SimPlatform(Platform):
             for name, number in self.resources:
                 clock = self.lookup(name, number).clock
                 if clock is not None:
-                    sim.add_clock(clock.period, domain=name)
+                    sim.add_clock(clock.period, phase=0, domain=name)
 
             for sync_process in self.sync_processes:
                 sim.add_sync_process(sync_process)

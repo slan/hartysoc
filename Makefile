@@ -9,7 +9,7 @@ build/sim/top.vcd: ${SRCS}
 
 arty: build/arty/top.bit
 
-build/arty/top.bit: ${SRCS} build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+build/arty/top.bit: ${SRCS} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 	python3 top.py arty
 
 prog: build/arty/top.bit

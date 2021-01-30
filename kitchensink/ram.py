@@ -1,7 +1,7 @@
 from nmigen import *
 
 
-class ROM(Elaboratable):
+class RAM(Elaboratable):
     def __init__(self, init=None):
         self.init = init
         self.addr = Signal(32)
@@ -13,7 +13,7 @@ class ROM(Elaboratable):
         m = Module()
         m.submodules.read_port = read_port = mem.read_port()
         m.d.comb += [
-            read_port.addr.eq(self.addr>>2),
+            read_port.addr.eq(self.addr),
             self.data.eq(read_port.data),
         ]
 
