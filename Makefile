@@ -15,8 +15,11 @@ build/arty/top.bit: ${SRCS} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_
 prog: build/arty/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
-formal: build/sim/top.il build/sim/top.sby
-	sby -f build/sim/top.sby
+formal: build/formal/top.il top.sby
+	sby -f top.sby
+
+build/formal/top.il: ${SRCS}
+	python3 top.py formal
 
 clean:
 	rm -rf build __pycache__ kitchensink/__pycache__

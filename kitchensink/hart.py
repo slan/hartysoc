@@ -41,6 +41,7 @@ class Registers(Elaboratable):
                 for i in range(32)
             ]
         )
+        self.bank = bank
         m = Module()
 
         m.d.comb += [
@@ -103,12 +104,17 @@ class RegSrc(Enum):
     NONE = 0
     COND = 1
     ALU = 2
-    PC_PLUS4 = 3
+    PC_INCR = 3
 
 
 @unique
 class MemSrc(Enum):
     NONE = 0
+
+
+@unique
+class TrapCause(Enum):
+    IPAGE_FAULT = 12
 
 
 class Hart(Elaboratable):
@@ -117,17 +123,24 @@ class Hart(Elaboratable):
         self.dmem = ram
 
     def elaborate(self, platform):
+        self.mcycle = Signal(64)
+        self.minstret = Signal(64)
+        self.trap = Signal()
+        self.mcause = Signal(32)
+        self.registers = Registers()
+        self.pc = Signal(32)
+        self.instr = Signal(32)
+
         m = Module()
 
+        m.submodules.registers = registers = self.registers
         m.submodules.alu = alu = ALU()
-        m.submodules.registers = registers = Registers()
         m.submodules.bt = bt = BranchTester()
 
-        pc = Signal(32)
-
-        instr = Signal(32)
+        pc = self.pc
+        instr = self.instr
         imm = Signal(12)
-        pc_plus_4 = Signal(32)
+        pc_incr = Signal(32)
 
         # Control
         alu_src1_type = Signal(AluSrc1)
@@ -135,15 +148,22 @@ class Hart(Elaboratable):
         reg_src_type = Signal(RegSrc)
         mem_src_type = Signal(MemSrc)
 
+        m.d.sync += self.mcycle.eq(self.mcycle + 1)
+        
         with m.FSM() as fsm:
-            with m.State("RESET"):
-                m.next = "IF"
             with m.State("IF"):
-                m.d.sync += [
-                    instr.eq(self.imem.data),
-                    pc_plus_4.eq(pc + 4),
-                ]
-                m.next = "ID"
+                with m.If(self.imem.err):
+                    m.d.comb += self.trap.eq(1),
+                    m.d.sync += [
+                        self.mcause.eq(TrapCause.IPAGE_FAULT)
+                    ]
+                    m.next = "HALT"
+                with m.Else():
+                    m.d.sync += [
+                        instr.eq(self.imem.data),
+                        pc_incr.eq(pc + 4),
+                    ]
+                    m.next = "ID"
             with m.State("ID"):
                 m.d.sync += [
                     bt.func.eq(BranchTestFunc.NONE),
@@ -187,7 +207,7 @@ class Hart(Elaboratable):
                                 Cat(instr[21:31], instr[20], instr[12:20], instr[31])
                             ),
                             # dst
-                            reg_src_type.eq(RegSrc.PC_PLUS4),
+                            reg_src_type.eq(RegSrc.PC_INCR),
                             registers.wr_idx.eq(instr[7:12]),
                             # func
                             alu.func.eq(AluFunc.ADD),
@@ -241,21 +261,20 @@ class Hart(Elaboratable):
                             registers.wr_en.eq(1),
                             registers.wr_data.eq(alu.out),
                         ]
-                    with m.Case(RegSrc.PC_PLUS4):
+                    with m.Case(RegSrc.PC_INCR):
                         m.d.comb += [
                             registers.wr_en.eq(1),
-                            registers.wr_data.eq(pc_plus_4),
+                            registers.wr_data.eq(pc_incr),
                         ]
 
-                new_pc = Mux(bt.out, alu.out, pc_plus_4)
-                m.d.sync += pc.eq(new_pc)
+                new_pc = Mux(bt.out, alu.out, pc_incr)
+                m.d.sync += [
+                    pc.eq(new_pc),
+                    self.minstret.eq(self.minstret + 1),
+                ]
                 m.d.comb += self.imem.addr.eq(new_pc)
-                with m.If(pc > (len(self.imem.init) << 2)):
-                    m.next = "HALT"
-                with m.Else():
-                    m.next = "IF"
+                m.next = "IF"
             with m.State("HALT"):
-                m.d.comb += platform.request("led").eq(1)
                 pass
 
         return m

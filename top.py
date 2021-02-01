@@ -5,6 +5,8 @@ from nmigen.build import *
 from nmigen_boards.arty_a7 import ArtyA7Platform
 from kitchensink import *
 
+import datetime as dt
+
 
 class Top(Elaboratable):
     def elaborate(self, platform):
@@ -15,14 +17,15 @@ class Top(Elaboratable):
             0x005383B3,
             0xFFF30313,
             0xFE031AE3,
-            #0x0000006F,
+            # 0x0000006F,
         ]
 
         m = Module()
         m.submodules.rom = rom = ROM(init)
         m.submodules.ram = ram = RAM()
-        m.submodules.hart = hart = Hart(rom, ram)
+        m.submodules.hart = self.hart = Hart(rom, ram)
         return m
+
 
 if __name__ == "__main__":
 
@@ -35,19 +38,46 @@ if __name__ == "__main__":
     # 	10:		fff30313		addi x6 x6 -1
     # 	14:		fe031ae3		bne x6 x0 -12 <loop>
     # 00000018 <spin>:
-	#   18:		0000006f		jal x0 0x0 <spin>
+    #   18:		0000006f		jal x0 0x0 <spin>
 
     top = Top()
 
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None
 
-    if platform_name == "sim":
+    if platform_name == "formal":
+        platform = FormalPlatform()
+        additional_resources = []
+
+    elif platform_name == "sim":
 
         def process():
+            print("-" * 148)
             for _ in range(200):
                 yield
+                trap = yield top.hart.trap
+                if trap:
+                    print(f"*** TRAP - MCAUSE={top.hart.mcause} ***")
+                    break
+            mcycle = yield top.hart.mcycle
+            minstret = yield top.hart.minstret
 
-        platform = SimPlatform()
+            time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
+            print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
+            ipc = minstret / mcycle
+            print(f"mcycle={mcycle} minstret={minstret} ipc={ipc}")
+            print("-" * 148)
+            pc = yield top.hart.pc
+            instr = yield top.hart.instr
+            print(f" pc: {pc:#010x}  instr: {instr:#010x}")
+            for i, x in enumerate(top.hart.registers.bank):
+                x = yield x
+                if i < 10:
+                    sys.stdout.write(" ")
+                sys.stdout.write(f"x{i}: {x:#010x}    ")
+                if i % 8 == 7:
+                    print()
+
+        platform = SimPlatform(100)
         platform.add_sync_process(process)
         additional_resources = [
             Resource("led", 0, Pins("led0", dir="o")),
