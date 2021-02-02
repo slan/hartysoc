@@ -55,16 +55,19 @@ if __name__ == "__main__":
             for _ in range(200):
                 yield
                 trap = yield top.hart.trap
+                mcause = yield top.hart.mcause
                 if trap:
-                    print(f"*** TRAP - MCAUSE={top.hart.mcause} ***")
+                    yield
+                    yield
+                    print(f"*** TRAP - MCAUSE={mcause} ***")
                     break
             mcycle = yield top.hart.mcycle
             minstret = yield top.hart.minstret
 
             time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
             print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
-            ipc = minstret / mcycle
-            print(f"mcycle={mcycle} minstret={minstret} ipc={ipc}")
+            cpi = mcycle / minstret
+            print(f"mcycle={mcycle} minstret={minstret} ipc={cpi}")
             print("-" * 148)
             pc = yield top.hart.pc
             instr = yield top.hart.instr

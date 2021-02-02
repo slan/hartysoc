@@ -18,7 +18,7 @@ class ALU(Elaboratable):
 
         with m.Switch(self.func):
             with m.Case(AluFunc.ADD):
-                m.d.sync += self.out.eq((self.op1 + self.op2)[:32])
+                m.d.comb += self.out.eq((self.op1 + self.op2)[:32])
 
         return m
 
@@ -149,14 +149,14 @@ class Hart(Elaboratable):
         mem_src_type = Signal(MemSrc)
 
         m.d.sync += self.mcycle.eq(self.mcycle + 1)
-        
+
         with m.FSM() as fsm:
             with m.State("IF"):
                 with m.If(self.imem.err):
-                    m.d.comb += self.trap.eq(1),
-                    m.d.sync += [
-                        self.mcause.eq(TrapCause.IPAGE_FAULT)
+                    m.d.comb += [
+                        self.trap.eq(1),
                     ]
+                    m.d.sync += (self.mcause.eq(TrapCause.IPAGE_FAULT),)
                     m.next = "HALT"
                 with m.Else():
                     m.d.sync += [

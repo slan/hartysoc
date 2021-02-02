@@ -2,9 +2,7 @@ SRCS := top.py $(wildcard kitchensink/*.py)
 
 all: sim
 
-sim: build/sim/top.vcd
-
-build/sim/top.vcd: ${SRCS}
+sim: ${SRCS}
 	python3 top.py sim
 
 arty: build/arty/top.bit
