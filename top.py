@@ -4,6 +4,7 @@ from nmigen import *
 from nmigen.build import *
 from nmigen_boards.arty_a7 import ArtyA7Platform
 from kitchensink import *
+from riscv import *
 
 import datetime as dt
 
@@ -24,6 +25,7 @@ class Top(Elaboratable):
         m.submodules.rom = rom = ROM(init)
         m.submodules.ram = ram = RAM()
         m.submodules.hart = self.hart = Hart(rom, ram)
+        m.d.comb += platform.request("led").eq(self.hart.trap)
         return m
 
 
@@ -57,8 +59,6 @@ if __name__ == "__main__":
                 trap = yield top.hart.trap
                 mcause = yield top.hart.mcause
                 if trap:
-                    yield
-                    yield
                     print(f"*** TRAP - MCAUSE={mcause} ***")
                     break
             mcycle = yield top.hart.mcycle
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
-        run_script=True,
+        run_script=False,
         do_program=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci

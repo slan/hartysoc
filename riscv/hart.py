@@ -1,88 +1,11 @@
 from enum import Enum, unique
 
+from kitchensink import *
 from nmigen import *
 
-from .ram import *
-from .rom import *
-
-
-class ALU(Elaboratable):
-    def __init__(self):
-        self.op1 = Signal(32)
-        self.op2 = Signal(32)
-        self.out = Signal(32)
-        self.func = Signal(3)
-
-    def elaborate(self, platform):
-        m = Module()
-
-        with m.Switch(self.func):
-            with m.Case(AluFunc.ADD):
-                m.d.comb += self.out.eq((self.op1 + self.op2)[:32])
-
-        return m
-
-
-class Registers(Elaboratable):
-    def __init__(self):
-        self.wr_en = Signal()
-        self.wr_data = Signal(32)
-        self.wr_idx = Signal(5)
-        self.r1_idx = Signal(5)
-        self.r2_idx = Signal(5)
-        self.reg1 = Signal(32)
-        self.reg2 = Signal(32)
-
-    def elaborate(self, platform):
-
-        bank = Array(
-            [
-                Signal(32, name=f"x{i}", reset=0 if i == 0 else 0xDEADBEEF)
-                for i in range(32)
-            ]
-        )
-        self.bank = bank
-        m = Module()
-
-        m.d.comb += [
-            self.reg1.eq(bank[self.r1_idx]),
-            self.reg2.eq(bank[self.r2_idx]),
-        ]
-        with m.If(self.wr_en & self.wr_idx.any()):  # don't write to x0
-            m.d.sync += bank[self.wr_idx].eq(self.wr_data)
-
-        return m
-
-
-class BranchTester(Elaboratable):
-    def __init__(self):
-        self.op1 = Signal(32)
-        self.op2 = Signal(32)
-        self.out = Signal()
-        self.func = Signal(BranchTestFunc)
-
-    def elaborate(self, platform):
-        m = Module()
-        with m.Switch(self.func):
-            with m.Case(BranchTestFunc.NONE):
-                m.d.sync += self.out.eq(0)
-            with m.Case(BranchTestFunc.ALWAYS):
-                m.d.sync += self.out.eq(1)
-            with m.Case(BranchTestFunc.NE):
-                m.d.sync += self.out.eq((self.op1 ^ self.op2).any())
-        return m
-
-
-@unique
-class BranchTestFunc(Enum):
-    NONE = 0
-    ALWAYS = 1
-    NE = 2
-
-
-@unique
-class AluFunc(Enum):
-    ADD = 0
+from .alu import *
+from .branchtester import *
+from .registers import *
 
 
 @unique
@@ -121,11 +44,11 @@ class Hart(Elaboratable):
     def __init__(self, rom, ram):
         self.imem = rom
         self.dmem = ram
+        self.trap = Signal()
 
     def elaborate(self, platform):
         self.mcycle = Signal(64)
         self.minstret = Signal(64)
-        self.trap = Signal()
         self.mcause = Signal(32)
         self.registers = Registers()
         self.pc = Signal(32)
@@ -136,6 +59,10 @@ class Hart(Elaboratable):
         m.submodules.registers = registers = self.registers
         m.submodules.alu = alu = ALU()
         m.submodules.bt = bt = BranchTester()
+
+        clk_fb = Signal()
+        pll_locked = Signal()
+        clk_out = Signal()
 
         pc = self.pc
         instr = self.instr
