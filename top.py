@@ -11,7 +11,7 @@ import datetime as dt
 
 class Top(Elaboratable):
     def elaborate(self, platform):
-        init = [
+        code = [
             0x00000393,
             0x00600313,
             0x006302B3,
@@ -22,10 +22,39 @@ class Top(Elaboratable):
         ]
 
         m = Module()
-        m.submodules.rom = rom = ROM(init)
-        m.submodules.ram = ram = RAM()
-        m.submodules.hart = self.hart = Hart(rom, ram)
+        m.submodules.hart = self.hart = Hart(code)
         m.d.comb += platform.request("led").eq(self.hart.trap)
+
+        if isinstance(platform, SimPlatform):
+            def process():
+                print("-" * 148)
+                for _ in range(200):
+                    yield
+                    trap = yield top.hart.trap
+                    mcause = yield top.hart.mcause
+                    if trap:
+                        print(f"*** TRAP - MCAUSE={mcause} ***")
+                        break
+                mcycle = yield top.hart.mcycle
+                minstret = yield top.hart.minstret
+
+                time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
+                print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
+                cpi = mcycle / minstret
+                print(f"mcycle={mcycle} minstret={minstret} ipc={cpi}")
+                print("-" * 148)
+                pc = yield top.hart.pc
+                instr = yield top.hart.instr
+                print(f" pc: {pc:#010x}  instr: {instr:#010x}")
+                for i, x in enumerate(top.hart.registers.bank):
+                    x = yield x
+                    if i < 10:
+                        sys.stdout.write(" ")
+                    sys.stdout.write(f"x{i}: {x:#010x}    ")
+                    if i % 8 == 7:
+                        print()
+            platform.add_sync_process(process)
+
         return m
 
 
@@ -51,37 +80,7 @@ if __name__ == "__main__":
         additional_resources = []
 
     elif platform_name == "sim":
-
-        def process():
-            print("-" * 148)
-            for _ in range(200):
-                yield
-                trap = yield top.hart.trap
-                mcause = yield top.hart.mcause
-                if trap:
-                    print(f"*** TRAP - MCAUSE={mcause} ***")
-                    break
-            mcycle = yield top.hart.mcycle
-            minstret = yield top.hart.minstret
-
-            time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
-            print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
-            cpi = mcycle / minstret
-            print(f"mcycle={mcycle} minstret={minstret} ipc={cpi}")
-            print("-" * 148)
-            pc = yield top.hart.pc
-            instr = yield top.hart.instr
-            print(f" pc: {pc:#010x}  instr: {instr:#010x}")
-            for i, x in enumerate(top.hart.registers.bank):
-                x = yield x
-                if i < 10:
-                    sys.stdout.write(" ")
-                sys.stdout.write(f"x{i}: {x:#010x}    ")
-                if i % 8 == 7:
-                    print()
-
         platform = SimPlatform(100)
-        platform.add_sync_process(process)
         additional_resources = [
             Resource("led", 0, Pins("led0", dir="o")),
             Resource("led", 1, Pins("led1", dir="o")),
@@ -130,7 +129,7 @@ if __name__ == "__main__":
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
-        run_script=False,
+        run_script=True,
         do_program=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci

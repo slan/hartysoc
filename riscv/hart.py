@@ -41,9 +41,9 @@ class TrapCause(Enum):
 
 
 class Hart(Elaboratable):
-    def __init__(self, rom, ram):
-        self.imem = rom
-        self.dmem = ram
+    def __init__(self, code):
+        self.imem = ROM(init=code)
+        self.dmem = RAM()
         self.trap = Signal()
 
     def elaborate(self, platform):
@@ -59,6 +59,8 @@ class Hart(Elaboratable):
         m.submodules.registers = registers = self.registers
         m.submodules.alu = alu = ALU()
         m.submodules.bt = bt = BranchTester()
+        m.submodules.imem = self.imem
+        m.submodules.dmem = self.dmem
 
         clk_fb = Signal()
         pll_locked = Signal()
