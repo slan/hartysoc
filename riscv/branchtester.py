@@ -11,7 +11,8 @@ class BranchTestFunc(Enum):
 
 
 class BranchTester(Elaboratable):
-    def __init__(self):
+    def __init__(self, domain):
+        self._domain = domain
         self.op1 = Signal(32)
         self.op2 = Signal(32)
         self.out = Signal()
@@ -19,11 +20,13 @@ class BranchTester(Elaboratable):
 
     def elaborate(self, platform):
         m = Module()
+        sync = m.d[self._domain]
+
         with m.Switch(self.func):
             with m.Case(BranchTestFunc.NONE):
-                m.d.sync += self.out.eq(0)
+                sync += self.out.eq(0)
             with m.Case(BranchTestFunc.ALWAYS):
-                m.d.sync += self.out.eq(1)
+                sync += self.out.eq(1)
             with m.Case(BranchTestFunc.NE):
-                m.d.sync += self.out.eq((self.op1 ^ self.op2).any())
+                sync += self.out.eq((self.op1 ^ self.op2).any())
         return m

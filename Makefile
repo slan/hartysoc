@@ -1,4 +1,4 @@
-SRCS := top.py $(wildcard kitchensink/*.py)
+SRCS := top.py $(wildcard riscv/*.py) $(wildcard kitchensink/*.py)
 
 all: sim
 

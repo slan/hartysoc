@@ -2,7 +2,8 @@ from nmigen import *
 
 
 class Registers(Elaboratable):
-    def __init__(self):
+    def __init__(self, domain):
+        self.domain = domain
         self.wr_en = Signal()
         self.wr_data = Signal(32)
         self.wr_idx = Signal(5)
@@ -20,13 +21,16 @@ class Registers(Elaboratable):
             ]
         )
         self.bank = bank
-        m = Module()
 
-        m.d.comb += [
+        m = Module()
+        comb = m.d.comb
+        sync = m.d[self.domain]
+
+        comb += [
             self.reg1.eq(bank[self.r1_idx]),
             self.reg2.eq(bank[self.r2_idx]),
         ]
         with m.If(self.wr_en & self.wr_idx.any()):  # don't write to x0
-            m.d.sync += bank[self.wr_idx].eq(self.wr_data)
+            sync += bank[self.wr_idx].eq(self.wr_data)
 
         return m

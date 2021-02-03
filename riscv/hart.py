@@ -41,24 +41,28 @@ class TrapCause(Enum):
 
 
 class Hart(Elaboratable):
-    def __init__(self, code):
-        self.imem = ROM(init=code)
-        self.dmem = RAM()
+    def __init__(self, code, domain):
+        self.imem = ROM(code, domain)
+        self.dmem = RAM([], domain)
+        self.registers = Registers(domain)
+        self.bt = BranchTester(domain)
         self.trap = Signal()
+        self._domain = domain
 
     def elaborate(self, platform):
         self.mcycle = Signal(64)
         self.minstret = Signal(64)
         self.mcause = Signal(32)
-        self.registers = Registers()
         self.pc = Signal(32)
         self.instr = Signal(32)
 
         m = Module()
+        comb = m.d.comb
+        sync = m.d[self._domain]
 
         m.submodules.registers = registers = self.registers
         m.submodules.alu = alu = ALU()
-        m.submodules.bt = bt = BranchTester()
+        m.submodules.bt = bt = self.bt
         m.submodules.imem = self.imem
         m.submodules.dmem = self.dmem
 
@@ -77,30 +81,23 @@ class Hart(Elaboratable):
         reg_src_type = Signal(RegSrc)
         mem_src_type = Signal(MemSrc)
 
-        m.d.sync += self.mcycle.eq(self.mcycle + 1)
+        sync += self.mcycle.eq(self.mcycle + 1)
 
-        with m.FSM() as fsm:
+        with m.FSM(domain=self._domain) as fsm:
             with m.State("IF"):
-                with m.If(self.imem.err):
-                    m.d.comb += [
-                        self.trap.eq(1),
-                    ]
-                    m.d.sync += (self.mcause.eq(TrapCause.IPAGE_FAULT),)
-                    m.next = "HALT"
-                with m.Else():
-                    m.d.sync += [
+                    sync += [
                         instr.eq(self.imem.data),
                         pc_incr.eq(pc + 4),
                     ]
                     m.next = "ID"
             with m.State("ID"):
-                m.d.sync += [
+                sync += [
                     bt.func.eq(BranchTestFunc.NONE),
                     reg_src_type.eq(RegSrc.NONE),
                 ]
                 with m.Switch(instr):
                     with m.Case("-------------------------0010011"):  # ADDI
-                        m.d.sync += [
+                        sync += [
                             # src
                             alu_src1_type.eq(AluSrc1.REG),
                             registers.r1_idx.eq(instr[15:20]),
@@ -113,7 +110,7 @@ class Hart(Elaboratable):
                             alu.func.eq(AluFunc.ADD),
                         ]
                     with m.Case("-------------------------0110011"):  # ADD
-                        m.d.sync += [
+                        sync += [
                             # src
                             alu_src1_type.eq(AluSrc1.REG),
                             registers.r1_idx.eq(instr[15:20]),
@@ -126,9 +123,9 @@ class Hart(Elaboratable):
                             alu.func.eq(AluFunc.ADD),
                         ]
                     with m.Case("-------------------------0100011"):  # SW
-                        m.d.sync += []
+                        sync += []
                     with m.Case("-------------------------1101111"):  # JAL
-                        m.d.sync += [
+                        sync += [
                             # src
                             alu_src1_type.eq(AluSrc1.PC),
                             alu_src2_type.eq(AluSrc2.IMM),
@@ -144,7 +141,7 @@ class Hart(Elaboratable):
                             bt.func.eq(BranchTestFunc.ALWAYS),
                         ]
                     with m.Case("-------------------------1100011"):  # BNE
-                        m.d.sync += [
+                        sync += [
                             # src
                             alu_src1_type.eq(AluSrc1.PC),
                             alu_src2_type.eq(AluSrc2.IMM),
@@ -162,7 +159,7 @@ class Hart(Elaboratable):
 
                 m.next = "EX"
             with m.State("EX"):
-                m.d.sync += [
+                sync += [
                     alu.op1.eq(Mux(alu_src1_type == AluSrc1.PC, pc, registers.reg1)),
                     alu.op2.eq(
                         Mux(
@@ -177,7 +174,7 @@ class Hart(Elaboratable):
                 m.next = "MEM"
             with m.State("MEM"):
                 with m.If(mem_src_type == MemSrc.NONE):
-                    m.d.sync += [
+                    sync += [
                         # self.dmem.wr_en.eq(1),
                         # self.dmem.addr.eq(alu.out),
                         # self.dmem.write_data.eq(registers.reg2),
@@ -186,23 +183,30 @@ class Hart(Elaboratable):
             with m.State("WB"):
                 with m.Switch(reg_src_type):
                     with m.Case(RegSrc.ALU):
-                        m.d.comb += [
+                        comb += [
                             registers.wr_en.eq(1),
                             registers.wr_data.eq(alu.out),
                         ]
                     with m.Case(RegSrc.PC_INCR):
-                        m.d.comb += [
+                        comb += [
                             registers.wr_en.eq(1),
                             registers.wr_data.eq(pc_incr),
                         ]
 
                 new_pc = Mux(bt.out, alu.out, pc_incr)
-                m.d.sync += [
+                sync += [
                     pc.eq(new_pc),
                     self.minstret.eq(self.minstret + 1),
                 ]
-                m.d.comb += self.imem.addr.eq(new_pc)
-                m.next = "IF"
+                comb += self.imem.addr.eq(new_pc)
+                with m.If(self.imem.err):
+                    sync += [
+                        self.trap.eq(1),
+                        self.mcause.eq(TrapCause.IPAGE_FAULT)
+                    ]
+                    m.next = "HALT"
+                with m.Else():
+                    m.next = "IF"
             with m.State("HALT"):
                 pass
 

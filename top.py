@@ -22,7 +22,8 @@ class Top(Elaboratable):
         ]
 
         m = Module()
-        m.submodules.hart = self.hart = Hart(code)
+        m.submodules.pll = PLL("sync", mult=10, div=1, domain_defs=[("hart", 6)])
+        m.submodules.hart = self.hart = Hart(code, domain="hart")
         m.d.comb += platform.request("led").eq(self.hart.trap)
 
         if isinstance(platform, SimPlatform):
@@ -129,7 +130,7 @@ if __name__ == "__main__":
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
-        run_script=True,
+        run_script=False,
         do_program=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
