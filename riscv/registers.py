@@ -3,7 +3,7 @@ from nmigen import *
 
 class Registers(Elaboratable):
     def __init__(self, domain):
-        self.domain = domain
+        self._domain = domain
         self.wr_en = Signal()
         self.wr_data = Signal(32)
         self.wr_idx = Signal(5)
@@ -24,7 +24,7 @@ class Registers(Elaboratable):
 
         m = Module()
         comb = m.d.comb
-        sync = m.d[self.domain]
+        sync = m.d[self._domain]
 
         comb += [
             self.reg1.eq(bank[self.r1_idx]),

@@ -6,24 +6,16 @@ from nmigen_boards.arty_a7 import ArtyA7Platform
 from kitchensink import *
 from riscv import *
 
+from build import *
+
 import datetime as dt
 
 
 class Top(Elaboratable):
     def elaborate(self, platform):
-        code = [
-            0x00000393,
-            0x00600313,
-            0x006302B3,
-            0x005383B3,
-            0xFFF30313,
-            0xFE031AE3,
-            # 0x0000006F,
-        ]
-
         m = Module()
         m.submodules.pll = PLL("sync", mult=10, div=1, domain_defs=[("hart", 6)])
-        m.submodules.hart = self.hart = Hart(code, domain="hart")
+        m.submodules.hart = self.hart = Hart(bootcode, domain="hart")
         m.d.comb += platform.request("led").eq(self.hart.trap)
 
         if isinstance(platform, SimPlatform):
@@ -41,7 +33,7 @@ class Top(Elaboratable):
 
                 time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
                 print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
-                cpi = mcycle / minstret
+                cpi = mcycle / minstret if minstret != 0 else "N/A"
                 print(f"mcycle={mcycle} minstret={minstret} ipc={cpi}")
                 print("-" * 148)
                 pc = yield top.hart.pc
@@ -60,17 +52,6 @@ class Top(Elaboratable):
 
 
 if __name__ == "__main__":
-
-    # 	0:		00000393		addi x7 x0 0
-    # 	4:		00600313		addi x6 x0 6
-    #
-    # 00000008 <loop>:
-    # 	8:		006302b3		add x5 x6 x6
-    # 	c:		005383b3		add x7 x7 x5
-    # 	10:		fff30313		addi x6 x6 -1
-    # 	14:		fe031ae3		bne x6 x0 -12 <loop>
-    # 00000018 <spin>:
-    #   18:		0000006f		jal x0 0x0 <spin>
 
     top = Top()
 

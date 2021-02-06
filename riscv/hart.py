@@ -28,22 +28,29 @@ class RegSrc(Enum):
     COND = 1
     ALU = 2
     PC_INCR = 3
+    MEM = 4
 
 
 @unique
-class MemSrc(Enum):
+class MemFuncWidth(Enum):
     NONE = 0
+    B = 1
+    H = 2
+    W = 4
+    BU = 5
+    HU = 6
 
 
 @unique
 class TrapCause(Enum):
-    IPAGE_FAULT = 12
+    ILLEGAL_INSTRUCTION = 2
+    INSTRUCTION_PAGE_FAULT = 12
 
 
 class Hart(Elaboratable):
     def __init__(self, code, domain):
         self.imem = ROM(code, domain)
-        self.dmem = RAM([], domain)
+        self.dmem = RAM([-1]*256, domain)
         self.registers = Registers(domain)
         self.bt = BranchTester(domain)
         self.trap = Signal()
@@ -79,21 +86,24 @@ class Hart(Elaboratable):
         alu_src1_type = Signal(AluSrc1)
         alu_src2_type = Signal(AluSrc2)
         reg_src_type = Signal(RegSrc)
-        mem_src_type = Signal(MemSrc)
+        mem_func_write = Signal()
+        mem_func_width = Signal(MemFuncWidth)
 
         sync += self.mcycle.eq(self.mcycle + 1)
 
         with m.FSM(domain=self._domain) as fsm:
             with m.State("IF"):
-                    sync += [
-                        instr.eq(self.imem.data),
-                        pc_incr.eq(pc + 4),
-                    ]
-                    m.next = "ID"
+                sync += [
+                    instr.eq(self.imem.data),
+                    pc_incr.eq(pc + 4),
+                ]
+                m.next = "ID"
             with m.State("ID"):
+                # Set defaults
                 sync += [
                     bt.func.eq(BranchTestFunc.NONE),
                     reg_src_type.eq(RegSrc.NONE),
+                    mem_func_width.eq(MemFuncWidth.NONE)
                 ]
                 with m.Switch(instr):
                     with m.Case("-------------------------0010011"):  # ADDI
@@ -109,6 +119,7 @@ class Hart(Elaboratable):
                             # func
                             alu.func.eq(AluFunc.ADD),
                         ]
+                        m.next = "EX"
                     with m.Case("-------------------------0110011"):  # ADD
                         sync += [
                             # src
@@ -122,8 +133,48 @@ class Hart(Elaboratable):
                             # func
                             alu.func.eq(AluFunc.ADD),
                         ]
+                        m.next = "EX"
+                    with m.Case("-------------------------0000011"):  # LW
+                        sync += [
+                            # src
+                            alu_src1_type.eq(AluSrc1.REG),
+                            registers.r1_idx.eq(instr[15:20]),
+                            alu_src2_type.eq(AluSrc2.IMM),
+                            imm.eq(Cat(instr[7:12], instr[25:32])),
+                            # dst
+                            registers.r2_idx.eq(instr[20:25]),
+                            mem_func_write.eq(0),
+                            mem_func_width.eq(1 << instr[12:15]),
+                        ]
+                        m.next = "EX"
                     with m.Case("-------------------------0100011"):  # SW
-                        sync += []
+                        sync += [
+                            # src
+                            alu_src1_type.eq(AluSrc1.REG),
+                            registers.r1_idx.eq(instr[15:20]),
+                            alu_src2_type.eq(AluSrc2.IMM),
+                            imm.eq(Cat(instr[7:12], instr[25:32])),
+                            # dst
+                            registers.r2_idx.eq(instr[20:25]),
+                            # mem
+                            mem_func_width.eq(1 << instr[12:15]),
+                            mem_func_write.eq(1),
+                        ]
+                        m.next = "EX"
+                    with m.Case("-------------------------0000011"):  # LW
+                        sync += [
+                            # src
+                            alu_src1_type.eq(AluSrc1.REG),
+                            registers.r1_idx.eq(instr[15:20]),
+                            alu_src2_type.eq(AluSrc2.IMM),
+                            imm.eq(instr[20:32]),
+                            # dst
+                            registers.wr_idx.eq(instr[7:12]),
+                            # mem
+                            mem_func_width.eq(1 << instr[12:15]),
+                            mem_func_write.eq(0),
+                        ]
+                        m.next = "EX"
                     with m.Case("-------------------------1101111"):  # JAL
                         sync += [
                             # src
@@ -140,6 +191,7 @@ class Hart(Elaboratable):
                             #
                             bt.func.eq(BranchTestFunc.ALWAYS),
                         ]
+                        m.next = "EX"
                     with m.Case("-------------------------1100011"):  # BNE
                         sync += [
                             # src
@@ -154,10 +206,14 @@ class Hart(Elaboratable):
                             registers.r2_idx.eq(instr[20:25]),
                             bt.func.eq(BranchTestFunc.NE),
                         ]
+                        m.next = "EX"
                     with m.Default():
-                        pass
+                        sync += [
+                            self.trap.eq(1),
+                            self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)
+                        ]
+                        m.next = "HALT"
 
-                m.next = "EX"
             with m.State("EX"):
                 sync += [
                     alu.op1.eq(Mux(alu_src1_type == AluSrc1.PC, pc, registers.reg1)),
@@ -173,13 +229,31 @@ class Hart(Elaboratable):
                 ]
                 m.next = "MEM"
             with m.State("MEM"):
-                with m.If(mem_src_type == MemSrc.NONE):
-                    sync += [
-                        # self.dmem.wr_en.eq(1),
-                        # self.dmem.addr.eq(alu.out),
-                        # self.dmem.write_data.eq(registers.reg2),
-                    ]
-                m.next = "WB"
+                sync += [
+                    self.dmem.addr.eq(alu.out),
+                    self.dmem.wr_data.eq(registers.reg2),
+                ]
+                with m.Switch(mem_func_width):
+                    with m.Case(MemFuncWidth.NONE):
+                        sync += [
+                            self.dmem.wr_en.eq(0),
+                        ]
+                        m.next = "WB"
+                    with m.Case(MemFuncWidth.B):
+                        sync += self.dmem.wr_en.eq(0b0001),
+                        m.next = "WB"
+                    with m.Case(MemFuncWidth.H):
+                        sync += self.dmem.wr_en.eq(0b0011),
+                        m.next = "WB"
+                    with m.Case(MemFuncWidth.W):
+                        sync += self.dmem.wr_en.eq(0b1111),
+                        m.next = "WB"
+                    with m.Default():
+                        sync += [
+                            self.trap.eq(1),
+                            self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)
+                        ]
+                        m.next = "HALT"
             with m.State("WB"):
                 with m.Switch(reg_src_type):
                     with m.Case(RegSrc.ALU):
@@ -192,6 +266,11 @@ class Hart(Elaboratable):
                             registers.wr_en.eq(1),
                             registers.wr_data.eq(pc_incr),
                         ]
+                    with m.Case(RegSrc.MEM):
+                        comb += [
+                            registers.wr_en.eq(1),
+                            registers.wr_data.eq(self.dmem.data),
+                        ]
 
                 new_pc = Mux(bt.out, alu.out, pc_incr)
                 sync += [
@@ -202,7 +281,7 @@ class Hart(Elaboratable):
                 with m.If(self.imem.err):
                     sync += [
                         self.trap.eq(1),
-                        self.mcause.eq(TrapCause.IPAGE_FAULT)
+                        self.mcause.eq(TrapCause.INSTRUCTION_PAGE_FAULT)
                     ]
                     m.next = "HALT"
                 with m.Else():

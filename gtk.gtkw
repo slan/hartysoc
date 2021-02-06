@@ -1,24 +1,23 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Feb  3 15:00:16 2021
+[*] Fri Feb  5 08:42:47 2021
 [*]
 [dumpfile] "/home/slan/src/HelloArty/build/sim/top.vcd"
-[dumpfile_mtime] "Wed Feb  3 14:59:43 2021"
-[dumpfile_size] 19385
+[dumpfile_mtime] "Fri Feb  5 08:33:24 2021"
+[dumpfile_size] 32107
 [savefile] "/home/slan/src/HelloArty/gtk.gtkw"
-[timestart] 996500000000
+[timestart] 513500000000
 [size] 1600 921
 [pos] -1 -1
-*-35.894352 1128300000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-35.894352 818400000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.hart.
+[treeopen] top.hart.dmem.
 [treeopen] top.hart.imem.
 [sst_width] 213
 [signals_width] 373
 [sst_expanded] 1
 [sst_vpaned_height] 264
-@28
-top.hart.clk
 @200
 -HART
 @22
@@ -60,5 +59,11 @@ top.hart.registers.wr_data[31:0]
 top.hart.registers.x5[31:0]
 top.hart.registers.x6[31:0]
 top.hart.registers.x7[31:0]
+@200
+-RAM
+@23
+top.hart.dmem.addr[31:0]
+@22
+top.hart.dmem.read_port.memory(28)[31:0]
 [pattern_trace] 1
 [pattern_trace] 0
