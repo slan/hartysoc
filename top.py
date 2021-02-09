@@ -15,46 +15,50 @@ class Top(Elaboratable):
     def elaborate(self, platform):
         m = Module()
         m.submodules.pll = PLL("sync", mult=10, div=1, domain_defs=[("hart", 6)])
-        m.submodules.hart = self.hart = Hart(bootcode, domain="hart")
-        m.d.comb += platform.request("led").eq(self.hart.trap)
+        m.submodules.hart = hart = Hart(domain="hart")
+        m.submodules.imem = imem = ROM(bootcode, domain="hart")
+        m.d.comb += platform.request("led").eq(hart.trap)
 
         if isinstance(platform, SimPlatform):
+
             def process():
                 print("-" * 148)
                 for _ in range(200):
+                    imem_addr = yield hart.imem_addr
+                    yield imem.addr.eq(imem_addr)
+                    imem_data = yield(imem.data)
+                    yield hart.imem_data.eq(imem_data)
                     yield
-                    trap = yield top.hart.trap
-                    mcause = yield top.hart.mcause
+                    trap = yield hart.trap
+                    mcause = yield hart.mcause
                     if trap:
                         print(f"*** TRAP - MCAUSE={mcause} ***")
                         break
-                mcycle = yield top.hart.mcycle
-                minstret = yield top.hart.minstret
+                mcycle = yield hart.mcycle
+                minstret = yield hart.minstret
 
                 time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
                 print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
                 cpi = mcycle / minstret if minstret != 0 else "N/A"
-                print(f"mcycle={mcycle} minstret={minstret} ipc={cpi}")
+                print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
                 print("-" * 148)
-                pc = yield top.hart.pc
-                instr = yield top.hart.instr
+                pc = yield hart.pc
+                instr = yield hart.instr
                 print(f" pc: {pc:#010x}  instr: {instr:#010x}")
-                for i, x in enumerate(top.hart.registers.bank):
+                for i, x in enumerate(hart.registers.bank):
                     x = yield x
                     if i < 10:
                         sys.stdout.write(" ")
                     sys.stdout.write(f"x{i}: {x:#010x}    ")
                     if i % 8 == 7:
                         print()
+
             platform.add_sync_process(process)
 
         return m
 
 
 if __name__ == "__main__":
-
-    top = Top()
-
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None
 
     if platform_name == "formal":
@@ -107,7 +111,7 @@ if __name__ == "__main__":
         exit()
 
     platform.add_resources(additional_resources)
-    fragment = Fragment.get(top, platform)
+    fragment = Fragment.get(Top(), platform)
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",

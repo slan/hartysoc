@@ -1,6 +1,5 @@
 from enum import Enum, unique
 
-from kitchensink import *
 from nmigen import *
 
 from .alu import *
@@ -44,17 +43,20 @@ class MemFuncWidth(Enum):
 @unique
 class TrapCause(Enum):
     ILLEGAL_INSTRUCTION = 2
-    INSTRUCTION_PAGE_FAULT = 12
 
 
 class Hart(Elaboratable):
-    def __init__(self, code, domain):
-        self.imem = ROM(code, domain)
-        self.dmem = RAM([-1]*256, domain)
+    def __init__(self, domain):
         self.registers = Registers(domain)
         self.bt = BranchTester(domain)
         self.trap = Signal()
         self._domain = domain
+        self.imem_addr = Signal(32)
+        self.imem_data = Signal(32)
+        self.dmem_addr = Signal(32)
+        self.dmem_data = Signal(32)
+        self.dmem_wr_data = Signal(32)
+        self.dmem_wr_en = Signal(32)
 
     def elaborate(self, platform):
         self.mcycle = Signal(64)
@@ -70,8 +72,6 @@ class Hart(Elaboratable):
         m.submodules.registers = registers = self.registers
         m.submodules.alu = alu = ALU()
         m.submodules.bt = bt = self.bt
-        m.submodules.imem = self.imem
-        m.submodules.dmem = self.dmem
 
         clk_fb = Signal()
         pll_locked = Signal()
@@ -94,7 +94,7 @@ class Hart(Elaboratable):
         with m.FSM(domain=self._domain) as fsm:
             with m.State("IF"):
                 sync += [
-                    instr.eq(self.imem.data),
+                    instr.eq(self.imem_data),
                     pc_incr.eq(pc + 4),
                 ]
                 m.next = "ID"
@@ -103,7 +103,7 @@ class Hart(Elaboratable):
                 sync += [
                     bt.func.eq(BranchTestFunc.NONE),
                     reg_src_type.eq(RegSrc.NONE),
-                    mem_func_width.eq(MemFuncWidth.NONE)
+                    mem_func_width.eq(MemFuncWidth.NONE),
                 ]
                 with m.Switch(instr):
                     with m.Case("-------------------------0010011"):  # ADDI
@@ -210,7 +210,7 @@ class Hart(Elaboratable):
                     with m.Default():
                         sync += [
                             self.trap.eq(1),
-                            self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)
+                            self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION),
                         ]
                         m.next = "HALT"
 
@@ -230,28 +230,28 @@ class Hart(Elaboratable):
                 m.next = "MEM"
             with m.State("MEM"):
                 sync += [
-                    self.dmem.addr.eq(alu.out),
-                    self.dmem.wr_data.eq(registers.reg2),
+                    self.dmem_addr.eq(alu.out),
+                    self.dmem_wr_data.eq(registers.reg2),
                 ]
                 with m.Switch(mem_func_width):
                     with m.Case(MemFuncWidth.NONE):
                         sync += [
-                            self.dmem.wr_en.eq(0),
+                            self.dmem_wr_en.eq(0),
                         ]
                         m.next = "WB"
                     with m.Case(MemFuncWidth.B):
-                        sync += self.dmem.wr_en.eq(0b0001),
+                        sync += (self.dmem_wr_en.eq(0b0001),)
                         m.next = "WB"
                     with m.Case(MemFuncWidth.H):
-                        sync += self.dmem.wr_en.eq(0b0011),
+                        sync += (self.dmem_wr_en.eq(0b0011),)
                         m.next = "WB"
                     with m.Case(MemFuncWidth.W):
-                        sync += self.dmem.wr_en.eq(0b1111),
+                        sync += (self.dmem_wr_en.eq(0b1111),)
                         m.next = "WB"
                     with m.Default():
                         sync += [
                             self.trap.eq(1),
-                            self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)
+                            self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION),
                         ]
                         m.next = "HALT"
             with m.State("WB"):
@@ -269,7 +269,7 @@ class Hart(Elaboratable):
                     with m.Case(RegSrc.MEM):
                         comb += [
                             registers.wr_en.eq(1),
-                            registers.wr_data.eq(self.dmem.data),
+                            registers.wr_data.eq(self.dmem_data),
                         ]
 
                 new_pc = Mux(bt.out, alu.out, pc_incr)
@@ -277,15 +277,8 @@ class Hart(Elaboratable):
                     pc.eq(new_pc),
                     self.minstret.eq(self.minstret + 1),
                 ]
-                comb += self.imem.addr.eq(new_pc)
-                with m.If(self.imem.err):
-                    sync += [
-                        self.trap.eq(1),
-                        self.mcause.eq(TrapCause.INSTRUCTION_PAGE_FAULT)
-                    ]
-                    m.next = "HALT"
-                with m.Else():
-                    m.next = "IF"
+                comb += self.imem_addr.eq(new_pc)
+                m.next = "IF"
             with m.State("HALT"):
                 pass
 
