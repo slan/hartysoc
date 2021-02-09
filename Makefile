@@ -29,7 +29,7 @@ formal: checks.cfg wrapper.sv
 	mkdir -p ${RISCV_FORMAL}/cores/HelloArty
 	cp $^ ${RISCV_FORMAL}/cores/HelloArty
 	cd ${RISCV_FORMAL}/cores/HelloArty&&python ../../checks/genchecks.py&&PYTHONPATH=/home/slan/src/HelloArty make -C checks insn_addi_ch0
-	
+	python disasm.py ${RISCV_FORMAL}/cores/HelloArty/checks/insn_addi_ch0/engine_0/trace.vcd
 
 build/formal/top.il: ${SRCS}
 	python3 top.py formal

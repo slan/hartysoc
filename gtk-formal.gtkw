@@ -1,0 +1,64 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Tue Feb  9 10:54:40 2021
+[*]
+[dumpfile] "/home/slan/src/riscv-formal/cores/HelloArty/checks/insn_addi_ch0/engine_0/trace.vcd"
+[dumpfile_mtime] "Tue Feb  9 10:52:14 2021"
+[dumpfile_size] 139849
+[savefile] "/home/slan/src/HelloArty/gtk-formal.gtkw"
+[timestart] 0
+[size] 2560 1377
+[pos] -1 -1
+*-4.763185 26 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] rvfi_testbench.
+[treeopen] rvfi_testbench.checker_inst.
+[treeopen] rvfi_testbench.wrapper.
+[treeopen] rvfi_testbench.wrapper.dut.
+[sst_width] 213
+[signals_width] 373
+[sst_expanded] 1
+[sst_vpaned_height] 264
+@200
+--- SPEC --
+@22
+rvfi_testbench.checker_inst.insn_spec.spec_rs1_addr[4:0]
+rvfi_testbench.checker_inst.insn_spec.spec_rs2_addr[4:0]
+rvfi_testbench.checker_inst.insn_spec.spec_rd_addr[4:0]
+rvfi_testbench.checker_inst.insn_spec.spec_rd_wdata[31:0]
+@28
+rvfi_testbench.checker_inst.insn_spec.spec_trap
+rvfi_testbench.checker_inst.insn_spec.spec_valid
+@200
+--- RVFI --
+@22
+rvfi_testbench.wrapper.rvfi_rs1_addr[4:0]
+@28
+rvfi_testbench.wrapper.rvfi_trap
+rvfi_testbench.wrapper.rvfi_valid
+@200
+---DUT--
+-HART
+@28
+rvfi_testbench.wrapper.dut.clk
+rvfi_testbench.wrapper.dut.rst
+rvfi_testbench.wrapper.dut.fsm_state[2:0]
+@22
+rvfi_testbench.wrapper.dut.instr[31:0]
+@200
+-CONTROL
+@28
+rvfi_testbench.wrapper.dut.alu_src1_type[1:0]
+rvfi_testbench.wrapper.dut.alu_src2_type[1:0]
+rvfi_testbench.wrapper.dut.reg_src_type[2:0]
+@200
+-ALU
+@22
+rvfi_testbench.wrapper.dut.alu_op1[31:0]
+rvfi_testbench.wrapper.dut.alu_op2[31:0]
+rvfi_testbench.wrapper.dut.alu_out[31:0]
+@200
+-BT
+-REGISTERS
+-RAM
+[pattern_trace] 1
+[pattern_trace] 0
