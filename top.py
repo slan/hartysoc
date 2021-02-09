@@ -16,7 +16,7 @@ class Top(Elaboratable):
         m = Module()
         m.submodules.pll = PLL("sync", mult=10, div=1, domain_defs=[("hart", 6)])
         m.submodules.hart = hart = Hart(domain="hart")
-        m.submodules.imem = imem = ROM([0x8413], domain="hart")
+        m.submodules.imem = imem = ROM(bootcode, domain="hart")
         m.d.comb += platform.request("led").eq(hart.trap)
 
         if isinstance(platform, SimPlatform):

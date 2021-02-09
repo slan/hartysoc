@@ -108,7 +108,6 @@ class Hart(Elaboratable):
         new_pc = Signal.like(pc)
         instr = self.instr
         imm = Signal(12)
-        pc_incr = Signal(32)
 
         # Control
         alu_src1_type = Signal(AluSrc1)
@@ -123,7 +122,6 @@ class Hart(Elaboratable):
             with m.State("IF"):
                 sync += [
                     instr.eq(self.imem_data),
-                    pc_incr.eq(pc + 4),
                 ]
                 m.next = "ID"
             with m.State("ID"):
@@ -293,7 +291,7 @@ class Hart(Elaboratable):
                         with m.Case(RegSrc.PC_INCR):
                             comb += [
                                 registers.wr_en.eq(1),
-                                registers.wr_data.eq(pc_incr),
+                                registers.wr_data.eq(pc+4),
                             ]
                         with m.Case(RegSrc.MEM):
                             comb += [
@@ -302,10 +300,10 @@ class Hart(Elaboratable):
                             ]
 
                 comb += [
-                    self.imem_addr.eq(Mux(bt.out, alu.out, pc_incr)),
                     self.rvfi.valid.eq(1),
                 ]
                 sync += [
+                    self.imem_addr.eq(Mux(bt.out, alu.out, pc+4)),
                     pc.eq(self.imem_addr),
                     self.minstret.eq(self.minstret + 1),
                 ]
@@ -324,15 +322,15 @@ class Hart(Elaboratable):
             self.rvfi.ixl.eq(Const(1)),
             self.rvfi.rs1_addr.eq(registers.r1_idx),
             self.rvfi.rs2_addr.eq(registers.r2_idx),
-            # self.rvfi.rs1_rdata.eq(),
-            # self.rvfi.rs2_rdata.eq(),
+            self.rvfi.rs1_rdata.eq(registers.reg1),
+            self.rvfi.rs2_rdata.eq(registers.reg2),
             self.rvfi.rd_addr.eq(registers.wr_idx),
             self.rvfi.rd_wdata.eq(registers.wr_data),
             self.rvfi.pc_rdata.eq(pc),
             self.rvfi.pc_wdata.eq(self.imem_addr),
             # self.rvfi.mem_addr.eq(),
-            # self.rvfi.mem_rmask.eq(),
-            # self.rvfi.mem_wmask.eq(),
+            self.rvfi.mem_rmask.eq(0),
+            self.rvfi.mem_wmask.eq(0),
             # self.rvfi.mem_rdata.eq(),
             # self.rvfi.mem_wdata.eq(),
         ]

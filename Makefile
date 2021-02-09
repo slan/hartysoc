@@ -1,7 +1,17 @@
 SRCS := top.py build/__init__.py $(wildcard riscv/*.py) $(wildcard kitchensink/*.py)
-RISCV_FORMAL := /home/slan/src/riscv-formal
+RISCV_FORMAL_CORE := /home/slan/src/riscv-formal/cores/HelloArty
+PYTHONPATH := /home/slan/src/HelloArty
+TESTS := insn_addi_ch0
+
+define run_test
+cd ${RISCV_FORMAL_CORE}&&python ../../checks/genchecks.py&&PYTHONPATH=${PYTHONPATH} make -C checks $(1)
+test -e ${RISCV_FORMAL_CORE}/checks/$(1)/engine_0/trace.vcd && python disasm.py ${RISCV_FORMAL_CORE}/checks/$(1)/engine_0/trace.vcd || exit 0
+endef
 
 all:
+
+formal: ${RISCV_FORMAL_CORE}/checks.cfg ${RISCV_FORMAL_CORE}/wrapper.sv ${SRCS}
+	$(foreach test,${TESTS},$(call run_test,$(test)))
 
 build/%.elf: %.s
 	mkdir -p build
@@ -25,17 +35,16 @@ build/arty/top.bit: ${SRCS} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_
 prog: build/arty/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
-formal: checks.cfg wrapper.sv
-	mkdir -p ${RISCV_FORMAL}/cores/HelloArty
-	cp $^ ${RISCV_FORMAL}/cores/HelloArty
-	cd ${RISCV_FORMAL}/cores/HelloArty&&python ../../checks/genchecks.py&&PYTHONPATH=/home/slan/src/HelloArty make -C checks insn_addi_ch0
-	python disasm.py ${RISCV_FORMAL}/cores/HelloArty/checks/insn_addi_ch0/engine_0/trace.vcd
-
+${RISCV_FORMAL_CORE}/checks.cfg ${RISCV_FORMAL_CORE}/wrapper.sv : checks.cfg wrapper.sv
+	mkdir -p ${RISCV_FORMAL_CORE}
+	cp $^ ${RISCV_FORMAL_CORE}
+	cd ${RISCV_FORMAL_CORE}&&python ../../checks/genchecks.py
+	
 build/formal/top.il: ${SRCS}
 	python3 top.py formal
 
 clean:
-	rm -rf build __pycache__ kitchensink/__pycache__ bootcode.py
+	rm -rf build __pycache__ kitchensink/__pycache__ bootcode.py ${RISCV_FORMAL_CORE}
 
 build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci: mig.tcl mig_a.prj
 	mkdir -p build/vivado
