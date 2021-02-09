@@ -10,7 +10,7 @@ module rvfi_wrapper(
 
 // assign imem_data = imem_data_randval;
 
-\HelloArty.riscv.Hart dut (
+\riscv.Hart dut (
     .clk(clock),
     .rst(reset),
 

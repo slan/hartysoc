@@ -1,4 +1,5 @@
 SRCS := top.py build/__init__.py $(wildcard riscv/*.py) $(wildcard kitchensink/*.py)
+RISCV_FORMAL := /home/slan/src/riscv-formal
 
 all:
 
@@ -24,8 +25,11 @@ build/arty/top.bit: ${SRCS} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_
 prog: build/arty/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
-formal: build/formal/top.il top.sby
-	sby -f top.sby
+formal: checks.cfg wrapper.sv
+	mkdir -p ${RISCV_FORMAL}/cores/HelloArty
+	cp $^ ${RISCV_FORMAL}/cores/HelloArty
+	cd ${RISCV_FORMAL}/cores/HelloArty&&python ../../checks/genchecks.py&&PYTHONPATH=/home/slan/src/HelloArty make -C checks insn_addi_ch0
+	
 
 build/formal/top.il: ${SRCS}
 	python3 top.py formal

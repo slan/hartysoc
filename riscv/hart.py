@@ -1,6 +1,7 @@
 from enum import Enum, unique
 
 from nmigen import *
+from nmigen.hdl.rec import *
 
 from .alu import *
 from .branchtester import *
@@ -44,9 +45,35 @@ class MemFuncWidth(Enum):
 class TrapCause(Enum):
     ILLEGAL_INSTRUCTION = 2
 
+rvfi_layout = [
+    ("valid",      1, DIR_FANOUT),
+    ("order",     64, DIR_FANOUT),
+    ("insn",      32, DIR_FANOUT),
+    ("trap",       1, DIR_FANOUT),
+    ("halt",       1, DIR_FANOUT),
+    ("intr",       1, DIR_FANOUT),
+    ("mode",       2, DIR_FANOUT),
+    ("ixl",        2, DIR_FANOUT),
+
+    ("rs1_addr",   5, DIR_FANOUT),
+    ("rs2_addr",   5, DIR_FANOUT),
+    ("rs1_rdata", 32, DIR_FANOUT),
+    ("rs2_rdata", 32, DIR_FANOUT),
+    ("rd_addr",    5, DIR_FANOUT),
+    ("rd_wdata",  32, DIR_FANOUT),
+
+    ("pc_rdata",  32, DIR_FANOUT),
+    ("pc_wdata",  32, DIR_FANOUT),
+
+    ("mem_addr",  32, DIR_FANOUT),
+    ("mem_rmask",  4, DIR_FANOUT),
+    ("mem_wmask",  4, DIR_FANOUT),
+    ("mem_rdata", 32, DIR_FANOUT),
+    ("mem_wdata", 32, DIR_FANOUT)
+]
 
 class Hart(Elaboratable):
-    def __init__(self, domain):
+    def __init__(self, domain="sync"):
         self.registers = Registers(domain)
         self.bt = BranchTester(domain)
         self.trap = Signal()
@@ -57,6 +84,7 @@ class Hart(Elaboratable):
         self.dmem_data = Signal(32)
         self.dmem_wr_data = Signal(32)
         self.dmem_wr_en = Signal(32)
+        self.rvfi = Record(rvfi_layout)
 
     def elaborate(self, platform):
         self.mcycle = Signal(64)
@@ -282,4 +310,7 @@ class Hart(Elaboratable):
             with m.State("HALT"):
                 pass
 
+        comb += [
+            self.rvfi.insn.eq(instr),
+        ]
         return m
