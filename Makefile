@@ -2,14 +2,15 @@ SRCS := top.py build/__init__.py $(wildcard riscv/*.py) $(wildcard kitchensink/*
 RISCV_FORMAL_CORE := /home/slan/src/riscv-formal/cores/HelloArty
 PYTHONPATH := /home/slan/src/HelloArty
 TESTS := \
+	insn_jal_ch0 \
+	insn_bne_ch0 \
 	insn_addi_ch0 \
-	# reg_ch0 \
-	#insn_add_ch0 \
+	insn_add_ch0 \
 
 all:
 
 formal: ${RISCV_FORMAL_CORE}/checks.cfg ${RISCV_FORMAL_CORE}/wrapper.sv ${SRCS}
-	rm -rf $(foreach test,${TESTS}, ${RISCV_FORMAL_CORE}/checks/$(test))
+	#rm -rf $(foreach test,${TESTS}, ${RISCV_FORMAL_CORE}/checks/$(test))
 	cd ${RISCV_FORMAL_CORE}&&PYTHONPATH=${PYTHONPATH} make -C checks ${TESTS}
 
 build/%.elf: %.s
@@ -34,7 +35,7 @@ build/arty/top.bit: ${SRCS} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_
 prog: build/arty/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
-${RISCV_FORMAL_CORE}/checks.cfg ${RISCV_FORMAL_CORE}/wrapper.sv : checks.cfg wrapper.sv
+${RISCV_FORMAL_CORE}/checks.cfg ${RISCV_FORMAL_CORE}/wrapper.sv: checks.cfg wrapper.sv
 	mkdir -p ${RISCV_FORMAL_CORE}
 	cp $^ ${RISCV_FORMAL_CORE}
 	cd ${RISCV_FORMAL_CORE}&&python ../../checks/genchecks.py

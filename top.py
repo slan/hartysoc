@@ -10,18 +10,15 @@ from build import *
 
 import datetime as dt
 
-debug=[
-    0x6cf00293,  # addi    x5,x0,1743
-    0x005f8f33,  # add     x30,x31,x5
-    0x000f8fb3,  # add     x31,x31,x0
-    0x01ff0e33,  # add     x28,x30,x31
-    0x930e0813,  # addi    x16,x28,-1744
-]
+
+bootcode = [0x7E0C18E3]
+
+
 class Top(Elaboratable):
     def elaborate(self, platform):
         m = Module()
         m.submodules.hart = hart = Hart(domain="sync")
-        m.submodules.imem = imem = ROM(debug, domain="sync")
+        m.submodules.imem = imem = ROM(bootcode, domain="sync")
 
         m.d.comb += platform.request("led").eq(hart.trap)
         m.d.comb += [
