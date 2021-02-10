@@ -152,7 +152,7 @@ class Hart(Elaboratable):
                             alu.func.eq(AluFunc.ADD),
                         ]
                         m.next = "EX"
-                    with m.Case("-------------------------0110011"):  # ADD
+                    with m.Case("-----------------000-----0110011"):  # ADD
                         sync += [
                             # src
                             alu_src1_type.eq(AluSrc1.REG),
@@ -340,4 +340,5 @@ class Hart(Elaboratable):
             # self.rvfi.mem_rdata.eq(),
             # self.rvfi.mem_wdata.eq(),
         ]
+
         return m

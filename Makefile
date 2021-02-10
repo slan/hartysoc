@@ -1,17 +1,14 @@
 SRCS := top.py build/__init__.py $(wildcard riscv/*.py) $(wildcard kitchensink/*.py)
 RISCV_FORMAL_CORE := /home/slan/src/riscv-formal/cores/HelloArty
 PYTHONPATH := /home/slan/src/HelloArty
-TESTS := insn_addi_ch0
-
-define run_test
-cd ${RISCV_FORMAL_CORE}&&python ../../checks/genchecks.py&&PYTHONPATH=${PYTHONPATH} make -C checks $(1)
-test -e ${RISCV_FORMAL_CORE}/checks/$(1)/engine_0/trace.vcd && python disasm.py ${RISCV_FORMAL_CORE}/checks/$(1)/engine_0/trace.vcd || exit 0
-endef
+TESTS := \
+	insn_add_ch0 \
+	#insn_addi_ch0 \
 
 all:
 
 formal: ${RISCV_FORMAL_CORE}/checks.cfg ${RISCV_FORMAL_CORE}/wrapper.sv ${SRCS}
-	$(foreach test,${TESTS},$(call run_test,$(test)))
+	cd ${RISCV_FORMAL_CORE}&&PYTHONPATH=${PYTHONPATH} make -C checks ${TESTS}
 
 build/%.elf: %.s
 	mkdir -p build

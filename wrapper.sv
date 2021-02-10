@@ -4,17 +4,11 @@ module rvfi_wrapper(
     `RVFI_OUTPUTS
 );
 
-(* keep *) wire [31:0] imem_data;
-
-// `rvformal_rand_reg [31:0] imem_data_randval;
-
-// assign imem_data = imem_data_randval;
+//(* keep *) wire [31:0] imem_data;
 
 \riscv.Hart dut (
     .clk(clock),
     .rst(reset),
-
-    .imem_data(imem_data),
 
     .rvfi__valid(rvfi_valid),
     .rvfi__order(rvfi_order),
