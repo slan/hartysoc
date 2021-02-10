@@ -10,24 +10,23 @@ from build import *
 
 import datetime as dt
 
-
 class Top(Elaboratable):
     def elaborate(self, platform):
         m = Module()
-        m.submodules.pll = PLL("sync", mult=10, div=1, domain_defs=[("hart", 6)])
-        m.submodules.hart = hart = Hart(domain="hart")
-        m.submodules.imem = imem = ROM(bootcode, domain="hart")
+        m.submodules.hart = hart = Hart(domain="sync")
+        m.submodules.imem = imem = ROM(bootcode, domain="sync")
+
         m.d.comb += platform.request("led").eq(hart.trap)
+        m.d.comb += [
+            imem.addr.eq(hart.imem_addr),
+            hart.imem_data.eq(imem.data),
+        ]
 
         if isinstance(platform, SimPlatform):
 
             def process():
                 print("-" * 148)
                 for _ in range(200):
-                    imem_addr = yield hart.imem_addr
-                    yield imem.addr.eq(imem_addr)
-                    imem_data = yield(imem.data)
-                    yield hart.imem_data.eq(imem_data)
                     yield
                     trap = yield hart.trap
                     mcause = yield hart.mcause

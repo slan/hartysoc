@@ -2,10 +2,10 @@ from nmigen import *
 
 
 class ROM(Elaboratable):
-    def __init__(self, init, domain):
+    def __init__(self, init, domain="sync"):
         self.init = init
         mem = Memory(width=32, depth=10, init=self.init)
-        self.read_port = mem.read_port(domain = domain)
+        self.read_port = mem.read_port(domain=domain)
         self.addr = Signal(32)
         self.data = Signal(32)
         self.err = Signal()

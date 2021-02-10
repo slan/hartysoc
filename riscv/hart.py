@@ -74,7 +74,7 @@ rvfi_layout = [
 class Hart(Elaboratable):
     def __init__(self, domain="sync"):
         self.registers = Registers(domain)
-        self.bt = BranchTester(domain)
+        self.bt = BranchTester()
         self.trap = Signal()
         self._domain = domain
         self.imem_addr = Signal(32)
@@ -105,7 +105,7 @@ class Hart(Elaboratable):
         clk_out = Signal()
 
         pc = self.pc
-        new_pc = Signal.like(pc)
+        pc_plus_4 = Signal.like(pc)
         instr = self.instr
         imm = Signal(12)
 
@@ -119,9 +119,15 @@ class Hart(Elaboratable):
         sync += self.mcycle.eq(self.mcycle + 1)
 
         with m.FSM(domain=self._domain) as fsm:
+            with m.State("RST"):
+                m.d.comb += [
+                    self.imem_addr.eq(pc),
+                ]
+                m.next = "IF"
             with m.State("IF"):
                 sync += [
                     instr.eq(self.imem_data),
+                    pc_plus_4.eq(pc + 4),
                 ]
                 m.next = "ID"
             with m.State("ID"):
@@ -146,20 +152,20 @@ class Hart(Elaboratable):
                             alu.func.eq(AluFunc.ADD),
                         ]
                         m.next = "EX"
-                    # with m.Case("-------------------------0110011"):  # ADD
-                    #     sync += [
-                    #         # src
-                    #         alu_src1_type.eq(AluSrc1.REG),
-                    #         registers.r1_idx.eq(instr[15:20]),
-                    #         alu_src2_type.eq(AluSrc2.REG),
-                    #         registers.r2_idx.eq(instr[20:25]),
-                    #         # dst
-                    #         reg_src_type.eq(RegSrc.ALU),
-                    #         registers.wr_idx.eq(instr[7:12]),
-                    #         # func
-                    #         alu.func.eq(AluFunc.ADD),
-                    #     ]
-                    #     m.next = "EX"
+                    with m.Case("-------------------------0110011"):  # ADD
+                        sync += [
+                            # src
+                            alu_src1_type.eq(AluSrc1.REG),
+                            registers.r1_idx.eq(instr[15:20]),
+                            alu_src2_type.eq(AluSrc2.REG),
+                            registers.r2_idx.eq(instr[20:25]),
+                            # dst
+                            reg_src_type.eq(RegSrc.ALU),
+                            registers.wr_idx.eq(instr[7:12]),
+                            # func
+                            alu.func.eq(AluFunc.ADD),
+                        ]
+                        m.next = "EX"
                     # with m.Case("-------------------------0000011"):  # LW
                     #     sync += [
                     #         # src
@@ -217,22 +223,22 @@ class Hart(Elaboratable):
                     #         #
                     #         bt.func.eq(BranchTestFunc.ALWAYS),
                     #     ]
-                    #     m.next = "EX"
-                    # with m.Case("-------------------------1100011"):  # BNE
-                    #     sync += [
-                    #         # src
-                    #         alu_src1_type.eq(AluSrc1.PC),
-                    #         alu_src2_type.eq(AluSrc2.IMM),
-                    #         imm.eq(
-                    #             Cat(0, instr[8:12], instr[25:31], instr[7], instr[31])
-                    #         ),
-                    #         # dst
-                    #         # branch
-                    #         registers.r1_idx.eq(instr[15:20]),
-                    #         registers.r2_idx.eq(instr[20:25]),
-                    #         bt.func.eq(BranchTestFunc.NE),
-                    #     ]
-                    #     m.next = "EX"
+                        # m.next = "EX"
+                    with m.Case("-------------------------1100011"):  # BNE
+                        sync += [
+                            # src
+                            alu_src1_type.eq(AluSrc1.PC),
+                            alu_src2_type.eq(AluSrc2.IMM),
+                            imm.eq(
+                                Cat(0, instr[8:12], instr[25:31], instr[7], instr[31])
+                            ),
+                            # dst
+                            # branch
+                            registers.r1_idx.eq(instr[15:20]),
+                            registers.r2_idx.eq(instr[20:25]),
+                            bt.func.eq(BranchTestFunc.NE),
+                        ]
+                        m.next = "EX"
                     with m.Default():
                         sync += [
                             self.trap.eq(1),
@@ -258,6 +264,7 @@ class Hart(Elaboratable):
                 sync += [
                     self.dmem_addr.eq(alu.out),
                     self.dmem_wr_data.eq(registers.reg2),
+                    self.pc.eq(Mux(bt.out, alu.out, pc_plus_4)),
                 ]
                 with m.Switch(mem_func_width):
                     with m.Case(MemFuncWidth.NONE):
@@ -291,7 +298,7 @@ class Hart(Elaboratable):
                         with m.Case(RegSrc.PC_INCR):
                             comb += [
                                 registers.wr_en.eq(1),
-                                registers.wr_data.eq(pc+4),
+                                registers.wr_data.eq(pc_plus_4),
                             ]
                         with m.Case(RegSrc.MEM):
                             comb += [
@@ -301,10 +308,9 @@ class Hart(Elaboratable):
 
                 comb += [
                     self.rvfi.valid.eq(1),
+                    self.imem_addr.eq(pc),
                 ]
                 sync += [
-                    self.imem_addr.eq(Mux(bt.out, alu.out, pc+4)),
-                    pc.eq(self.imem_addr),
                     self.minstret.eq(self.minstret + 1),
                 ]
                 m.next = "IF"
