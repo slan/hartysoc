@@ -19,6 +19,6 @@ class ALU(Elaboratable):
 
         with m.Switch(self.func):
             with m.Case(AluFunc.ADD):
-                m.d.comb += self.out.eq((self.op1 + self.op2)[:31])
+                m.d.comb += self.out.eq((self.op1 + self.op2)[:32])
 
         return m
