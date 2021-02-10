@@ -16,7 +16,7 @@ class Registers(Elaboratable):
 
         bank = Array(
             [
-                Signal(32, name=f"x{i}", reset=0 if i == 0 else 0xDEADBEEF)
+                Signal(32, name=f"x{i}")#, reset=0 if i == 0 else 0xDEADBEEF)
                 for i in range(32)
             ]
         )

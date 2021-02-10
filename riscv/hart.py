@@ -124,6 +124,7 @@ class Hart(Elaboratable):
                     self.imem_addr.eq(pc),
                 ]
                 m.next = "IF"
+
             with m.State("IF"):
                 sync += [
                     instr.eq(self.imem_data),
@@ -193,52 +194,38 @@ class Hart(Elaboratable):
                     #         mem_func_write.eq(1),
                     #     ]
                     #     m.next = "EX"
-                    # with m.Case("-------------------------0000011"):  # LW
-                    #     sync += [
-                    #         # src
-                    #         alu_src1_type.eq(AluSrc1.REG),
-                    #         registers.r1_idx.eq(instr[15:20]),
-                    #         alu_src2_type.eq(AluSrc2.IMM),
-                    #         imm.eq(instr[20:32]),
-                    #         # dst
-                    #         registers.wr_idx.eq(instr[7:12]),
-                    #         # mem
-                    #         mem_func_width.eq(1 << instr[12:15]),
-                    #         mem_func_write.eq(0),
-                    #     ]
-                    #     m.next = "EX"
-                    # with m.Case("-------------------------1101111"):  # JAL
-                    #     sync += [
-                    #         # src
-                    #         alu_src1_type.eq(AluSrc1.PC),
-                    #         alu_src2_type.eq(AluSrc2.IMM),
-                    #         imm.eq(
-                    #             Cat(instr[21:31], instr[20], instr[12:20], instr[31])
-                    #         ),
-                    #         # dst
-                    #         reg_src_type.eq(RegSrc.PC_INCR),
-                    #         registers.wr_idx.eq(instr[7:12]),
-                    #         # func
-                    #         alu.func.eq(AluFunc.ADD),
-                    #         #
-                    #         bt.func.eq(BranchTestFunc.ALWAYS),
-                    #     ]
-                        # m.next = "EX"
-                    with m.Case("-------------------------1100011"):  # BNE
+                    with m.Case("-------------------------1101111"):  # JAL
                         sync += [
                             # src
                             alu_src1_type.eq(AluSrc1.PC),
                             alu_src2_type.eq(AluSrc2.IMM),
                             imm.eq(
-                                Cat(0, instr[8:12], instr[25:31], instr[7], instr[31])
+                                Cat(instr[21:31], instr[20], instr[12:20], instr[31])
                             ),
                             # dst
-                            # branch
-                            registers.r1_idx.eq(instr[15:20]),
-                            registers.r2_idx.eq(instr[20:25]),
-                            bt.func.eq(BranchTestFunc.NE),
+                            reg_src_type.eq(RegSrc.PC_INCR),
+                            registers.wr_idx.eq(instr[7:12]),
+                            # func
+                            alu.func.eq(AluFunc.ADD),
+                            #
+                            bt.func.eq(BranchTestFunc.ALWAYS),
                         ]
-                        m.next = "EX"
+                    m.next = "EX"
+                    # with m.Case("-------------------------1100011"):  # BNE
+                    #     sync += [
+                    #         # src
+                    #         alu_src1_type.eq(AluSrc1.PC),
+                    #         alu_src2_type.eq(AluSrc2.IMM),
+                    #         imm.eq(
+                    #             Cat(0, instr[8:12], instr[25:31], instr[7], instr[31])
+                    #         ),
+                    #         # dst
+                    #         # branch
+                    #         registers.r1_idx.eq(instr[15:20]),
+                    #         registers.r2_idx.eq(instr[20:25]),
+                    #         bt.func.eq(BranchTestFunc.NE),
+                    #     ]
+                    #     m.next = "EX"
                     with m.Default():
                         sync += [
                             self.trap.eq(1),
@@ -265,6 +252,7 @@ class Hart(Elaboratable):
                     self.dmem_addr.eq(alu.out),
                     self.dmem_wr_data.eq(registers.reg2),
                     self.pc.eq(Mux(bt.out, alu.out, pc_plus_4)),
+                    self.rvfi.pc_rdata.eq(pc),
                 ]
                 with m.Switch(mem_func_width):
                     with m.Case(MemFuncWidth.NONE):
@@ -306,24 +294,28 @@ class Hart(Elaboratable):
                                 registers.wr_data.eq(self.dmem_data),
                             ]
 
-                comb += [
-                    self.rvfi.valid.eq(1),
-                    self.imem_addr.eq(pc),
-                ]
                 sync += [
                     self.minstret.eq(self.minstret + 1),
+                ]
+                comb += [
+                    self.imem_addr.eq(pc),
+                ]
+                comb += [
+                    self.rvfi.valid.eq(1),
+                    self.rvfi.pc_wdata.eq(pc),
+                    self.rvfi.rd_wdata.eq(registers.wr_data),
+                    self.rvfi.order.eq(self.minstret),
                 ]
                 m.next = "IF"
             with m.State("HALT"):
                 pass
 
-        comb += [
-            # self.rvfi.valid.eq(),
-            self.rvfi.order.eq(self.minstret),
+        sync += [
+            # self.rvfi.valid.eq(~self.trap),
             self.rvfi.insn.eq(instr),
             self.rvfi.trap.eq(self.trap),
-            # self.rvfi.halt.eq(),
-            # self.rvfi.intr.eq(),
+            self.rvfi.halt.eq(0),
+            self.rvfi.intr.eq(0),
             self.rvfi.mode.eq(Const(3)),
             self.rvfi.ixl.eq(Const(1)),
             self.rvfi.rs1_addr.eq(registers.r1_idx),
@@ -331,13 +323,12 @@ class Hart(Elaboratable):
             self.rvfi.rs1_rdata.eq(registers.reg1),
             self.rvfi.rs2_rdata.eq(registers.reg2),
             self.rvfi.rd_addr.eq(registers.wr_idx),
-            self.rvfi.rd_wdata.eq(registers.wr_data),
-            self.rvfi.pc_rdata.eq(pc),
-            self.rvfi.pc_wdata.eq(self.imem_addr),
-            # self.rvfi.mem_addr.eq(),
+            # self.rvfi.pc_rdata.eq(pc),
+            # self.rvfi.pc_wdata.eq(pc),
+            self.rvfi.mem_addr.eq(self.imem_addr),
             self.rvfi.mem_rmask.eq(0),
             self.rvfi.mem_wmask.eq(0),
-            # self.rvfi.mem_rdata.eq(),
+            self.rvfi.mem_rdata.eq(self.imem_data),
             # self.rvfi.mem_wdata.eq(),
         ]
 

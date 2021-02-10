@@ -4,8 +4,6 @@ module rvfi_wrapper(
     `RVFI_OUTPUTS
 );
 
-//(* keep *) wire [31:0] imem_data;
-
 \riscv.Hart dut (
     .clk(clock),
     .rst(reset),
