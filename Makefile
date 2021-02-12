@@ -18,6 +18,9 @@ formal: $(foreach test, ${TESTS}, ${RISCV_FORMAL_CORE}/checks/$(test)/PASS)
 		files_pass="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/PASS))" && \
 		files_fail="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/FAIL))" && \
 		files_error="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/ERROR))" && \
+		for i in $$files_error; do \
+			echo $$i; \
+		done>>aserts.txt && \
 		for i in $$files_fail; do \
 			[ $$sep ] && echo && echo --------------------------------------------------------------------------------; \
 			cp $$i/engine_0/trace.vcd $$(basename $$i).vcd; \

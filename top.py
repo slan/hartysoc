@@ -11,17 +11,30 @@ from build import *
 import datetime as dt
 
 
+bootcode=[0xfec02e83]
+
 class Top(Elaboratable):
     def elaborate(self, platform):
         m = Module()
         m.submodules.hart = hart = Hart(domain="sync")
         m.submodules.imem = imem = ROM(bootcode, domain="sync")
+        m.submodules.dmem = dmem = RAM([], domain="sync")
 
         m.d.comb += platform.request("led").eq(hart.trap)
         m.d.comb += [
             imem.addr.eq(hart.imem_addr),
             hart.imem_data.eq(imem.data),
+            dmem.addr.eq(hart.dmem_addr),
         ]
+        with m.If(hart.dmem_wr_mask.any()):
+            m.d.comb += [
+                dmem.wr_en.eq(1),
+                dmem.wr_data.eq(hart.dmem_wr_data),
+            ]
+        with m.Else():
+            m.d.comb += [
+                hart.dmem_data.eq(dmem.data),
+            ]
 
         if isinstance(platform, SimPlatform):
 
