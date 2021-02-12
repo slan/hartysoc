@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Fri Feb 12 19:39:50 2021
+[*] Fri Feb 12 22:26:03 2021
 [*]
-[dumpfile] "/home/slan/src/HelloArty/build/formal/insn_lw_ch0.vcd"
-[dumpfile_mtime] "Fri Feb 12 19:24:57 2021"
-[dumpfile_size] 176241
+[dumpfile] "/home/slan/src/HelloArty/build/formal/insn_sub_ch0.vcd"
+[dumpfile_mtime] "Fri Feb 12 22:24:55 2021"
+[dumpfile_size] 178628
 [savefile] "/home/slan/src/HelloArty/gtk-insn.gtkw"
-[timestart] 0
+[timestart] 74
 [size] 1551 1210
-[pos] 74 -4
-*-5.429089 66 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] 38 0
+*-5.429089 264 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] rvfi_testbench.
 [treeopen] rvfi_testbench.checker_inst.
 [treeopen] rvfi_testbench.wrapper.
@@ -41,6 +41,10 @@ rvfi_testbench.wrapper.dut.imm[31:0]
 rvfi_testbench.wrapper.dut.alu_op1[31:0]
 rvfi_testbench.wrapper.dut.alu_op2[31:0]
 rvfi_testbench.wrapper.dut.alu_out[31:0]
+@29
+rvfi_testbench.wrapper.dut.alu.func[2:0]
+@28
+rvfi_testbench.wrapper.dut.alu.neg
 @200
 -BT
 @22
@@ -51,9 +55,8 @@ rvfi_testbench.wrapper.dut.bt.func[1:0]
 rvfi_testbench.wrapper.dut.bt.out
 @200
 -REGISTERS
-@25
-rvfi_testbench.wrapper.dut.registers.r1_idx[4:0]
 @24
+rvfi_testbench.wrapper.dut.registers.r1_idx[4:0]
 rvfi_testbench.wrapper.dut.registers.r2_idx[4:0]
 @28
 rvfi_testbench.wrapper.dut.registers.wr_en
@@ -66,8 +69,6 @@ rvfi_testbench.wrapper.dut.registers.wr_data[31:0]
 @22
 rvfi_testbench.wrapper.dut.dmem_data[31:0]
 rvfi_testbench.wrapper.dut.dmem_mask[3:0]
-@28
-rvfi_testbench.wrapper.dut.dmem_wr_en
 @200
 --- RVFI --
 @22
@@ -75,16 +76,15 @@ rvfi_testbench.wrapper.rvfi_insn[31:0]
 @28
 rvfi_testbench.checker_inst.check
 rvfi_testbench.checker_inst.rvfi_valid
+rvfi_testbench.checker_inst.spec_trap
+rvfi_testbench.checker_inst.rvfi_trap
 @22
 rvfi_testbench.checker_inst.rvfi_order[63:0]
 rvfi_testbench.checker_inst.rvfi_pc_rdata[31:0]
 rvfi_testbench.checker_inst.insn_spec.spec_pc_wdata[31:0]
 rvfi_testbench.rvfi_pc_wdata[31:0]
 @200
--
-@28
-rvfi_testbench.checker_inst.spec_trap
-rvfi_testbench.checker_inst.rvfi_trap
+-REG
 @24
 rvfi_testbench.checker_inst.insn_spec.spec_rs1_addr[4:0]
 rvfi_testbench.checker_inst.rvfi_rs1_addr[4:0]
@@ -104,15 +104,54 @@ rvfi_testbench.checker_inst.insn_spec.spec_rd_addr[4:0]
 rvfi_testbench.checker_inst.rvfi_rd_addr[4:0]
 @22
 rvfi_testbench.checker_inst.insn_spec.spec_rd_wdata[31:0]
-@24
 rvfi_testbench.checker_inst.rvfi_rd_wdata[31:0]
 @200
--
-@22
+-MEM
+@c00022
 rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+@28
+(0)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(1)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(2)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(3)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(4)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(5)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(6)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(7)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(8)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(9)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(10)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(11)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(12)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(13)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(14)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(15)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(16)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(17)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(18)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(19)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(20)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(21)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(22)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(23)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(24)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(25)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(26)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(27)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(28)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(29)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(30)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+(31)rvfi_testbench.checker_inst.insn_spec.spec_mem_addr[31:0]
+@1401200
+-group_end
+@22
 rvfi_testbench.wrapper.rvfi_mem_addr[31:0]
 rvfi_testbench.checker_inst.insn_spec.spec_mem_rmask[3:0]
-rvfi_testbench.wrapper.dut.registers.x29[31:0]
 rvfi_testbench.wrapper.rvfi_mem_rmask[3:0]
+rvfi_testbench.checker_inst.insn_spec.spec_mem_wmask[3:0]
+rvfi_testbench.wrapper.rvfi_mem_wmask[3:0]
+rvfi_testbench.checker_inst.insn_spec.rvfi_mem_rdata[31:0]
+rvfi_testbench.checker_inst.insn_spec.spec_mem_wdata[31:0]
+rvfi_testbench.wrapper.dut.registers.x29[31:0]
 [pattern_trace] 1
 [pattern_trace] 0
