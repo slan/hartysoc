@@ -3,18 +3,25 @@ FORMAL_SRCS := checks.cfg wrapper.sv
 RISCV_FORMAL_CORE := /home/slan/src/riscv-formal/cores/HelloArty
 PYTHONPATH := /home/slan/src/HelloArty
 
-INSNS := addi bne add jal
+INSNS := addi bne add jal lw
 
 FORMAL_TGTS := $(foreach src,${FORMAL_SRCS},${RISCV_FORMAL_CORE}/$(src))
 TESTS := $(foreach insn,${INSNS},insn_$(insn)_ch0)
 
 all:
+	make clean
+	make formal -j$(nproc)
 
 formal: $(foreach test, ${TESTS}, ${RISCV_FORMAL_CORE}/checks/$(test)/PASS)
 	@rm -rf build/formal&&mkdir -p build/formal
-	@cd build/formal &&\
-		for i in $(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/FAIL)); do \
+	@cd build/formal && \
+		files_pass="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/PASS))" && \
+		files_fail="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/FAIL))" && \
+		files_error="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/ERROR))" && \
+		for i in $$files_fail; do \
 			[ $$sep ] && echo && echo --------------------------------------------------------------------------------; \
+			cp $$i/engine_0/trace.vcd $$(basename $$i).vcd; \
+			cp $$i/engine_0/logfile.txt $$(basename $$i).txt; \
 			python ${PYTHONPATH}/disasm.py $$i/engine_0/trace.vcd $$(basename $$i); \
 			echo; \
 			grep "Assert failed" $$i/logfile.txt; \
@@ -22,7 +29,11 @@ formal: $(foreach test, ${TESTS}, ${RISCV_FORMAL_CORE}/checks/$(test)/PASS)
 		done>>asserts.txt && \
 		[ -s asserts.txt ] && \
 			echo && echo -------------------------------------------------------------------------------- && \
-			cat asserts.txt \
+			cat asserts.txt && \
+			echo && \
+			echo -n " PASS: " && echo "$$files_pass" | wc -w && \
+			echo -n " FAIL: " && echo "$$files_fail" | wc -w && \
+			echo -n "ERROR: " && echo "$$files_error" | wc -w \
 		|| echo "All tests passed!"
 
 ${RISCV_FORMAL_CORE}/checks/%/PASS: ${SRCS} ${FORMAL_TGTS}

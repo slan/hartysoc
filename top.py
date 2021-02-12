@@ -11,9 +11,6 @@ from build import *
 import datetime as dt
 
 
-bootcode = [0x7E0C18E3]
-
-
 class Top(Elaboratable):
     def elaborate(self, platform):
         m = Module()
