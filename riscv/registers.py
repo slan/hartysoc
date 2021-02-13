@@ -4,6 +4,10 @@ from nmigen import *
 class Registers(Elaboratable):
     def __init__(self, domain):
         self._domain = domain
+        mem = Memory(width=32, depth=32)
+        self.rp1 = mem.read_port(domain="comb")
+        self.rp2 = mem.read_port(domain="comb")
+        self.wp = mem.write_port(domain=domain)
         self.wr_en = Signal()
         self.wr_data = Signal(32)
         self.wr_idx = Signal(5)
@@ -13,24 +17,21 @@ class Registers(Elaboratable):
         self.reg2 = Signal(32)
 
     def elaborate(self, platform):
-
-        bank = Array(
-            [
-                Signal(32, name=f"x{i}")#, reset=0 if i == 0 else 0xDEADBEEF)
-                for i in range(32)
-            ]
-        )
-        self.bank = bank
-
         m = Module()
+        m.submodules.rp1 = self.rp1
+        m.submodules.rp2 = self.rp2
+        m.submodules.wp = self.wp
+
         comb = m.d.comb
         sync = m.d[self._domain]
 
         comb += [
-            self.reg1.eq(bank[self.r1_idx]),
-            self.reg2.eq(bank[self.r2_idx]),
+            self.rp1.addr.eq(self.r1_idx),
+            self.rp2.addr.eq(self.r2_idx),
+            self.reg1.eq(self.rp1.data),
+            self.reg2.eq(self.rp2.data),
+            self.wp.addr.eq(self.wr_idx),
+            self.wp.en.eq(self.wr_en & self.wr_idx.any()),
+            self.wp.data.eq(self.wr_data),
         ]
-        with m.If(self.wr_en & self.wr_idx.any()):  # don't write to x0
-            sync += bank[self.wr_idx].eq(self.wr_data)
-
         return m
