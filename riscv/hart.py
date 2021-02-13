@@ -1,39 +1,11 @@
-from enum import Enum, unique
-
 from nmigen import *
 from nmigen.hdl.rec import *
 
+from riscv.enums import *
+
 from .alu import *
+from .decoder import Decoder
 from .registers import *
-
-
-@unique
-class AluSrc2(Enum):
-    NONE = 0
-    REG = 1
-    IMM = 2
-
-
-@unique
-class RegSrc(Enum):
-    NONE = 0
-    COND = 1
-    ALU = 2
-    PC_INCR = 3
-    MEM = 4
-
-
-@unique
-class TrapCause(Enum):
-    ILLEGAL_INSTRUCTION = 2
-
-
-@unique
-class BranchCond(Enum):
-    NONE = 0
-    ALWAYS = 1
-    NE = 2
-
 
 rvfi_layout = [
     ("valid", 1, DIR_FANOUT),
@@ -87,6 +59,7 @@ class Hart(Elaboratable):
 
         m.submodules.registers = registers = self.registers
         m.submodules.alu = alu = ALU()
+        m.submodules.decoder = decoder = Decoder()
 
         pc = self.pc
         pc_plus_4 = Signal.like(pc)
@@ -117,134 +90,31 @@ class Hart(Elaboratable):
                 ]
             with m.State("ID"):
                 m.next = "EX"
-                # Set defaults
-                sync += [
-                    reg_src_type.eq(RegSrc.NONE),
-                    registers.wr_idx.eq(0),
-                    self.dmem_mask.eq(0),
-                    self.dmem_wr_mask.eq(0),
-                    alu.neg.eq(0),
-                    branch_cond.eq(BranchCond.NONE),
+                comb += [
+                    decoder.insn.eq(instr),
+                    decoder.pc.eq(pc),
                 ]
-                with m.Switch(instr):
-                    with m.Case("-------------------------0110111"):  # LUI
-                        sync += [
-                            registers.r1_idx.eq(0),
-                            alu_src2_type.eq(AluSrc2.IMM),
-                            imm.eq(Cat(Repl(0, 12), instr[12:32])),
-                            reg_src_type.eq(RegSrc.ALU),
-                            registers.wr_idx.eq(instr[7:12]),
-                            alu.func.eq(AluFunc.ADD),
-                        ]
-                    with m.Case("-----------------000-----0010011"):  # ADDI
-                        sync += [
-                            # src
-                            registers.r1_idx.eq(instr[15:20]),
-                            alu_src2_type.eq(AluSrc2.IMM),
-                            imm.eq(Cat(instr[20:32], Repl(instr[31], 20))),
-                            # dst
-                            reg_src_type.eq(RegSrc.ALU),
-                            registers.wr_idx.eq(instr[7:12]),
-                            # func
-                            alu.func.eq(AluFunc.ADD),
-                        ]
-                    with m.Case("0-00000------------------0110011"):  # ADD_SUB
-                        with m.Switch(instr[12:15]):
-                            with m.Case(AluFunc.ADD):
-                                sync += alu.neg.eq(instr[30])
-                            with m.Case(AluFunc.XOR):
-                                pass
-                            with m.Case(AluFunc.OR):
-                                pass
-                            with m.Case(AluFunc.AND):
-                                pass
-                            with m.Default():
-                                m.next = "HALT"
-                        sync += [
-                            # src
-                            registers.r1_idx.eq(instr[15:20]),
-                            alu_src2_type.eq(AluSrc2.REG),
-                            registers.r2_idx.eq(instr[20:25]),
-                            # dst
-                            reg_src_type.eq(RegSrc.ALU),
-                            registers.wr_idx.eq(instr[7:12]),
-                            # func
-                            alu.func.eq(instr[12:15]),
-                        ]
-                    with m.Case("-----------------010-----0000011"):  # LW
-                        sync += [
-                            # src
-                            registers.r1_idx.eq(instr[15:20]),
-                            alu_src2_type.eq(AluSrc2.IMM),
-                            imm.eq(Cat(instr[20:32], Repl(instr[31], 20))),
-                            alu.func.eq(AluFunc.ADD),
-                            # dst
-                            reg_src_type.eq(RegSrc.MEM),
-                            registers.wr_idx.eq(instr[7:12]),
-                            self.dmem_mask.eq(0b1111),
-                        ]
-                    with m.Case("-----------------010-----0100011"):  # SW
-                        sync += [
-                            # src
-                            registers.r1_idx.eq(instr[15:20]),
-                            alu_src2_type.eq(AluSrc2.IMM),
-                            imm.eq(Cat(instr[7:12], instr[25:32], Repl(instr[31], 20))),
-                            alu.func.eq(AluFunc.ADD),
-                            # dst
-                            registers.r2_idx.eq(instr[20:25]),
-                            # mem
-                            self.dmem_wr_mask.eq(0b1111),
-                        ]
-                    with m.Case("-------------------------1101111"):  # JAL
-                        sync += [
-                            # src
-                            branch_target.eq(
-                                pc
-                                + Cat(
-                                    0,
-                                    instr[21:31],
-                                    instr[20],
-                                    instr[12:20],
-                                    instr[31],
-                                    Repl(instr[31], 19),
-                                )
-                            ),
-                            branch_cond.eq(BranchCond.ALWAYS),
-                            # dst
-                            reg_src_type.eq(RegSrc.PC_INCR),
-                            registers.wr_idx.eq(instr[7:12]),
-                        ]
-                    with m.Case("-----------------001-----1100011"):  # BNE
-                        sync += [
-                            # src
-                            branch_target.eq(
-                                pc
-                                + Cat(
-                                    0,
-                                    instr[8:12],
-                                    instr[25:31],
-                                    instr[7],
-                                    instr[31],
-                                    Repl(instr[31], 19),
-                                )
-                            ),
-                            branch_cond.eq(BranchCond.NE),
-                            alu_src2_type.eq(AluSrc2.REG),
-                            alu.func.eq(AluFunc.ADD),
-                            alu.neg.eq(1),
-                            # dst
-                            # branch
-                            registers.r1_idx.eq(instr[15:20]),
-                            registers.r2_idx.eq(instr[20:25]),
-                        ]
-                    with m.Default():
-                        sync += [
-                            self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION),
-                        ]
-                        m.next = "HALT"
+                sync += [
+                    self.mcause.eq(decoder.mcause),
+                    registers.r1_idx.eq(decoder.rs1_addr),
+                    registers.r2_idx.eq(decoder.rs2_addr),
+                    registers.wr_idx.eq(decoder.rd_addr),
+                    imm.eq(decoder.imm),
+                    self.dmem_mask.eq(decoder.mem_rmask),
+                    self.dmem_wr_mask.eq(decoder.mem_wmask),
+                    alu_src2_type.eq(decoder.alu_src2_type),
+                    reg_src_type.eq(decoder.reg_src_type),
+                    alu.func.eq(decoder.alu_func),
+                    branch_target.eq(decoder.branch_target),
+                    branch_cond.eq(decoder.branch_cond),
+                ]
 
             with m.State("EX"):
-                m.next = "MEM"
+                with m.If(self.mcause.any()):
+                    m.next = "HALT"
+                with m.Else():
+                    m.next = "MEM"
+                
                 sync += [
                     alu.op1.eq(registers.reg1),
                     alu.op2.eq(
