@@ -127,6 +127,15 @@ class Hart(Elaboratable):
                     branch_cond.eq(BranchCond.NONE),
                 ]
                 with m.Switch(instr):
+                    with m.Case("-------------------------0110111"):  # LUI
+                        sync += [
+                            registers.r1_idx.eq(0),
+                            alu_src2_type.eq(AluSrc2.IMM),
+                            imm.eq(Cat(Repl(0,12), instr[12:32])),
+                            reg_src_type.eq(RegSrc.ALU),
+                            registers.wr_idx.eq(instr[7:12]),
+                            alu.func.eq(AluFunc.ADD),
+                        ]
                     with m.Case("-----------------000-----0010011"):  # ADDI
                         sync += [
                             # src
@@ -137,11 +146,11 @@ class Hart(Elaboratable):
                             reg_src_type.eq(RegSrc.ALU),
                             registers.wr_idx.eq(instr[7:12]),
                             # func
-                            alu.func.eq(AluFunc.ADD_SUB),
+                            alu.func.eq(AluFunc.ADD),
                         ]
                     with m.Case("0-00000------------------0110011"):  # ADD_SUB
                         with m.Switch(instr[12:15]):
-                            with m.Case(AluFunc.ADD_SUB):
+                            with m.Case(AluFunc.ADD):
                                 sync += alu.neg.eq(instr[30])
                             with m.Case(AluFunc.XOR):
                                 pass
@@ -168,7 +177,7 @@ class Hart(Elaboratable):
                             registers.r1_idx.eq(instr[15:20]),
                             alu_src2_type.eq(AluSrc2.IMM),
                             imm.eq(Cat(instr[20:32], Repl(instr[31], 20))),
-                            alu.func.eq(AluFunc.ADD_SUB),
+                            alu.func.eq(AluFunc.ADD),
                             # dst
                             reg_src_type.eq(RegSrc.MEM),
                             registers.wr_idx.eq(instr[7:12]),
@@ -180,7 +189,7 @@ class Hart(Elaboratable):
                             registers.r1_idx.eq(instr[15:20]),
                             alu_src2_type.eq(AluSrc2.IMM),
                             imm.eq(Cat(instr[7:12], instr[25:32], Repl(instr[31], 20))),
-                            alu.func.eq(AluFunc.ADD_SUB),
+                            alu.func.eq(AluFunc.ADD),
                             # dst
                             registers.r2_idx.eq(instr[20:25]),
                             # mem
@@ -221,7 +230,7 @@ class Hart(Elaboratable):
                             ),
                             branch_cond.eq(BranchCond.NE),
                             alu_src2_type.eq(AluSrc2.REG),
-                            alu.func.eq(AluFunc.ADD_SUB),
+                            alu.func.eq(AluFunc.ADD),
                             alu.neg.eq(1),
                             # dst
                             # branch

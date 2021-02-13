@@ -1,14 +1,14 @@
+import datetime as dt
 import sys
 
 from nmigen import *
 from nmigen.build import *
 from nmigen_boards.arty_a7 import ArtyA7Platform
+
+from build import *
 from kitchensink import *
 from riscv import *
 
-from build import *
-
-import datetime as dt
 
 class Top(Elaboratable):
     def elaborate(self, platform):
@@ -55,7 +55,7 @@ class Top(Elaboratable):
                 pc = yield hart.pc
                 instr = yield hart.instr
                 print(f" pc: {pc:#010x}  instr: {instr:#010x}")
-                for i in range(0,32):
+                for i in range(0, 32):
                     yield hart.registers.r1_idx.eq(i)
                     yield
                     x = yield hart.registers.reg1

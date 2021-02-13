@@ -4,7 +4,7 @@ from enum import Enum, unique
 
 @unique
 class AluFunc(Enum):
-    ADD_SUB = 0b000
+    ADD = 0b000
     # SLL = 0b001
     # SLT = 0b010
     # SLTU = 0b011
@@ -26,7 +26,7 @@ class ALU(Elaboratable):
         m = Module()
 
         with m.Switch(self.func):
-            with m.Case(AluFunc.ADD_SUB):
+            with m.Case(AluFunc.ADD):
                 with m.If(self.neg):
                     m.d.comb += self.out.eq(~((~self.op1 + self.op2)[:32]))
                 with m.Else():
