@@ -104,10 +104,10 @@ class Hart(Elaboratable):
 
         with m.FSM(domain=self._domain) as fsm:
             with m.State("RST"):
+                m.next = "IF"
                 m.d.comb += [
                     self.imem_addr.eq(pc),
                 ]
-                m.next = "IF"
 
             with m.State("IF"):
                 m.next = "ID"
@@ -131,7 +131,7 @@ class Hart(Elaboratable):
                         sync += [
                             registers.r1_idx.eq(0),
                             alu_src2_type.eq(AluSrc2.IMM),
-                            imm.eq(Cat(Repl(0,12), instr[12:32])),
+                            imm.eq(Cat(Repl(0, 12), instr[12:32])),
                             reg_src_type.eq(RegSrc.ALU),
                             registers.wr_idx.eq(instr[7:12]),
                             alu.func.eq(AluFunc.ADD),
@@ -244,6 +244,7 @@ class Hart(Elaboratable):
                         m.next = "HALT"
 
             with m.State("EX"):
+                m.next = "MEM"
                 sync += [
                     alu.op1.eq(registers.reg1),
                     alu.op2.eq(
@@ -254,7 +255,6 @@ class Hart(Elaboratable):
                         )
                     ),
                 ]
-                m.next = "MEM"
             with m.State("MEM"):
                 m.next = "WB"
                 with m.If(self.dmem_mask.any()):
@@ -290,6 +290,7 @@ class Hart(Elaboratable):
                     self.rvfi.mem_addr.eq(self.dmem_addr),
                 ]
             with m.State("WB"):
+                m.next = "IF"
                 with m.If(registers.wr_idx == 0):
                     comb += [
                         registers.wr_data.eq(0),
@@ -318,12 +319,11 @@ class Hart(Elaboratable):
                 ]
                 with m.If(pc & 0b11):
                     m.next = "HALT"
-                with m.Else():
-                    comb += [
-                        self.imem_addr.eq(pc),
-                        self.rvfi.valid.eq(1),
-                    ]
-                    m.next = "IF"
+
+                comb += [
+                    self.imem_addr.eq(pc),
+                    self.rvfi.valid.eq(1),
+                ]
             with m.State("HALT"):
                 comb += [self.trap.eq(1), self.rvfi.halt.eq(1)]
                 pass

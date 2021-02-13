@@ -12,6 +12,9 @@ all:
 	make clean
 	make formal -j$(nproc)
 
+simwave: sim
+	gtkwave build/sim/top.vcd gtk-sim.gtkw&
+	
 formal: $(foreach test, ${TESTS}, ${RISCV_FORMAL_CORE}/checks/$(test)/PASS)
 	@rm -rf build/formal&&mkdir -p build/formal
 	@cd build/formal && \
