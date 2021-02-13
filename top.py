@@ -10,7 +10,6 @@ from build import *
 
 import datetime as dt
 
-
 class Top(Elaboratable):
     def elaborate(self, platform):
         m = Module()
@@ -56,8 +55,10 @@ class Top(Elaboratable):
                 pc = yield hart.pc
                 instr = yield hart.instr
                 print(f" pc: {pc:#010x}  instr: {instr:#010x}")
-                for i, x in enumerate(hart.registers.bank):
-                    x = yield x
+                for i in range(0,32):
+                    yield hart.registers.r1_idx.eq(i)
+                    yield
+                    x = yield hart.registers.reg1
                     if i < 10:
                         sys.stdout.write(" ")
                     sys.stdout.write(f"x{i}: {x:#010x}    ")

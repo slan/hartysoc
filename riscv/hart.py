@@ -4,15 +4,7 @@ from nmigen import *
 from nmigen.hdl.rec import *
 
 from .alu import *
-from .branchtester import *
 from .registers import *
-
-
-@unique
-class AluSrc1(Enum):
-    NONE = 0
-    REG = 1
-    PC = 2
 
 
 @unique
@@ -34,6 +26,13 @@ class RegSrc(Enum):
 @unique
 class TrapCause(Enum):
     ILLEGAL_INSTRUCTION = 2
+
+
+@unique
+class BranchCond(Enum):
+    NONE = 0
+    ALWAYS = 1
+    NE = 2
 
 
 rvfi_layout = [
@@ -65,7 +64,6 @@ class Hart(Elaboratable):
     def __init__(self, domain="sync"):
         self._domain = domain
         self.registers = Registers(domain)
-        self.bt = BranchTester()
         self.trap = Signal()
         self.imem_addr = Signal(32)
         self.imem_data = Signal(32)
@@ -89,11 +87,6 @@ class Hart(Elaboratable):
 
         m.submodules.registers = registers = self.registers
         m.submodules.alu = alu = ALU()
-        m.submodules.bt = bt = self.bt
-
-        clk_fb = Signal()
-        pll_locked = Signal()
-        clk_out = Signal()
 
         pc = self.pc
         pc_plus_4 = Signal.like(pc)
@@ -101,9 +94,11 @@ class Hart(Elaboratable):
         imm = Signal(32)
 
         # Control
-        alu_src1_type = Signal(AluSrc1)
         alu_src2_type = Signal(AluSrc2)
         reg_src_type = Signal(RegSrc)
+
+        branch_cond = Signal(BranchCond)
+        branch_target = Signal.like(pc)
 
         sync += self.mcycle.eq(self.mcycle + 1)
 
@@ -124,18 +119,17 @@ class Hart(Elaboratable):
                 m.next = "EX"
                 # Set defaults
                 sync += [
-                    bt.func.eq(BranchTestFunc.NONE),
                     reg_src_type.eq(RegSrc.NONE),
                     registers.wr_idx.eq(0),
                     self.dmem_mask.eq(0),
                     self.dmem_wr_mask.eq(0),
                     alu.neg.eq(0),
+                    branch_cond.eq(BranchCond.NONE),
                 ]
                 with m.Switch(instr):
                     with m.Case("-----------------000-----0010011"):  # ADDI
                         sync += [
                             # src
-                            alu_src1_type.eq(AluSrc1.REG),
                             registers.r1_idx.eq(instr[15:20]),
                             alu_src2_type.eq(AluSrc2.IMM),
                             imm.eq(Cat(instr[20:32], Repl(instr[31], 20))),
@@ -159,7 +153,6 @@ class Hart(Elaboratable):
                                 m.next = "HALT"
                         sync += [
                             # src
-                            alu_src1_type.eq(AluSrc1.REG),
                             registers.r1_idx.eq(instr[15:20]),
                             alu_src2_type.eq(AluSrc2.REG),
                             registers.r2_idx.eq(instr[20:25]),
@@ -172,7 +165,6 @@ class Hart(Elaboratable):
                     with m.Case("-----------------010-----0000011"):  # LW
                         sync += [
                             # src
-                            alu_src1_type.eq(AluSrc1.REG),
                             registers.r1_idx.eq(instr[15:20]),
                             alu_src2_type.eq(AluSrc2.IMM),
                             imm.eq(Cat(instr[20:32], Repl(instr[31], 20))),
@@ -185,7 +177,6 @@ class Hart(Elaboratable):
                     with m.Case("-----------------010-----0100011"):  # SW
                         sync += [
                             # src
-                            alu_src1_type.eq(AluSrc1.REG),
                             registers.r1_idx.eq(instr[15:20]),
                             alu_src2_type.eq(AluSrc2.IMM),
                             imm.eq(Cat(instr[7:12], instr[25:32], Repl(instr[31], 20))),
@@ -198,10 +189,9 @@ class Hart(Elaboratable):
                     with m.Case("-------------------------1101111"):  # JAL
                         sync += [
                             # src
-                            alu_src1_type.eq(AluSrc1.PC),
-                            alu_src2_type.eq(AluSrc2.IMM),
-                            imm.eq(
-                                Cat(
+                            branch_target.eq(
+                                pc
+                                + Cat(
                                     0,
                                     instr[21:31],
                                     instr[20],
@@ -210,21 +200,17 @@ class Hart(Elaboratable):
                                     Repl(instr[31], 19),
                                 )
                             ),
+                            branch_cond.eq(BranchCond.ALWAYS),
                             # dst
                             reg_src_type.eq(RegSrc.PC_INCR),
                             registers.wr_idx.eq(instr[7:12]),
-                            # func
-                            alu.func.eq(AluFunc.ADD_SUB),
-                            #
-                            bt.func.eq(BranchTestFunc.ALWAYS),
                         ]
                     with m.Case("-----------------001-----1100011"):  # BNE
                         sync += [
                             # src
-                            alu_src1_type.eq(AluSrc1.PC),
-                            alu_src2_type.eq(AluSrc2.IMM),
-                            imm.eq(
-                                Cat(
+                            branch_target.eq(
+                                pc
+                                + Cat(
                                     0,
                                     instr[8:12],
                                     instr[25:31],
@@ -233,12 +219,14 @@ class Hart(Elaboratable):
                                     Repl(instr[31], 19),
                                 )
                             ),
+                            branch_cond.eq(BranchCond.NE),
+                            alu_src2_type.eq(AluSrc2.REG),
                             alu.func.eq(AluFunc.ADD_SUB),
+                            alu.neg.eq(1),
                             # dst
                             # branch
                             registers.r1_idx.eq(instr[15:20]),
                             registers.r2_idx.eq(instr[20:25]),
-                            bt.func.eq(BranchTestFunc.NE),
                         ]
                     with m.Default():
                         sync += [
@@ -248,7 +236,7 @@ class Hart(Elaboratable):
 
             with m.State("EX"):
                 sync += [
-                    alu.op1.eq(Mux(alu_src1_type == AluSrc1.PC, pc, registers.reg1)),
+                    alu.op1.eq(registers.reg1),
                     alu.op2.eq(
                         Mux(
                             alu_src2_type == AluSrc2.IMM,
@@ -256,8 +244,6 @@ class Hart(Elaboratable):
                             registers.reg2,
                         )
                     ),
-                    bt.op1.eq(registers.reg1),
-                    bt.op2.eq(registers.reg2),
                 ]
                 m.next = "MEM"
             with m.State("MEM"):
@@ -275,11 +261,22 @@ class Hart(Elaboratable):
                         self.dmem_addr.eq(alu.out),
                         self.dmem_wr_data.eq(registers.reg2),
                     ]
-                with m.If((alu.out & 0b11).any()&bt.out):
-                    m.next = "HALT"
 
                 sync += [
-                    self.pc.eq(Mux(bt.out, alu.out, pc_plus_4)),
+                    self.pc.eq(pc_plus_4),
+                ]
+                with m.If(
+                    (branch_cond == BranchCond.ALWAYS)
+                    | ((branch_cond == BranchCond.NE) & (alu.out.any()))
+                ):
+                    with m.If(branch_target[:2].any()):
+                        m.next = "HALT"
+                    with m.Else():
+                        sync += [
+                            self.pc.eq(branch_target),
+                        ]
+
+                sync += [
                     self.rvfi.pc_rdata.eq(pc),
                     self.rvfi.mem_addr.eq(self.dmem_addr),
                 ]
@@ -319,10 +316,7 @@ class Hart(Elaboratable):
                     ]
                     m.next = "IF"
             with m.State("HALT"):
-                comb += [
-                    self.trap.eq(1),
-                    self.rvfi.halt.eq(1)
-                ]
+                comb += [self.trap.eq(1), self.rvfi.halt.eq(1)]
                 pass
 
         comb += [

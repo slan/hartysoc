@@ -53,7 +53,7 @@ build/__init__.py: build/bootcode.elf
 	@echo "bootcode = [" > $@
 	@dd if=build/$*.tmp conv=swab status=none|hexdump -v -e "\"\t0x\" \"%08x,\n\"" >>$@
 	@echo "]" >> $@
-	
+
 sim: build/__init__.py
 	python3 top.py sim
 
@@ -72,7 +72,7 @@ ${RISCV_FORMAL_CORE}/checks:
 	mkdir -p ${RISCV_FORMAL_CORE}
 	cp ${FORMAL_SRCS} ${RISCV_FORMAL_CORE}
 	cd ${RISCV_FORMAL_CORE}&&python ../../checks/genchecks.py
-	
+
 build/formal/top.il: ${SRCS}
 	python3 top.py formal
 
