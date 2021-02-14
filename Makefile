@@ -3,14 +3,16 @@ FORMAL_SRCS := checks.cfg wrapper.sv
 RISCV_FORMAL_CORE := /home/slan/src/riscv-formal/cores/HelloArty
 PYTHONPATH := /home/slan/src/HelloArty
 
-INSNS := lui addi bne add sub xor or and jal lw
-
+INSNS_TESTS := lui addi bne add sub xor or and jal lw
+OTHER_TESTS := reg causal pc_fwd pc_bwd
 FORMAL_TGTS := $(foreach src,${FORMAL_SRCS},${RISCV_FORMAL_CORE}/$(src))
-TESTS := $(foreach insn,${INSNS},insn_$(insn)_ch0)
+
+TESTS := $(foreach test,${OTHER_TESTS},$(test)_ch0) $(foreach test,${INSNS_TESTS},insn_$(test)_ch0)
 
 all:
 	make clean
 	make formal -j$(nproc)
+	make sim
 
 simwave: sim
 	gtkwave build/sim/top.vcd gtk-sim.gtkw&

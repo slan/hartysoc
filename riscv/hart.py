@@ -50,7 +50,7 @@ class Hart(Elaboratable):
         self.mcycle = Signal(64)
         self.minstret = Signal(64)
         self.mcause = Signal(32)
-        self.pc = Signal(32)
+        self.pc_rdata = Signal(32)
         self.instr = Signal(32)
 
         m = Module()
@@ -61,7 +61,7 @@ class Hart(Elaboratable):
         m.submodules.alu = alu = ALU()
         m.submodules.decoder = decoder = Decoder()
 
-        pc = self.pc
+        pc = self.pc_rdata
         pc_plus_4 = Signal.like(pc)
         instr = self.instr
         imm = Signal(32)
@@ -127,6 +127,7 @@ class Hart(Elaboratable):
                 ]
             with m.State("MEM"):
                 m.next = "WB"
+                
                 with m.If(self.dmem_mask.any()):
                     with m.If((alu.out & 0b11).any()):
                         m.next = "HALT"
@@ -142,7 +143,7 @@ class Hart(Elaboratable):
                     ]
 
                 sync += [
-                    self.pc.eq(pc_plus_4),
+                    self.pc_rdata.eq(pc_plus_4),
                 ]
                 with m.If(
                     (branch_cond == BranchCond.ALWAYS)
@@ -152,7 +153,7 @@ class Hart(Elaboratable):
                         m.next = "HALT"
                     with m.Else():
                         sync += [
-                            self.pc.eq(branch_target),
+                            self.pc_rdata.eq(branch_target),
                         ]
 
                 sync += [
@@ -160,7 +161,11 @@ class Hart(Elaboratable):
                     self.rvfi.mem_addr.eq(self.dmem_addr),
                 ]
             with m.State("WB"):
-                m.next = "IF"
+                with m.If((self.pc_rdata&0b11).any()):
+                    m.next = "HALT"
+                with m.Else():
+                    m.next = "IF"
+                
                 with m.If(registers.wr_idx == 0):
                     comb += [
                         registers.wr_data.eq(0),
@@ -187,8 +192,6 @@ class Hart(Elaboratable):
                 sync += [
                     self.minstret.eq(self.minstret + 1),
                 ]
-                with m.If(pc & 0b11):
-                    m.next = "HALT"
 
                 comb += [
                     self.imem_addr.eq(pc),

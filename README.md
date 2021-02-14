@@ -25,3 +25,6 @@ LiteX-based blinky on Arty A7-35, following [lab-001](https://github.com/litex-h
 | BUFG       |    2 |               Clock |
 | MMCME2_ADV |    1 |               Clock |
 | IBUF       |    1 |                  IO |
+
+
+WB:

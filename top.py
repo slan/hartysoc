@@ -52,7 +52,7 @@ class Top(Elaboratable):
                 cpi = mcycle / minstret if minstret != 0 else "N/A"
                 print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
                 print("-" * 148)
-                pc = yield hart.pc
+                pc = yield hart.pc_rdata
                 instr = yield hart.instr
                 print(f" pc: {pc:#010x}  instr: {instr:#010x}")
                 for i in range(0, 32):
