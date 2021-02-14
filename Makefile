@@ -51,7 +51,7 @@ ${RISCV_FORMAL_CORE}/checks/%/PASS: ${SRCS} ${FORMAL_TGTS}
 build/%.elf: %.s
 	mkdir -p build
 	riscv64-unknown-elf-as $< -march=rv32i -mabi=ilp32 -mno-arch-attr -o $@
-	riscv64-unknown-elf-objdump -D $@
+	riscv64-unknown-elf-objdump -d -M numeric,no-aliases  $@
 
 build/__init__.py: build/bootcode.elf
 	@riscv64-unknown-elf-objcopy --reverse-bytes=2 -O binary $< build/$*.tmp

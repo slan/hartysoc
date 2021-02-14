@@ -10,6 +10,35 @@ from kitchensink import *
 from riscv import *
 
 
+class Top2(Elaboratable):
+    def elaborate(self, platform):
+        m = Module()
+        m.submodules.reg = reg = Registers("sync")
+
+        def process():
+            yield reg.rd_addr.eq(1)
+            yield reg.rd_data.eq(1)
+            yield
+            yield reg.rd_addr.eq(2)
+            yield reg.rd_data.eq(2)
+            yield
+            yield reg.rd_addr.eq(0)
+            yield reg.rs1_addr.eq(1)
+            yield Settle()
+            yield
+            yield reg.rs2_addr.eq(2)
+            yield Settle()
+            yield
+            yield
+            x = yield reg.rs1_rdata
+
+            print(x)
+
+        platform.add_sync_process(process)
+
+        return m
+
+
 class Top(Elaboratable):
     def elaborate(self, platform):
         m = Module()

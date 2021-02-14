@@ -1,57 +1,68 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Feb 14 11:08:08 2021
+[*] Sun Feb 14 13:01:41 2021
 [*]
 [dumpfile] "/home/slan/src/HelloArty/build/sim/top.vcd"
-[dumpfile_mtime] "Sun Feb 14 11:06:07 2021"
-[dumpfile_size] 39525
+[dumpfile_mtime] "Sun Feb 14 13:01:08 2021"
+[dumpfile_size] 38117
 [savefile] "/home/slan/src/HelloArty/gtk-sim.gtkw"
-[timestart] 0
-[size] 1600 1024
+[timestart] 1155870000000
+[size] 2969 1653
 [pos] -1 -1
-*-36.123169 68800000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-33.947529 48450000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.dmem.
 [treeopen] top.hart.
 [treeopen] top.hart.registers.
-[sst_width] 213
-[signals_width] 373
+[sst_width] 386
+[signals_width] 531
 [sst_expanded] 1
-[sst_vpaned_height] 300
+[sst_vpaned_height] 538
 @200
 -HART
-@22
-top.hart.pc[31:0]
 @28
 top.hart.fsm_state
-top.hart.trap
-@22
-top.hart.mcause[31:0]
 @200
--CONTROL
+-IF
+@22
+top.hart.imem_addr[31:0]
+top.hart.imem_data[31:0]
+top.hart.insn[31:0]
+@200
+-ID
 @28
-top.hart.alu_src2_type
-top.hart.reg_src_type
-@200
--ALU
+top.hart.decoder.alu_func
+top.hart.decoder.alu_src2_type
 @22
-top.hart.alu.op1[31:0]
-top.hart.alu.op2[31:0]
-top.hart.alu.out[31:0]
-@200
--BT
--REGISTERS
+top.hart.decoder.imm[31:0]
+@28
+top.hart.decoder.branch_cond
 @22
-top.hart.rs1_addr[4:0]
-top.hart.registers.rp1.mem_r_data[31:0]
-top.hart.rs2_addr[4:0]
-top.hart.registers.rp2.mem_r_data[31:0]
+top.hart.decoder.branch_target[31:0]
+top.hart.decoder.mem_rmask[3:0]
+top.hart.decoder.mem_wmask[3:0]
+top.hart.decoder.rs1_addr[4:0]
+top.hart.decoder.rs2_addr[4:0]
+top.hart.decoder.rd_addr[4:0]
+@28
+top.hart.decoder.reg_src_type
+@200
+-EX
+@22
+top.hart.alu_out[31:0]
 @200
 -MEM
+-WB
 @22
-top.hart.dmem_addr[31:0]
-top.dmem.write_port.mem_w_addr[5:0]
-top.dmem.write_port.mem_w_data[31:0]
-top.dmem.write_port.mem_w_en[3:0]
+top.hart.registers.rp1.mem_r_addr[4:0]
+top.hart.registers.rp1.mem_r_data[31:0]
+top.hart.registers.rp2.mem_r_addr[4:0]
+@23
+top.hart.registers.rp2.mem_r_data[31:0]
+@28
+top.hart.registers.wp.mem_w_en
+@22
+top.hart.registers.wp.mem_w_addr[4:0]
+top.hart.registers.wp.mem_w_data[31:0]
 [pattern_trace] 1
 [pattern_trace] 0
