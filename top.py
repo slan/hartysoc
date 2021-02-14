@@ -23,14 +23,14 @@ class Top(Elaboratable):
             hart.imem_data.eq(imem.data),
             dmem.addr.eq(hart.dmem_addr),
         ]
-        with m.If(hart.dmem_wr_mask.any()):
+        with m.If(hart.dmem_wmask.any()):
             m.d.comb += [
                 dmem.wr_en.eq(1),
-                dmem.wr_data.eq(hart.dmem_wr_data),
+                dmem.wr_data.eq(hart.dmem_wdata),
             ]
         with m.Else():
             m.d.comb += [
-                hart.dmem_data.eq(dmem.data),
+                hart.dmem_rdata.eq(dmem.data),
             ]
 
         if isinstance(platform, SimPlatform):
@@ -52,13 +52,13 @@ class Top(Elaboratable):
                 cpi = mcycle / minstret if minstret != 0 else "N/A"
                 print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
                 print("-" * 148)
-                pc = yield hart.pc_rdata
-                instr = yield hart.instr
-                print(f" pc: {pc:#010x}  instr: {instr:#010x}")
+                pc = yield hart.rvfi.pc_rdata
+                insn = yield hart.rvfi.insn
+                print(f" pc: {pc:#010x}   insn: {insn:#010x}")
                 for i in range(0, 32):
-                    yield hart.registers.r1_idx.eq(i)
-                    yield
-                    x = yield hart.registers.reg1
+                    yield hart.registers.rs1_addr.eq(i)
+                    yield Settle()
+                    x = yield hart.registers.rs1_rdata
                     if i < 10:
                         sys.stdout.write(" ")
                     sys.stdout.write(f"x{i}: {x:#010x}    ")

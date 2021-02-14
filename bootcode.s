@@ -1,4 +1,3 @@
-    addi x7, x0, 0
     addi x6, x0, 6
 loop:
     add x5, x6, x6

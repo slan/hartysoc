@@ -11,8 +11,8 @@ TESTS := $(foreach test,${OTHER_TESTS},$(test)_ch0) $(foreach test,${INSNS_TESTS
 
 all:
 	make clean
-	make formal -j$(nproc)
 	make sim
+	make formal -j$(nproc)
 
 simwave: sim
 	gtkwave build/sim/top.vcd gtk-sim.gtkw&

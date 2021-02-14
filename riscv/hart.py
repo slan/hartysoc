@@ -40,18 +40,16 @@ class Hart(Elaboratable):
         self.imem_addr = Signal(32)
         self.imem_data = Signal(32)
         self.dmem_addr = Signal(32)
-        self.dmem_data = Signal(32)
-        self.dmem_mask = Signal(4)
-        self.dmem_wr_mask = Signal(4)
-        self.dmem_wr_data = Signal(32)
+        self.dmem_rmask = Signal(4)
+        self.dmem_rdata = Signal(32)
+        self.dmem_wmask = Signal(4)
+        self.dmem_wdata = Signal(32)
         self.rvfi = Record(rvfi_layout)
 
     def elaborate(self, platform):
         self.mcycle = Signal(64)
         self.minstret = Signal(64)
         self.mcause = Signal(32)
-        self.pc_rdata = Signal(32)
-        self.instr = Signal(32)
 
         m = Module()
         comb = m.d.comb
@@ -61,17 +59,19 @@ class Hart(Elaboratable):
         m.submodules.alu = alu = ALU()
         m.submodules.decoder = decoder = Decoder()
 
-        pc = self.pc_rdata
-        pc_plus_4 = Signal.like(pc)
-        instr = self.instr
-        imm = Signal(32)
-
         # Control
+        pc = Signal(32)
+        pc_plus_4 = Signal.like(pc)
+        insn = Signal(32)
+        imm = Signal(32)
         alu_src2_type = Signal(AluSrc2)
         reg_src_type = Signal(RegSrc)
-
+        rd_addr = Signal(5)
+        alu_out = Signal(32)
         branch_cond = Signal(BranchCond)
         branch_target = Signal.like(pc)
+        mem_rmask = Signal(4)
+        mem_wmask = Signal(4)
 
         sync += self.mcycle.eq(self.mcycle + 1)
 
@@ -85,23 +85,27 @@ class Hart(Elaboratable):
             with m.State("IF"):
                 m.next = "ID"
                 sync += [
-                    instr.eq(self.imem_data),
+                    insn.eq(self.imem_data),
                     pc_plus_4.eq(pc + 4),
                 ]
             with m.State("ID"):
-                m.next = "EX"
+                with m.If(decoder.mcause.any()):
+                    comb += [self.trap.eq(1)]
+                    m.next = "HALT"
+                with m.Else():
+                    m.next = "EX"
                 comb += [
-                    decoder.insn.eq(instr),
+                    decoder.insn.eq(insn),
                     decoder.pc.eq(pc),
                 ]
                 sync += [
                     self.mcause.eq(decoder.mcause),
-                    registers.r1_idx.eq(decoder.rs1_addr),
-                    registers.r2_idx.eq(decoder.rs2_addr),
-                    registers.wr_idx.eq(decoder.rd_addr),
+                    registers.rs1_addr.eq(decoder.rs1_addr),
+                    registers.rs2_addr.eq(decoder.rs2_addr),
+                    rd_addr.eq(decoder.rd_addr),
                     imm.eq(decoder.imm),
-                    self.dmem_mask.eq(decoder.mem_rmask),
-                    self.dmem_wr_mask.eq(decoder.mem_wmask),
+                    mem_rmask.eq(decoder.mem_rmask),
+                    mem_wmask.eq(decoder.mem_wmask),
                     alu_src2_type.eq(decoder.alu_src2_type),
                     reg_src_type.eq(decoder.reg_src_type),
                     alu.func.eq(decoder.alu_func),
@@ -110,84 +114,83 @@ class Hart(Elaboratable):
                 ]
 
             with m.State("EX"):
-                with m.If(self.mcause.any()):
-                    m.next = "HALT"
-                with m.Else():
-                    m.next = "MEM"
-                
-                sync += [
-                    alu.op1.eq(registers.reg1),
+                m.next = "MEM"
+
+                comb += [
+                    alu.op1.eq(registers.rs1_rdata),
                     alu.op2.eq(
                         Mux(
                             alu_src2_type == AluSrc2.IMM,
                             imm,
-                            registers.reg2,
+                            registers.rs2_rdata,
                         )
                     ),
                 ]
+                sync += [
+                    alu_out.eq(alu.out),
+                ]
             with m.State("MEM"):
-                m.next = "WB"
-                
-                with m.If(self.dmem_mask.any()):
-                    with m.If((alu.out & 0b11).any()):
-                        m.next = "HALT"
+                with m.If((self.dmem_addr & 0b11).any()):
+                    comb += [self.trap.eq(1)]
+                    m.next = "HALT"
+                with m.Else():
+                    m.next = "WB"
+
+                with m.If(mem_rmask.any()):
                     comb += [
-                        self.dmem_addr.eq(alu.out),
+                        self.dmem_rmask.eq(mem_rmask),
+                        self.dmem_addr.eq(alu_out),
                     ]
-                with m.If(self.dmem_wr_mask.any()):
-                    with m.If((alu.out & 0b11).any()):
-                        m.next = "HALT"
+                with m.If(mem_wmask.any()):
                     comb += [
-                        self.dmem_addr.eq(alu.out),
-                        self.dmem_wr_data.eq(registers.reg2),
+                        self.dmem_wmask.eq(mem_wmask),
+                        self.dmem_addr.eq(alu_out),
+                        self.dmem_wdata.eq(registers.rs2_rdata),
                     ]
 
                 sync += [
-                    self.pc_rdata.eq(pc_plus_4),
+                    pc.eq(pc_plus_4),
                 ]
                 with m.If(
                     (branch_cond == BranchCond.ALWAYS)
-                    | ((branch_cond == BranchCond.NE) & (alu.out.any()))
+                    | ((branch_cond == BranchCond.NE) & (alu_out.any()))
                 ):
-                    with m.If(branch_target[:2].any()):
-                        m.next = "HALT"
-                    with m.Else():
-                        sync += [
-                            self.pc_rdata.eq(branch_target),
-                        ]
+                    sync += [
+                        pc.eq(branch_target),
+                    ]
 
                 sync += [
                     self.rvfi.pc_rdata.eq(pc),
                     self.rvfi.mem_addr.eq(self.dmem_addr),
                 ]
             with m.State("WB"):
-                with m.If((self.pc_rdata&0b11).any()):
+                with m.If((self.imem_addr & 0b11).any()):
+                    comb += [self.trap.eq(1)]
                     m.next = "HALT"
                 with m.Else():
                     m.next = "IF"
-                
-                with m.If(registers.wr_idx == 0):
+
+                comb += [
+                    registers.rd_addr.eq(rd_addr),
+                ]
+                with m.Switch(reg_src_type):
+                    with m.Case(RegSrc.ALU):
+                        comb += [
+                            registers.rd_data.eq(alu_out),
+                        ]
+                    with m.Case(RegSrc.PC_INCR):
+                        comb += [
+                            registers.rd_data.eq(pc_plus_4),
+                        ]
+                    with m.Case(RegSrc.MEM):
+                        with m.If(mem_rmask.any()):
+                            comb += [
+                                registers.rd_data.eq(self.dmem_rdata),
+                            ]
+                with m.If(rd_addr == 0):
                     comb += [
-                        registers.wr_data.eq(0),
+                        registers.rd_data.eq(0),
                     ]
-                with m.Else():
-                    with m.Switch(reg_src_type):
-                        with m.Case(RegSrc.ALU):
-                            comb += [
-                                registers.wr_en.eq(1),
-                                registers.wr_data.eq(alu.out),
-                            ]
-                        with m.Case(RegSrc.PC_INCR):
-                            comb += [
-                                registers.wr_en.eq(1),
-                                registers.wr_data.eq(pc_plus_4),
-                            ]
-                        with m.Case(RegSrc.MEM):
-                            with m.If(self.dmem_mask.any()):
-                                comb += [
-                                    registers.wr_en.eq(1),
-                                    registers.wr_data.eq(self.dmem_data),
-                                ]
 
                 sync += [
                     self.minstret.eq(self.minstret + 1),
@@ -198,27 +201,30 @@ class Hart(Elaboratable):
                     self.rvfi.valid.eq(1),
                 ]
             with m.State("HALT"):
-                comb += [self.trap.eq(1), self.rvfi.halt.eq(1)]
+                comb += [
+                    self.trap.eq(1),
+                    self.rvfi.halt.eq(1),
+                ]
                 pass
 
         comb += [
             self.rvfi.pc_wdata.eq(pc),
-            self.rvfi.rd_wdata.eq(registers.wr_data),
+            self.rvfi.rd_wdata.eq(registers.rd_data),
             self.rvfi.order.eq(self.minstret),
-            self.rvfi.insn.eq(instr),
+            self.rvfi.insn.eq(insn),
             self.rvfi.trap.eq(self.trap),
             self.rvfi.intr.eq(0),
             self.rvfi.mode.eq(Const(3)),
             self.rvfi.ixl.eq(Const(1)),
-            self.rvfi.rs1_addr.eq(registers.r1_idx),
-            self.rvfi.rs2_addr.eq(registers.r2_idx),
-            self.rvfi.rs1_rdata.eq(registers.reg1),
-            self.rvfi.rs2_rdata.eq(registers.reg2),
-            self.rvfi.rd_addr.eq(registers.wr_idx),
-            self.rvfi.mem_rmask.eq(self.dmem_mask),
-            self.rvfi.mem_wmask.eq(self.dmem_wr_mask),
-            self.rvfi.mem_rdata.eq(self.dmem_data),
-            self.rvfi.mem_wdata.eq(self.dmem_wr_data),
+            self.rvfi.rs1_addr.eq(registers.rs1_addr),
+            self.rvfi.rs2_addr.eq(registers.rs2_addr),
+            self.rvfi.rs1_rdata.eq(registers.rs1_rdata),
+            self.rvfi.rs2_rdata.eq(registers.rs2_rdata),
+            self.rvfi.rd_addr.eq(registers.rd_addr),
+            self.rvfi.mem_rmask.eq(mem_rmask),
+            self.rvfi.mem_wmask.eq(mem_wmask),
+            self.rvfi.mem_rdata.eq(self.dmem_rdata),
+            self.rvfi.mem_wdata.eq(self.dmem_wdata),
         ]
 
         return m

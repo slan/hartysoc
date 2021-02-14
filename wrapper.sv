@@ -6,7 +6,7 @@ module rvfi_wrapper(
 
 
 (* keep *) `rvformal_rand_reg   [31:0] imem_rnd_data;
-(* keep *) wire                 [31:0] dmem_wr_data;
+(* keep *) wire                 [31:0] dmem_wdata;
 (* keep *) `rvformal_rand_reg   [31:0] dmem_rnd_data;
 
 \riscv.Hart dut (
@@ -14,8 +14,8 @@ module rvfi_wrapper(
     .rst(reset),
 
     .imem_data(imem_rnd_data),
-    .dmem_data(dmem_rnd_data),
-    .dmem_wr_data(dmem_wr_data),
+    .dmem_rdata(dmem_rnd_data),
+    .dmem_wdata(dmem_wdata),
 
     .rvfi__valid(rvfi_valid),
     .rvfi__order(rvfi_order),

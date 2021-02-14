@@ -1,18 +1,19 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Fri Feb 12 19:44:32 2021
+[*] Sun Feb 14 11:08:08 2021
 [*]
 [dumpfile] "/home/slan/src/HelloArty/build/sim/top.vcd"
-[dumpfile_mtime] "Fri Feb 12 19:42:16 2021"
-[dumpfile_size] 9325
+[dumpfile_mtime] "Sun Feb 14 11:06:07 2021"
+[dumpfile_size] 39525
 [savefile] "/home/slan/src/HelloArty/gtk-sim.gtkw"
 [timestart] 0
 [size] 1600 1024
 [pos] -1 -1
-*-36.123169 80800000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-36.123169 68800000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.dmem.
 [treeopen] top.hart.
+[treeopen] top.hart.registers.
 [sst_width] 213
 [signals_width] 373
 [sst_expanded] 1
@@ -23,16 +24,12 @@
 top.hart.pc[31:0]
 @28
 top.hart.fsm_state
-@22
-top.hart.instr[31:0]
-@28
 top.hart.trap
 @22
 top.hart.mcause[31:0]
 @200
 -CONTROL
 @28
-top.hart.alu_src1_type
 top.hart.alu_src2_type
 top.hart.reg_src_type
 @200
@@ -41,43 +38,19 @@ top.hart.reg_src_type
 top.hart.alu.op1[31:0]
 top.hart.alu.op2[31:0]
 top.hart.alu.out[31:0]
-@28
-top.hart.alu.func[2:0]
 @200
 -BT
-@22
-top.hart.bt.op1[31:0]
-top.hart.bt.op2[31:0]
-@28
-top.hart.bt.func
-top.hart.bt.out
-@200
 -REGISTERS
-@24
-top.hart.r1_idx[4:0]
 @22
-top.hart.registers.reg1[31:0]
-@24
-top.hart.r2_idx[4:0]
-@22
-top.hart.registers.reg2[31:0]
-@28
-top.hart.registers.wr_en
-@24
-top.hart.registers.wr_idx[4:0]
-@22
-top.hart.registers.wr_data[31:0]
+top.hart.rs1_addr[4:0]
+top.hart.registers.rp1.mem_r_data[31:0]
+top.hart.rs2_addr[4:0]
+top.hart.registers.rp2.mem_r_data[31:0]
 @200
 -MEM
 @22
 top.hart.dmem_addr[31:0]
-top.hart.dmem_mask[3:0]
-top.hart.dmem_data[31:0]
-@28
-top.hart.dmem_wr_en
-@22
 top.dmem.write_port.mem_w_addr[5:0]
-top.hart.dmem_wr_data[31:0]
 top.dmem.write_port.mem_w_data[31:0]
 top.dmem.write_port.mem_w_en[3:0]
 [pattern_trace] 1
