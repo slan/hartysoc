@@ -140,7 +140,6 @@ class Hart(Elaboratable):
                     pc.eq(self.imem_addr),
                     self.minstret.eq(self.minstret + 1),
                 ]
-                comb += [self.rvfi.valid.eq(1)]
 
                 with m.If(
                     decoder.mcause.any()
@@ -156,6 +155,7 @@ class Hart(Elaboratable):
                 ]
 
         comb += [
+            self.rvfi.valid.eq(~self.trap),
             self.rvfi.pc_wdata.eq(self.imem_addr),
             self.rvfi.pc_rdata.eq(pc),
             self.rvfi.rd_wdata.eq(registers.rd_data),
