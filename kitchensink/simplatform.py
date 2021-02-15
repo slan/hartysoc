@@ -11,6 +11,8 @@ class SimPlatform(Platform):
         self.add_resources(
             [Resource("sync", 0, Pins("", dir="i"), Clock(default_frequency))]
         )
+        self.sync_processes= {}
+        self.processes = []
 
     # Abstract
     connectors = []
@@ -41,8 +43,12 @@ class SimPlatform(Platform):
                 if clock is not None:
                     sim.add_clock(clock.period, domain=name)
 
-            for sync_process in self.sync_processes:
-                sim.add_sync_process(sync_process)
+            for process in self.processes:
+                sim.add_sync_process(process)
+
+            for domain, sync_processes in self.sync_processes.items():
+                for sync_process in sync_processes:
+                    sim.add_sync_process(sync_process, domain=domain)
 
             with sim.write_vcd("top.vcd"):
                 if len(self.sync_processes) > 0:
@@ -52,7 +58,8 @@ class SimPlatform(Platform):
         finally:
             os.chdir(cwd)
 
-    sync_processes = []
+    def add_sync_process(self, process, domain):
+        self.sync_processes.setdefault(domain, []).append(process)
 
-    def add_sync_process(self, process):
-        self.sync_processes += [process]
+    def add_process(self, process):
+        self.processes += [process]

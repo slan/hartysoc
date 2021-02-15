@@ -89,12 +89,12 @@ class Hart(Elaboratable):
                 ]
 
                 ### MEM
-                with m.If(decoder.mem_rmask.any()&alu.out.any()):
+                with m.If(decoder.mem_rmask.any() & alu.out.any()):
                     comb += [
                         self.dmem_rmask.eq(decoder.mem_rmask),
                         self.dmem_addr.eq(alu.out),
                     ]
-                with m.If(decoder.mem_wmask.any()&alu.out.any()):
+                with m.If(decoder.mem_wmask.any() & alu.out.any()):
                     comb += [
                         self.dmem_wmask.eq(decoder.mem_wmask),
                         self.dmem_wdata.eq(registers.rs2_rdata),
@@ -151,7 +151,9 @@ class Hart(Elaboratable):
                     m.next = "HALT"
 
             with m.State("HALT"):
-                comb += [self.trap.eq(1)]
+                comb += [
+                    self.trap.eq(1),
+                ]
 
         comb += [
             self.rvfi.pc_wdata.eq(self.imem_addr),
@@ -160,7 +162,7 @@ class Hart(Elaboratable):
             self.rvfi.order.eq(self.minstret),
             self.rvfi.insn.eq(self.imem_data),
             self.rvfi.trap.eq(self.trap),
-            self.rvfi.intr.eq(0),
+            self.rvfi.intr.eq(Const(0)),
             self.rvfi.mode.eq(Const(3)),
             self.rvfi.ixl.eq(Const(1)),
             self.rvfi.rs1_addr.eq(registers.rs1_addr),
