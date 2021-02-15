@@ -38,5 +38,4 @@ with open(f"{out_name}-raw.s", "w") as f:
 
 system(f"riscv64-unknown-elf-gcc -c {out_name}-raw.s")
 system(f"riscv64-unknown-elf-objdump -d -M numeric,no-aliases {out_name}-raw.o|tee {out_name}.s")
-system(f"rm {out_name}-raw.s {out_name}-raw.o")
-
+system(f"rm {out_name}-raw.o")

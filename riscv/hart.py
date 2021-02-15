@@ -17,8 +17,8 @@ rvfi_layout = [
     ("mode", 2, DIR_FANOUT),
     ("ixl", 2, DIR_FANOUT),
     ("rs1_addr", 5, DIR_FANOUT),
-    ("rs2_addr", 5, DIR_FANOUT),
     ("rs1_rdata", 32, DIR_FANOUT),
+    ("rs2_addr", 5, DIR_FANOUT),
     ("rs2_rdata", 32, DIR_FANOUT),
     ("rd_addr", 5, DIR_FANOUT),
     ("rd_wdata", 32, DIR_FANOUT),
@@ -26,8 +26,8 @@ rvfi_layout = [
     ("pc_wdata", 32, DIR_FANOUT),
     ("mem_addr", 32, DIR_FANOUT),
     ("mem_rmask", 4, DIR_FANOUT),
-    ("mem_wmask", 4, DIR_FANOUT),
     ("mem_rdata", 32, DIR_FANOUT),
+    ("mem_wmask", 4, DIR_FANOUT),
     ("mem_wdata", 32, DIR_FANOUT),
 ]
 
@@ -67,9 +67,6 @@ class Hart(Elaboratable):
             with m.State("RST"):
                 m.next = "RUN"
             with m.State("RUN"):
-                with m.If(decoder.mcause.any()):
-                    comb += [self.trap.eq(1)]
-                    m.next = "HALT"
                 ### ID
                 comb += [
                     decoder.insn.eq(self.imem_data),
@@ -80,6 +77,7 @@ class Hart(Elaboratable):
                 comb += [
                     registers.rs1_addr.eq(decoder.rs1_addr),
                     registers.rs2_addr.eq(decoder.rs2_addr),
+                    alu.func.eq(decoder.alu_func),
                     alu.op1.eq(registers.rs1_rdata),
                     alu.op2.eq(
                         Mux(
@@ -91,16 +89,16 @@ class Hart(Elaboratable):
                 ]
 
                 ### MEM
-                with m.If(decoder.mem_rmask.any()):
+                with m.If(decoder.mem_rmask.any()&alu.out.any()):
                     comb += [
                         self.dmem_rmask.eq(decoder.mem_rmask),
                         self.dmem_addr.eq(alu.out),
                     ]
-                with m.If(decoder.mem_wmask.any()):
+                with m.If(decoder.mem_wmask.any()&alu.out.any()):
                     comb += [
                         self.dmem_wmask.eq(decoder.mem_wmask),
-                        self.dmem_addr.eq(alu.out),
                         self.dmem_wdata.eq(registers.rs2_rdata),
+                        self.dmem_addr.eq(alu.out),
                     ]
 
                 ### WB
@@ -142,7 +140,39 @@ class Hart(Elaboratable):
                     pc.eq(self.imem_addr),
                     self.minstret.eq(self.minstret + 1),
                 ]
+                comb += [self.rvfi.valid.eq(1)]
+
+                with m.If(
+                    decoder.mcause.any()
+                    | (self.imem_addr & 0b11).any()
+                    | (self.dmem_addr & 0b11).any()
+                ):
+                    comb += [self.trap.eq(1)]
+                    m.next = "HALT"
+
             with m.State("HALT"):
                 comb += [self.trap.eq(1)]
 
+        comb += [
+            self.rvfi.pc_wdata.eq(self.imem_addr),
+            self.rvfi.pc_rdata.eq(pc),
+            self.rvfi.rd_wdata.eq(registers.rd_data),
+            self.rvfi.order.eq(self.minstret),
+            self.rvfi.insn.eq(self.imem_data),
+            self.rvfi.trap.eq(self.trap),
+            self.rvfi.intr.eq(0),
+            self.rvfi.mode.eq(Const(3)),
+            self.rvfi.ixl.eq(Const(1)),
+            self.rvfi.rs1_addr.eq(registers.rs1_addr),
+            self.rvfi.rs2_addr.eq(registers.rs2_addr),
+            self.rvfi.rs1_rdata.eq(registers.rs1_rdata),
+            self.rvfi.rs2_rdata.eq(registers.rs2_rdata),
+            self.rvfi.rd_addr.eq(registers.rd_addr),
+            self.rvfi.rd_wdata.eq(registers.rd_data),
+            self.rvfi.mem_addr.eq(self.dmem_addr),
+            self.rvfi.mem_rmask.eq(decoder.mem_rmask),
+            self.rvfi.mem_wmask.eq(decoder.mem_wmask),
+            self.rvfi.mem_rdata.eq(self.dmem_rdata),
+            self.rvfi.mem_wdata.eq(self.dmem_wdata),
+        ]
         return m

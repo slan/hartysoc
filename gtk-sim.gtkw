@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sun Feb 14 13:01:41 2021
+[*] Mon Feb 15 18:08:38 2021
 [*]
 [dumpfile] "/home/slan/src/HelloArty/build/sim/top.vcd"
-[dumpfile_mtime] "Sun Feb 14 13:01:08 2021"
-[dumpfile_size] 38117
+[dumpfile_mtime] "Mon Feb 15 18:06:31 2021"
+[dumpfile_size] 23164
 [savefile] "/home/slan/src/HelloArty/gtk-sim.gtkw"
-[timestart] 1155870000000
-[size] 2969 1653
+[timestart] 0
+[size] 2560 1377
 [pos] -1 -1
-*-33.947529 48450000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-33.947529 37100000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.dmem.
 [treeopen] top.hart.
@@ -17,11 +17,14 @@
 [sst_width] 386
 [signals_width] 531
 [sst_expanded] 1
-[sst_vpaned_height] 538
+[sst_vpaned_height] 513
 @200
 -HART
 @28
 top.hart.fsm_state
+top.hart.trap
+@22
+top.hart.insn[31:0]
 @200
 -IF
 @22
@@ -48,16 +51,24 @@ top.hart.decoder.rd_addr[4:0]
 top.hart.decoder.reg_src_type
 @200
 -EX
-@22
-top.hart.alu_out[31:0]
+@29
+top.hart.alu.func
 @200
 -MEM
+@22
+top.hart.imem_addr[31:0]
+top.hart.imem_data[31:0]
+top.hart.dmem_addr[31:0]
+top.hart.dmem_rmask[3:0]
+top.hart.dmem_rdata[31:0]
+top.hart.dmem_wmask[3:0]
+top.hart.dmem_wdata[31:0]
+@200
 -WB
 @22
 top.hart.registers.rp1.mem_r_addr[4:0]
 top.hart.registers.rp1.mem_r_data[31:0]
 top.hart.registers.rp2.mem_r_addr[4:0]
-@23
 top.hart.registers.rp2.mem_r_data[31:0]
 @28
 top.hart.registers.wp.mem_w_en
