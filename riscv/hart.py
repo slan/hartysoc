@@ -37,6 +37,7 @@ class Hart(Elaboratable):
         self._domain = domain
         self.registers = Registers(domain)
         self.trap = Signal()
+        self.halt = Signal()
         self.imem_addr = Signal(32)
         self.imem_data = Signal(32)
         self.dmem_addr = Signal(32)
@@ -63,96 +64,88 @@ class Hart(Elaboratable):
 
         pc = Signal(32)
 
-        with m.FSM():
-            with m.State("RST"):
-                m.next = "RUN"
-            with m.State("RUN"):
-                ### ID
-                comb += [
-                    decoder.insn.eq(self.imem_data),
-                    decoder.pc.eq(pc),
-                ]
+        with m.If(~self.halt):
+            ### ID
+            comb += [
+                decoder.insn.eq(self.imem_data),
+                decoder.pc.eq(pc),
+            ]
 
-                ### EX
-                comb += [
-                    registers.rs1_addr.eq(decoder.rs1_addr),
-                    registers.rs2_addr.eq(decoder.rs2_addr),
-                    alu.func.eq(decoder.alu_func),
-                    alu.op1.eq(registers.rs1_rdata),
-                    alu.op2.eq(
-                        Mux(
-                            decoder.alu_src2_type == AluSrc2.IMM,
-                            decoder.imm,
-                            registers.rs2_rdata,
-                        )
-                    ),
-                ]
-
-                ### MEM
-                with m.If(decoder.mem_rmask.any() & alu.out.any()):
-                    comb += [
-                        self.dmem_rmask.eq(decoder.mem_rmask),
-                        self.dmem_addr.eq(alu.out),
-                    ]
-                with m.If(decoder.mem_wmask.any() & alu.out.any()):
-                    comb += [
-                        self.dmem_wmask.eq(decoder.mem_wmask),
-                        self.dmem_wdata.eq(registers.rs2_rdata),
-                        self.dmem_addr.eq(alu.out),
-                    ]
-
-                ### WB
-                comb += [
-                    registers.rd_addr.eq(decoder.rd_addr),
-                ]
-                with m.Switch(decoder.reg_src_type):
-                    with m.Case(RegSrc.ALU):
-                        comb += [
-                            registers.rd_data.eq(alu.out),
-                        ]
-                    with m.Case(RegSrc.PC_INCR):
-                        comb += [
-                            registers.rd_data.eq(pc + 4),
-                        ]
-                    with m.Case(RegSrc.MEM):
-                        with m.If(decoder.mem_rmask.any()):
-                            comb += [
-                                registers.rd_data.eq(self.dmem_rdata),
-                            ]
-                with m.If(decoder.rd_addr == 0):
-                    comb += [
-                        registers.rd_data.eq(0),
-                    ]
-
-                comb += [
-                    self.imem_addr.eq(
-                        Mux(
-                            (decoder.branch_cond == BranchCond.ALWAYS)
-                            | (
-                                (decoder.branch_cond == BranchCond.NE) & (alu.out.any())
-                            ),
-                            decoder.branch_target,
-                            pc + 4,
-                        )
+            ### EX
+            comb += [
+                registers.rs1_addr.eq(decoder.rs1_addr),
+                registers.rs2_addr.eq(decoder.rs2_addr),
+                alu.func.eq(decoder.alu_func),
+                alu.op1.eq(registers.rs1_rdata),
+                alu.op2.eq(
+                    Mux(
+                        decoder.alu_src2_type == AluSrc2.IMM,
+                        decoder.imm,
+                        registers.rs2_rdata,
                     )
-                ]
-                sync += [
-                    pc.eq(self.imem_addr),
-                    self.minstret.eq(self.minstret + 1),
-                ]
+                ),
+            ]
 
-                with m.If(
-                    decoder.mcause.any()
-                    | (self.imem_addr & 0b11).any()
-                    | (self.dmem_addr & 0b11).any()
-                ):
-                    comb += [self.trap.eq(1)]
-                    m.next = "HALT"
-
-            with m.State("HALT"):
+            ### MEM
+            with m.If(decoder.mem_rmask.any() & alu.out.any()):
                 comb += [
-                    self.trap.eq(1),
+                    self.dmem_rmask.eq(decoder.mem_rmask),
+                    self.dmem_addr.eq(alu.out),
                 ]
+            with m.If(decoder.mem_wmask.any() & alu.out.any()):
+                comb += [
+                    self.dmem_wmask.eq(decoder.mem_wmask),
+                    self.dmem_wdata.eq(registers.rs2_rdata),
+                    self.dmem_addr.eq(alu.out),
+                ]
+
+            ### WB
+            comb += [
+                registers.rd_addr.eq(decoder.rd_addr),
+            ]
+            with m.Switch(decoder.reg_src_type):
+                with m.Case(RegSrc.ALU):
+                    comb += [
+                        registers.rd_data.eq(alu.out),
+                    ]
+                with m.Case(RegSrc.PC_INCR):
+                    comb += [
+                        registers.rd_data.eq(pc + 4),
+                    ]
+                with m.Case(RegSrc.MEM):
+                    with m.If(decoder.mem_rmask.any()):
+                        comb += [
+                            registers.rd_data.eq(self.dmem_rdata),
+                        ]
+            with m.If(decoder.rd_addr == 0):
+                comb += [
+                    registers.rd_data.eq(0),
+                ]
+
+            comb += [
+                self.imem_addr.eq(
+                    Mux(
+                        (decoder.branch_cond == BranchCond.ALWAYS)
+                        | (
+                            (decoder.branch_cond == BranchCond.NE) & (alu.out.any())
+                        ),
+                        decoder.branch_target,
+                        pc + 4,
+                    )
+                )
+            ]
+            sync += [
+                pc.eq(self.imem_addr),
+                self.minstret.eq(self.minstret + 1),
+            ]
+
+            with m.If(
+                decoder.mcause.any()
+                | (self.imem_addr & 0b11).any()
+                | (self.dmem_addr & 0b11).any()
+            ):
+                comb += [self.trap.eq(1)]
+                sync += [self.halt.eq(1)]
 
         comb += [
             self.rvfi.valid.eq(~self.trap),

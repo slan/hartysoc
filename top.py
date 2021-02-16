@@ -57,27 +57,28 @@ class Top(Elaboratable):
 
         with m.If(hart.trap):
             m.d.comb += platform.request("led").eq(1)
-            
-        m.d.comb += [
-            imem.addr.eq(hart.imem_addr),
-            hart.imem_data.eq(imem.data),
-            dmem.addr.eq(hart.dmem_addr),
-        ]
-        with m.If(hart.dmem_wmask.any()):
+        
+        with m.If(~hart.halt):
             m.d.comb += [
-                dmem.wr_en.eq(1),
-                dmem.wr_data.eq(hart.dmem_wdata),
+                imem.addr.eq(hart.imem_addr),
+                hart.imem_data.eq(imem.data),
+                dmem.addr.eq(hart.dmem_addr),
             ]
-        with m.If(hart.dmem_rmask.any()):
-            m.d.comb += [
-                hart.dmem_rdata.eq(dmem.data),
-            ]
+            with m.If(hart.dmem_wmask.any()):
+                m.d.comb += [
+                    dmem.wr_en.eq(1),
+                    dmem.wr_data.eq(hart.dmem_wdata),
+                ]
+            with m.If(hart.dmem_rmask.any()):
+                m.d.comb += [
+                    hart.dmem_rdata.eq(dmem.data),
+                ]
 
         if isinstance(platform, SimPlatform):
             def process():
                 print("-" * 148)
                 for _ in range(200):
-                    yield
+                    yield Tick()
                     trap = yield hart.trap
                     mcause = yield hart.mcause
                     if trap:
