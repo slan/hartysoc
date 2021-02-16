@@ -136,8 +136,8 @@ class Hart(Elaboratable):
                 self.imem_addr.eq(
                     Mux(
                         (decoder.branch_cond == BranchCond.ALWAYS)
-                        | ((decoder.branch_cond == BranchCond.NE) & (alu.out.any())),
-                        decoder.branch_target,
+                        | ((decoder.branch_cond == BranchCond.NE) & (registers.rs1_rdata!=registers.rs2_rdata)),
+                        alu.out,
                         pc + 4,
                     )
                 )

@@ -22,7 +22,6 @@ class Decoder(Elaboratable):
         self.alu_src2_type = Signal(AluSrc2)
         self.reg_src_type = Signal(RegSrc)
         self.alu_func = Signal(AluFunc)
-        self.branch_target = Signal(32)
         self.branch_cond = Signal(BranchCond)
 
     def elaborate(self, platform):
@@ -43,11 +42,65 @@ class Decoder(Elaboratable):
                 comb += [
                     self.alu_src1_type.eq(AluSrc1.PC),
                     self.alu_src2_type.eq(AluSrc2.IMM),
-                    self.imm.eq(Cat(Repl(0,12), self.insn[12:32])),
+                    self.imm.eq(Cat(Repl(0, 12), self.insn[12:32])),
                     self.reg_src_type.eq(RegSrc.ALU),
                     self.rd_addr.eq(self.insn[7:12]),
                     self.alu_func.eq(AluFunc.ADD),
-
+                ]
+            with m.Case("-------------------------1101111"):  # JAL
+                comb += [
+                    self.alu_src1_type.eq(AluSrc1.PC),
+                    self.alu_src2_type.eq(AluSrc2.IMM),
+                    self.imm.eq(
+                        Cat(
+                            0,
+                            self.insn[21:31],
+                            self.insn[20],
+                            self.insn[12:20],
+                            self.insn[31],
+                            Repl(self.insn[31], 19),
+                        )
+                    ),
+                    self.alu_func.eq(AluFunc.ADD),
+                    self.branch_cond.eq(BranchCond.ALWAYS),
+                    self.reg_src_type.eq(RegSrc.PC_INCR),
+                    self.rd_addr.eq(self.insn[7:12]),
+                ]
+            with m.Case("-----------------000-----1100111"):  # JALR
+                comb += [
+                    self.alu_src1_type.eq(AluSrc1.REG),
+                    self.rs1_addr.eq(self.insn[15:20]),
+                    self.alu_src2_type.eq(AluSrc2.IMM),
+                    self.imm.eq(
+                        Cat(
+                            self.insn[20:32],
+                            Repl(self.insn[31], 20),
+                        )
+                    ),
+                    self.alu_func.eq(AluFunc.ADD),
+                    self.branch_cond.eq(BranchCond.ALWAYS),
+                    self.reg_src_type.eq(RegSrc.PC_INCR),
+                    self.rd_addr.eq(self.insn[7:12]),
+                ]
+            with m.Case("-----------------001-----1100011"):  # BNE
+                comb += [
+                    # src
+                    self.imm.eq(
+                        Cat(
+                            0,
+                            self.insn[8:12],
+                            self.insn[25:31],
+                            self.insn[7],
+                            self.insn[31],
+                            Repl(self.insn[31], 19),
+                        )
+                    ),
+                    self.alu_src1_type.eq(AluSrc1.PC),
+                    self.alu_src2_type.eq(AluSrc2.IMM),
+                    self.alu_func.eq(AluFunc.ADD),
+                    self.branch_cond.eq(BranchCond.NE),
+                    self.rs1_addr.eq(self.insn[15:20]),
+                    self.rs2_addr.eq(self.insn[20:25]),
                 ]
             with m.Case("-----------------000-----0010011"):  # ADDI
                 comb += [
@@ -75,9 +128,7 @@ class Decoder(Elaboratable):
                     with m.Case(AluFunc.AND):
                         pass
                     with m.Default():
-                        comb += [
-                            self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)
-                        ]
+                        comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
                 comb += [
                     # src
                     self.rs1_addr.eq(self.insn[15:20]),
@@ -114,47 +165,6 @@ class Decoder(Elaboratable):
                     self.rs2_addr.eq(self.insn[20:25]),
                     # mem
                     self.mem_wmask.eq(0b1111),
-                ]
-            with m.Case("-------------------------1101111"):  # JAL
-                comb += [
-                    # src
-                    self.branch_target.eq(
-                        self.pc
-                        + Cat(
-                            0,
-                            self.insn[21:31],
-                            self.insn[20],
-                            self.insn[12:20],
-                            self.insn[31],
-                            Repl(self.insn[31], 19),
-                        )
-                    ),
-                    self.branch_cond.eq(BranchCond.ALWAYS),
-                    # dst
-                    self.reg_src_type.eq(RegSrc.PC_INCR),
-                    self.rd_addr.eq(self.insn[7:12]),
-                ]
-            with m.Case("-----------------001-----1100011"):  # BNE
-                comb += [
-                    # src
-                    self.branch_target.eq(
-                        self.pc
-                        + Cat(
-                            0,
-                            self.insn[8:12],
-                            self.insn[25:31],
-                            self.insn[7],
-                            self.insn[31],
-                            Repl(self.insn[31], 19),
-                        )
-                    ),
-                    self.branch_cond.eq(BranchCond.NE),
-                    self.alu_src2_type.eq(AluSrc2.REG),
-                    self.alu_func.eq(AluFunc.SUB),
-                    # dst
-                    # branch
-                    self.rs1_addr.eq(self.insn[15:20]),
-                    self.rs2_addr.eq(self.insn[20:25]),
                 ]
             with m.Default():
                 comb += [
