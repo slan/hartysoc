@@ -132,11 +132,23 @@ class Hart(Elaboratable):
                     registers.rd_data.eq(0),
                 ]
 
+            bc_ne = Signal()
+            bc_lt = Signal()
+            bc_ltu =Signal()
+
             comb += [
-                self.imem_addr.eq(
+                bc_ne.eq((registers.rs1_rdata^registers.rs2_rdata).any()),
+                bc_lt.eq(registers.rs1_rdata.as_signed()<registers.rs2_rdata.as_signed()),
+                bc_ltu.eq( registers.rs1_rdata.as_unsigned()<registers.rs2_rdata.as_unsigned()),
+                 self.imem_addr.eq(
                     Mux(
                         (decoder.branch_cond == BranchCond.ALWAYS)
-                        | ((decoder.branch_cond == BranchCond.NE) & (registers.rs1_rdata!=registers.rs2_rdata)),
+                        | ((decoder.branch_cond == BranchCond.NE) & bc_ne)
+                        | ((decoder.branch_cond == BranchCond.EQ) & ~bc_ne)
+                        | ((decoder.branch_cond == BranchCond.LT) & bc_lt)
+                        | ((decoder.branch_cond == BranchCond.GE) & ~bc_lt)
+                        | ((decoder.branch_cond == BranchCond.LTU) & bc_ltu)
+                        | ((decoder.branch_cond == BranchCond.GEU) & ~bc_ltu),
                         alu.out,
                         pc + 4,
                     )

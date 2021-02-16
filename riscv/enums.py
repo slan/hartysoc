@@ -28,9 +28,14 @@ class TrapCause(Enum):
 
 @unique
 class BranchCond(Enum):
-    NONE = 0
-    ALWAYS = 1
+    NEVER = 0
+    EQ = 1
     NE = 2
+    LT = 3
+    GE = 4
+    LTU = 5
+    GEU = 6
+    ALWAYS = 7
 
 
 @unique

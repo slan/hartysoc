@@ -82,7 +82,7 @@ class Decoder(Elaboratable):
                     self.reg_src_type.eq(RegSrc.PC_INCR),
                     self.rd_addr.eq(self.insn[7:12]),
                 ]
-            with m.Case("-----------------001-----1100011"):  # BNE
+            with m.Case("-------------------------1100011"):  # Bxx
                 comb += [
                     # src
                     self.imm.eq(
@@ -98,10 +98,24 @@ class Decoder(Elaboratable):
                     self.alu_src1_type.eq(AluSrc1.PC),
                     self.alu_src2_type.eq(AluSrc2.IMM),
                     self.alu_func.eq(AluFunc.ADD),
-                    self.branch_cond.eq(BranchCond.NE),
                     self.rs1_addr.eq(self.insn[15:20]),
                     self.rs2_addr.eq(self.insn[20:25]),
                 ]
+                with m.Switch(self.insn[12:15]):
+                    with m.Case("000"):
+                        comb += [self.branch_cond.eq(BranchCond.EQ)]
+                    with m.Case("001"):
+                        comb += [self.branch_cond.eq(BranchCond.NE)]
+                    with m.Case("100"):
+                        comb += [self.branch_cond.eq(BranchCond.LT)]
+                    with m.Case("101"):
+                        comb += [self.branch_cond.eq(BranchCond.GE)]
+                    with m.Case("110"):
+                        comb += [self.branch_cond.eq(BranchCond.LTU)]
+                    with m.Case("111"):
+                        comb += [self.branch_cond.eq(BranchCond.GEU)]
+                    with m.Default():
+                        comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
             with m.Case("-----------------000-----0010011"):  # ADDI
                 comb += [
                     # src
