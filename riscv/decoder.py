@@ -18,6 +18,7 @@ class Decoder(Elaboratable):
         self.mem_rmask = Signal(4)
         self.mem_wmask = Signal(4)
 
+        self.alu_src1_type = Signal(AluSrc1)
         self.alu_src2_type = Signal(AluSrc2)
         self.reg_src_type = Signal(RegSrc)
         self.alu_func = Signal(AluFunc)
@@ -37,6 +38,16 @@ class Decoder(Elaboratable):
                     self.reg_src_type.eq(RegSrc.ALU),
                     self.rd_addr.eq(self.insn[7:12]),
                     self.alu_func.eq(AluFunc.ADD),
+                ]
+            with m.Case("-------------------------0010111"):  # AUIPC
+                comb += [
+                    self.alu_src1_type.eq(AluSrc1.PC),
+                    self.alu_src2_type.eq(AluSrc2.IMM),
+                    self.imm.eq(Cat(Repl(0,12), self.insn[12:32])),
+                    self.reg_src_type.eq(RegSrc.ALU),
+                    self.rd_addr.eq(self.insn[7:12]),
+                    self.alu_func.eq(AluFunc.ADD),
+
                 ]
             with m.Case("-----------------000-----0010011"):  # ADDI
                 comb += [

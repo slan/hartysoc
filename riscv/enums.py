@@ -2,10 +2,14 @@ from enum import Enum, unique
 
 
 @unique
+class AluSrc1(Enum):
+    REG = 0
+    PC = 1
+
+@unique
 class AluSrc2(Enum):
-    NONE = 0
-    REG = 1
-    IMM = 2
+    REG = 0
+    IMM = 1
 
 
 @unique

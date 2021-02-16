@@ -80,7 +80,13 @@ class Hart(Elaboratable):
                 registers.rs1_addr.eq(decoder.rs1_addr),
                 registers.rs2_addr.eq(decoder.rs2_addr),
                 alu.func.eq(decoder.alu_func),
-                alu.op1.eq(registers.rs1_rdata),
+                alu.op1.eq(
+                    Mux(
+                        decoder.alu_src1_type == AluSrc1.PC,
+                        pc,
+                        registers.rs1_rdata,
+                    )
+                ),
                 alu.op2.eq(
                     Mux(
                         decoder.alu_src2_type == AluSrc2.IMM,
