@@ -6,11 +6,11 @@ from .simplatform import SimPlatform
 
 
 class PLL(Elaboratable):
-    def __init__(self, domain: str = "sync", *, mult: int, div: int = 1, domain_defs):
+    def __init__(self, domain: str = "sync", *, mult: int, div: int = 1, domains):
         self._domain = domain
         self.mult = mult
         self.div = div
-        self._domain_defs = domain_defs
+        self._domains = domains
 
     def elaborate(self, platform):
 
@@ -21,7 +21,7 @@ class PLL(Elaboratable):
 
         p_clkout_divide = {}
         o_clkout = {}
-        for i, (cd, div) in enumerate(self._domain_defs):
+        for i, (cd, div) in enumerate(self._domains):
             p_clkout_divide[f"p_CLKOUT{i}_DIVIDE"] = div
 
             clkout = Signal(name=f"pllout_{cd}")
@@ -70,7 +70,7 @@ class PLL(Elaboratable):
                         0,
                         Pins(cd, dir="i"),
                         Clock(self.mult * platform.default_clk_frequency / self.div / div),
-                    ) for (cd, div) in self._domain_defs
+                    ) for (cd, div) in self._domains
                 ]
             )
 

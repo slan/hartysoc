@@ -64,7 +64,11 @@ class Hart(Elaboratable):
 
         pc = Signal(32)
 
-        with m.If(~self.halt):
+        with m.If(self.halt):
+            comb += [
+                self.trap.eq(1),
+            ]
+        with m.Else():
             ### ID
             comb += [
                 decoder.insn.eq(self.imem_data),
@@ -126,9 +130,7 @@ class Hart(Elaboratable):
                 self.imem_addr.eq(
                     Mux(
                         (decoder.branch_cond == BranchCond.ALWAYS)
-                        | (
-                            (decoder.branch_cond == BranchCond.NE) & (alu.out.any())
-                        ),
+                        | ((decoder.branch_cond == BranchCond.NE) & (alu.out.any())),
                         decoder.branch_target,
                         pc + 4,
                     )
@@ -155,6 +157,7 @@ class Hart(Elaboratable):
             self.rvfi.order.eq(self.minstret),
             self.rvfi.insn.eq(self.imem_data),
             self.rvfi.trap.eq(self.trap),
+            self.rvfi.halt.eq(self.halt),
             self.rvfi.intr.eq(Const(0)),
             self.rvfi.mode.eq(Const(3)),
             self.rvfi.ixl.eq(Const(1)),

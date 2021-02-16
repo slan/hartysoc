@@ -29,62 +29,65 @@ class Top2(Elaboratable):
             x1 = yield reg.rs1_rdata
             x2 = yield reg.rs2_rdata
 
-            print(x1,x2)
+            print(x1, x2)
 
         platform.add_process(dump)
-        
+
         def process():
             yield
             yield
             yield
             yield
             yield
-        
+
         platform.add_sync_process(process, "sync")
 
         return m
 
 
 class Top(Elaboratable):
-    def __init__(self, domain = "sync"):
-        self._domain = domain
-
     def elaborate(self, platform):
+        domain = "hart"
+
         m = Module()
-        m.submodules.hart = hart = Hart(domain=self._domain)
-        m.submodules.imem = imem = ROM(bootcode, domain=self._domain)
-        m.submodules.dmem = dmem = RAM([], domain=self._domain)
+        m.submodules.pll = PLL(mult=8, div=1, domains=[(domain, 16)])
+        m.submodules.hart = hart = Hart(domain=domain)
+        m.submodules.imem = imem = ROM(bootcode)
+        m.submodules.dmem = dmem = RAM([], domain=domain)
+
+        comb = m.d.comb
+        sync = m.d[domain]
 
         with m.If(hart.trap):
             m.d.comb += platform.request("led").eq(1)
-        
+
         with m.If(~hart.halt):
             m.d.comb += [
-                imem.addr.eq(hart.imem_addr),
+                # imem read
                 hart.imem_data.eq(imem.data),
+                # dmem read
                 dmem.addr.eq(hart.dmem_addr),
+                hart.dmem_rdata.eq(dmem.data),
+                # dmem write
+                dmem.wr_en.eq(hart.dmem_wmask.any()),
+                dmem.wr_data.eq(hart.dmem_wdata),
             ]
-            with m.If(hart.dmem_wmask.any()):
-                m.d.comb += [
-                    dmem.wr_en.eq(1),
-                    dmem.wr_data.eq(hart.dmem_wdata),
-                ]
-            with m.If(hart.dmem_rmask.any()):
-                m.d.comb += [
-                    hart.dmem_rdata.eq(dmem.data),
-                ]
+            sync += [
+                imem.addr.eq(hart.imem_addr),
+            ]
 
         if isinstance(platform, SimPlatform):
+
             def process():
                 print("-" * 148)
                 for _ in range(200):
-                    yield Tick()
+                    yield Tick(domain=domain)
                     trap = yield hart.trap
                     mcause = yield hart.mcause
                     if trap:
                         print(f"*** TRAP - MCAUSE={mcause} ***")
                         break
-                
+
                 mcycle = yield hart.mcycle
                 minstret = yield hart.minstret
 
@@ -106,7 +109,7 @@ class Top(Elaboratable):
                     if i % 8 == 7:
                         print()
 
-            platform.add_sync_process(process, self._domain)
+            platform.add_process(process)
 
         return m
 
