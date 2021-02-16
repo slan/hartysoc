@@ -10,7 +10,6 @@ FORMAL_TGTS := $(foreach src,${FORMAL_SRCS},${RISCV_FORMAL_CORE}/$(src))
 TESTS := $(foreach test,${OTHER_TESTS},$(test)_ch0) $(foreach test,${INSNS_TESTS},insn_$(test)_ch0)
 
 all:
-	make clean
 	make sim
 	make formal -j$(nproc)
 

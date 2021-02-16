@@ -6,6 +6,7 @@ class AluSrc1(Enum):
     REG = 0
     PC = 1
 
+
 @unique
 class AluSrc2(Enum):
     REG = 0
@@ -28,14 +29,14 @@ class TrapCause(Enum):
 
 @unique
 class BranchCond(Enum):
-    NEVER = 0
-    EQ = 1
-    NE = 2
-    LT = 3
-    GE = 4
-    LTU = 5
-    GEU = 6
-    ALWAYS = 7
+    EQ = 0b000
+    NE = 0b001
+    ALWAYS = 0b010
+    NEVER = 0b011
+    LT = 0b100
+    GE = 0b101
+    LTU = 0b110
+    GEU = 0b111
 
 
 @unique

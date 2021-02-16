@@ -132,35 +132,36 @@ class Hart(Elaboratable):
                     registers.rd_data.eq(0),
                 ]
 
-            bc_ne = Signal()
-            bc_lt = Signal()
-            bc_ltu =Signal()
+            bc_ne = (registers.rs1_rdata ^ registers.rs2_rdata).any()
+            bc_lt = registers.rs1_rdata.as_signed() < registers.rs2_rdata.as_signed()
+            bc_ltu = (
+                registers.rs1_rdata.as_unsigned() < registers.rs2_rdata.as_unsigned()
+            )
+            branch_taken = (
+                (decoder.branch_cond == BranchCond.ALWAYS)
+                | ((decoder.branch_cond == BranchCond.NE) & bc_ne)
+                | ((decoder.branch_cond == BranchCond.EQ) & ~bc_ne)
+                | ((decoder.branch_cond == BranchCond.LT) & bc_lt)
+                | ((decoder.branch_cond == BranchCond.GE) & ~bc_lt)
+                | ((decoder.branch_cond == BranchCond.LTU) & bc_ltu)
+                | ((decoder.branch_cond == BranchCond.GEU) & ~bc_ltu)
+            )
 
             comb += [
-                bc_ne.eq((registers.rs1_rdata^registers.rs2_rdata).any()),
-                bc_lt.eq(registers.rs1_rdata.as_signed()<registers.rs2_rdata.as_signed()),
-                bc_ltu.eq( registers.rs1_rdata.as_unsigned()<registers.rs2_rdata.as_unsigned()),
-                 self.imem_addr.eq(
+                self.imem_addr.eq(
                     Mux(
-                        (decoder.branch_cond == BranchCond.ALWAYS)
-                        | ((decoder.branch_cond == BranchCond.NE) & bc_ne)
-                        | ((decoder.branch_cond == BranchCond.EQ) & ~bc_ne)
-                        | ((decoder.branch_cond == BranchCond.LT) & bc_lt)
-                        | ((decoder.branch_cond == BranchCond.GE) & ~bc_lt)
-                        | ((decoder.branch_cond == BranchCond.LTU) & bc_ltu)
-                        | ((decoder.branch_cond == BranchCond.GEU) & ~bc_ltu),
+                        branch_taken,
                         alu.out,
                         pc + 4,
                     )
-                )
+                ),
             ]
 
-            with m.If(
-                decoder.mcause.any()
-                | (self.imem_addr & 0b11).any()
-                | (self.dmem_addr & 0b11).any()
-            ):
-                comb += [self.trap.eq(1)]
+            with m.If(decoder.mcause.any()):
+                comb += [self.trap.eq(1), self.mcause.eq(decoder.mcause)]
+                sync += [self.halt.eq(1)]
+            with m.Elif((self.imem_addr & 0b11).any() | (self.dmem_addr & 0b11).any()):
+                comb += [self.trap.eq(1), self.mcause.eq(-1)]
                 sync += [self.halt.eq(1)]
             with m.Else():
                 sync += [

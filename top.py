@@ -32,10 +32,10 @@ class Top(Elaboratable):
                 hart.imem_data.eq(imem.data),
                 # dmem read
                 dmem.addr.eq(hart.dmem_addr),
-                hart.dmem_rdata.eq(dmem.data),
+                hart.dmem_rdata.eq(dmem.rdata),
                 # dmem write
-                dmem.wr_en.eq(hart.dmem_wmask.any()),
-                dmem.wr_data.eq(hart.dmem_wdata),
+                dmem.wmask.eq(hart.dmem_wmask),
+                dmem.wdata.eq(hart.dmem_wdata),
             ]
             sync += [
                 imem.addr.eq(hart.imem_addr),
