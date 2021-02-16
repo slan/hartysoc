@@ -136,10 +136,6 @@ class Hart(Elaboratable):
                     )
                 )
             ]
-            sync += [
-                pc.eq(self.imem_addr),
-                self.minstret.eq(self.minstret + 1),
-            ]
 
             with m.If(
                 decoder.mcause.any()
@@ -148,6 +144,11 @@ class Hart(Elaboratable):
             ):
                 comb += [self.trap.eq(1)]
                 sync += [self.halt.eq(1)]
+            with m.Else():
+                sync += [
+                    pc.eq(self.imem_addr),
+                    self.minstret.eq(self.minstret + 1),
+                ]
 
         comb += [
             self.rvfi.valid.eq(~self.trap),

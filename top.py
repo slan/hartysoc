@@ -10,41 +10,6 @@ from kitchensink import *
 from riscv import *
 
 
-class Top2(Elaboratable):
-    def elaborate(self, platform):
-        m = Module()
-        m.submodules.reg = reg = Registers("sync")
-
-        def dump():
-            yield reg.rd_addr.eq(1)
-            yield reg.rd_data.eq(1)
-            yield Tick()
-            yield reg.rd_addr.eq(2)
-            yield reg.rd_data.eq(2)
-            yield Tick()
-            yield reg.rd_addr.eq(0)
-            yield reg.rs1_addr.eq(1)
-            yield reg.rs2_addr.eq(2)
-            yield Settle()
-            x1 = yield reg.rs1_rdata
-            x2 = yield reg.rs2_rdata
-
-            print(x1, x2)
-
-        platform.add_process(dump)
-
-        def process():
-            yield
-            yield
-            yield
-            yield
-            yield
-
-        platform.add_sync_process(process, "sync")
-
-        return m
-
-
 class Top(Elaboratable):
     def elaborate(self, platform):
         domain = "hart"
@@ -59,10 +24,10 @@ class Top(Elaboratable):
         sync = m.d[domain]
 
         with m.If(hart.trap):
-            m.d.comb += platform.request("led").eq(1)
+            comb += platform.request("led").eq(1)
 
         with m.If(~hart.halt):
-            m.d.comb += [
+            comb += [
                 # imem read
                 hart.imem_data.eq(imem.data),
                 # dmem read
@@ -100,16 +65,14 @@ class Top(Elaboratable):
                 insn = yield hart.rvfi.insn
                 print(f" pc: {pc:#010x}   insn: {insn:#010x}")
                 for i in range(0, 32):
-                    yield hart.rvfi.rs1_addr.eq(i)
-                    yield Settle()
-                    x = yield hart.rvfi.rs1_rdata
+                    x = yield hart.registers._rp1.memory._array[i]
                     if i < 10:
                         sys.stdout.write(" ")
                     sys.stdout.write(f"x{i}: {x:#010x}    ")
                     if i % 8 == 7:
                         print()
 
-            platform.add_process(process)
+            platform.add_sync_process(process, domain=domain)
 
         return m
 
