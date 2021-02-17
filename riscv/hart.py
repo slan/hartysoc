@@ -96,13 +96,22 @@ class Hart(Elaboratable):
             ]
 
             ### MEM
-            comb += [
-                self.dmem_addr.eq(alu.out),
-            ]
-            with m.If(decoder.mem_wmask.any() & alu.out.any()):
+            with m.If(decoder.mem_wmask.any() | decoder.reg_src_type == RegSrc.MEM):
+                comb += [
+                    self.dmem_addr.eq(alu.out),
+                ]
+            with m.If(decoder.mem_wmask.any()):
                 comb += [
                     self.dmem_wmask.eq(decoder.mem_wmask),
-                    self.dmem_wdata.eq(registers.rs2_rdata),
+                    self.dmem_wdata.eq(
+                        registers.rs2_rdata
+                        & Cat(
+                            Repl(decoder.mem_wmask[0], 8),
+                            Repl(decoder.mem_wmask[1], 8),
+                            Repl(decoder.mem_wmask[2], 8),
+                            Repl(decoder.mem_wmask[3], 8),
+                        )
+                    ),
                     self.dmem_addr.eq(alu.out),
                 ]
 
@@ -121,24 +130,24 @@ class Hart(Elaboratable):
                         registers.rd_data.eq(pc + 4),
                     ]
                 with m.Case(RegSrc.MEM):
-                    with m.Switch(decoder.ls_func):
-                        with m.Case(LsFunc.LB, LsFunc.LBU):
+                    with m.Switch(decoder.load_func):
+                        with m.Case(LoadFunc.LB, LoadFunc.LBU):
                             byte = self.dmem_rdata.word_select(self.dmem_addr[0:2], 8)
                             comb += [
                                 rmask.eq(1 << self.dmem_addr[0:2]),
                                 registers.rd_data.eq(
-                                    Mux(decoder.ls_func[2], byte, byte.as_signed())
+                                    Mux(decoder.load_func[2], byte, byte.as_signed())
                                 ),
                             ]
-                        with m.Case(LsFunc.LH, LsFunc.LHU):
+                        with m.Case(LoadFunc.LH, LoadFunc.LHU):
                             half = self.dmem_rdata.word_select(self.dmem_addr[0], 16)
                             comb += [
                                 rmask.eq(0b11 << (self.dmem_addr[0] << 1)),
                                 registers.rd_data.eq(
-                                    Mux(decoder.ls_func[2], half, half.as_signed())
+                                    Mux(decoder.load_func[2], half, half.as_signed())
                                 ),
                             ]
-                        with m.Case(LsFunc.LW):
+                        with m.Case(LoadFunc.LW):
                             comb += [
                                 rmask.eq(0b1111),
                                 registers.rd_data.eq(self.dmem_rdata),

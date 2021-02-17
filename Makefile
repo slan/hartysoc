@@ -3,7 +3,33 @@ FORMAL_SRCS := checks.cfg wrapper.sv
 RISCV_FORMAL_CORE := /home/slan/src/riscv-formal/cores/HelloArty
 PYTHONPATH := /home/slan/src/HelloArty
 
-INSNS_TESTS := lui addi beq bne blt bge add sub xor or and jal lw auipc jalr lb lbu lh lhu
+INSNS_TESTS := \
+	lui \
+	auipc \
+	jal \
+	jalr \
+	beq \
+	bne \
+	blt \
+	bge \
+	bltu \
+	bgeu \
+	lb \
+	lh \
+	lw \
+	lbu \
+	lhu \
+	sb \
+	sh \
+	sw \
+	addi \
+\
+	add \
+	sub \
+\
+	xor \
+	or \
+	and \
 
 OTHER_TESTS := reg causal pc_fwd pc_bwd
 FORMAL_TGTS := $(foreach src,${FORMAL_SRCS},${RISCV_FORMAL_CORE}/$(src))

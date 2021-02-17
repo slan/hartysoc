@@ -52,7 +52,7 @@ class AluFunc(Enum):
     AND = 0b0111
 
 @unique
-class LsFunc(Enum):
+class LoadFunc(Enum):
     LB = 0b000
     LH = 0b001
     LW = 0b010
