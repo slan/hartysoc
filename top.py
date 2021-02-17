@@ -15,7 +15,7 @@ class Top(Elaboratable):
         domain = "hart"
 
         m = Module()
-        m.submodules.pll = PLL(mult=8, div=1, domains=[(domain, 16)])
+        m.submodules.pll = PLL(mult=8, div=1, domains=[(domain, 10)])
         m.submodules.hart = hart = Hart(domain=domain)
         m.submodules.imem = imem = ROM(bootcode)
         m.submodules.dmem = dmem = RAM([], domain=domain)
