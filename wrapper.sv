@@ -8,7 +8,6 @@ module rvfi_wrapper(
 (* keep *) wire                 [31:0] imem_addr;
 (* keep *) `rvformal_rand_reg   [31:0] imem_rnd_data;
 (* keep *) wire                 [31:0] dmem_addr;
-(* keep *) wire                 [ 3:0] dmem_rmask;
 (* keep *) `rvformal_rand_reg   [31:0] dmem_rnd_data;
 (* keep *) wire                 [ 3:0] dmem_wmask;
 (* keep *) wire                 [31:0] dmem_wdata;
@@ -20,7 +19,6 @@ module rvfi_wrapper(
     .imem_addr(imem_addr),
     .imem_data(imem_rnd_data),
     .dmem_addr(dmem_addr),
-    .dmem_rmask(dmem_rmask),
     .dmem_rdata(dmem_rnd_data),
     .dmem_wmask(dmem_wmask),
     .dmem_wdata(dmem_wdata),

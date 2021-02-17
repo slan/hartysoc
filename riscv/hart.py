@@ -41,7 +41,6 @@ class Hart(Elaboratable):
         self.imem_addr = Signal(32)
         self.imem_data = Signal(32)
         self.dmem_addr = Signal(32)
-        self.dmem_rmask = Signal(4)
         self.dmem_rdata = Signal(32)
         self.dmem_wmask = Signal(4)
         self.dmem_wdata = Signal(32)
@@ -97,11 +96,9 @@ class Hart(Elaboratable):
             ]
 
             ### MEM
-            with m.If(decoder.mem_rmask.any() & alu.out.any()):
-                comb += [
-                    self.dmem_rmask.eq(decoder.mem_rmask),
-                    self.dmem_addr.eq(alu.out),
-                ]
+            comb += [
+                self.dmem_addr.eq(alu.out),
+            ]
             with m.If(decoder.mem_wmask.any() & alu.out.any()):
                 comb += [
                     self.dmem_wmask.eq(decoder.mem_wmask),
@@ -110,6 +107,7 @@ class Hart(Elaboratable):
                 ]
 
             ### WB
+            rmask = Signal(4)
             comb += [
                 registers.rd_addr.eq(decoder.rd_addr),
             ]
@@ -123,10 +121,28 @@ class Hart(Elaboratable):
                         registers.rd_data.eq(pc + 4),
                     ]
                 with m.Case(RegSrc.MEM):
-                    with m.If(decoder.mem_rmask.any()):
-                        comb += [
-                            registers.rd_data.eq(self.dmem_rdata),
-                        ]
+                    with m.Switch(decoder.ls_func):
+                        with m.Case(LsFunc.LB, LsFunc.LBU):
+                            byte = self.dmem_rdata.word_select(self.dmem_addr[0:2], 8)
+                            comb += [
+                                rmask.eq(1 << self.dmem_addr[0:2]),
+                                registers.rd_data.eq(
+                                    Mux(decoder.ls_func[2], byte, byte.as_signed())
+                                ),
+                            ]
+                        with m.Case(LsFunc.LH, LsFunc.LHU):
+                            half = self.dmem_rdata.word_select(self.dmem_addr[0], 16)
+                            comb += [
+                                rmask.eq(0b11 << (self.dmem_addr[0] << 1)),
+                                registers.rd_data.eq(
+                                    Mux(decoder.ls_func[2], half, half.as_signed())
+                                ),
+                            ]
+                        with m.Case(LsFunc.LW):
+                            comb += [
+                                rmask.eq(0b1111),
+                                registers.rd_data.eq(self.dmem_rdata),
+                            ]
             with m.If(decoder.rd_addr == 0):
                 comb += [
                     registers.rd_data.eq(0),
@@ -160,7 +176,7 @@ class Hart(Elaboratable):
             with m.If(decoder.mcause.any()):
                 comb += [self.trap.eq(1), self.mcause.eq(decoder.mcause)]
                 sync += [self.halt.eq(1)]
-            with m.Elif((self.imem_addr & 0b11).any() | (self.dmem_addr & 0b11).any()):
+            with m.Elif((self.imem_addr[0:2] | self.dmem_addr[0:2]).any()):
                 comb += [self.trap.eq(1), self.mcause.eq(-1)]
                 sync += [self.halt.eq(1)]
             with m.Else():
@@ -188,7 +204,7 @@ class Hart(Elaboratable):
             self.rvfi.rd_addr.eq(registers.rd_addr),
             self.rvfi.rd_wdata.eq(registers.rd_data),
             self.rvfi.mem_addr.eq(self.dmem_addr),
-            self.rvfi.mem_rmask.eq(decoder.mem_rmask),
+            self.rvfi.mem_rmask.eq(rmask),
             self.rvfi.mem_wmask.eq(decoder.mem_wmask),
             self.rvfi.mem_rdata.eq(self.dmem_rdata),
             self.rvfi.mem_wdata.eq(self.dmem_wdata),

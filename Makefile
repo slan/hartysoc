@@ -3,7 +3,8 @@ FORMAL_SRCS := checks.cfg wrapper.sv
 RISCV_FORMAL_CORE := /home/slan/src/riscv-formal/cores/HelloArty
 PYTHONPATH := /home/slan/src/HelloArty
 
-INSNS_TESTS := lui addi beq bne blt bge add sub xor or and jal lw auipc jalr
+INSNS_TESTS := lui addi beq bne blt bge add sub xor or and jal lw auipc jalr lb lbu lh lhu
+
 OTHER_TESTS := reg causal pc_fwd pc_bwd
 FORMAL_TGTS := $(foreach src,${FORMAL_SRCS},${RISCV_FORMAL_CORE}/$(src))
 
@@ -70,9 +71,8 @@ prog: build/arty/top.bit
 	djtgcfg prog -d Arty -i 0 -f $<
 
 ${FORMAL_TGTS}: ${FORMAL_SRCS} | ${RISCV_FORMAL_CORE}/checks
-	touch ${FORMAL_TGTS}
 
-${RISCV_FORMAL_CORE}/checks:
+${RISCV_FORMAL_CORE}/checks: ${SRCS}
 	mkdir -p ${RISCV_FORMAL_CORE}
 	cp ${FORMAL_SRCS} ${RISCV_FORMAL_CORE}
 	cd ${RISCV_FORMAL_CORE}&&python ../../checks/genchecks.py

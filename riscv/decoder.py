@@ -15,12 +15,12 @@ class Decoder(Elaboratable):
         self.rs2_addr = Signal(5)
         self.rd_addr = Signal(5)
         self.imm = Signal(32)
-        self.mem_rmask = Signal(4)
         self.mem_wmask = Signal(4)
 
         self.alu_src1_type = Signal(AluSrc1)
         self.alu_src2_type = Signal(AluSrc2)
         self.reg_src_type = Signal(RegSrc)
+        self.ls_func = Signal(LsFunc)
         self.alu_func = Signal(AluFunc)
         self.branch_cond = Signal(BranchCond, reset=BranchCond.NEVER)
 
@@ -96,21 +96,23 @@ class Decoder(Elaboratable):
                     self.branch_cond.eq(self.insn[12:15]),
                 ]
                 with m.If(self.insn[13] & ~self.insn[14]):
-                    comb += [
-                        self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION),
-                    ]
-            with m.Case("-----------------010-----0000011"):  # LW
+                    comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+            with m.Case("-------------------------0000011"):  # Lx
                 comb += [
-                    # src
                     self.rs1_addr.eq(self.insn[15:20]),
                     self.alu_src2_type.eq(AluSrc2.IMM),
                     self.imm.eq(self.insn[20:32].as_signed()),
                     self.alu_func.eq(AluFunc.ADD),
-                    # dsta
+                    self.ls_func.eq(self.insn[12:15]),
                     self.reg_src_type.eq(RegSrc.MEM),
                     self.rd_addr.eq(self.insn[7:12]),
-                    self.mem_rmask.eq(0b1111),
                 ]
+                with m.Switch(self.insn[12:15]):
+                    with m.Case("000", "001", "010", "100", "101"):
+                        pass
+                    with m.Default():
+                        comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+
             with m.Case("-----------------010-----0100011"):  # SW
                 comb += [
                     # src
@@ -156,8 +158,6 @@ class Decoder(Elaboratable):
                     self.alu_func.eq(insn_func),
                 ]
             with m.Default():
-                comb += [
-                    self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION),
-                ]
+                comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
 
         return m
