@@ -24,5 +24,8 @@ class ALU(Elaboratable):
                 m.d.comb += self.out.eq(self.op1 | self.op2)
             with m.Case(AluFunc.AND):
                 m.d.comb += self.out.eq(self.op1 & self.op2)
-
+            with m.Case(AluFunc.SLT):
+                m.d.comb += self.out.eq(self.op1.as_signed() < self.op2.as_signed())
+            with m.Case(AluFunc.SLTU):
+                m.d.comb += self.out.eq(self.op1 < self.op2)
         return m

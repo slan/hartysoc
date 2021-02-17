@@ -40,12 +40,12 @@ class BranchCond(Enum):
 
 
 @unique
-class AluFunc(Enum):
+class AluFunc(Enum): # top bit set => ~(~in1 op in2)
     ADD = 0b0000
     SUB = 0b1000
     # SLL = 0b001
-    # SLT = 0b010
-    # SLTU = 0b011
+    SLT = 0b0010
+    SLTU = 0b011
     XOR = 0b0100
     # SRL_SLA = 0b101
     OR = 0b0110

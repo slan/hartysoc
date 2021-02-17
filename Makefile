@@ -23,6 +23,11 @@ INSNS_TESTS := \
 	sh \
 	sw \
 	addi \
+	slti \
+	sltiu \
+	xori \
+	ori \
+	andi \
 \
 	add \
 	sub \

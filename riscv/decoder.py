@@ -136,18 +136,20 @@ class Decoder(Elaboratable):
                         ]
                     with m.Default():
                         comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
-            with m.Case("-----------------000-----0010011"):  # ADDI
+            with m.Case("-------------------------0010011"):  # ADDI SLTI SLTIU XORI ORI ANDI
                 comb += [
-                    # src
                     self.rs1_addr.eq(self.insn[15:20]),
                     self.alu_src2_type.eq(AluSrc2.IMM),
                     self.imm.eq(self.insn[20:32].as_signed()),
-                    # dst
                     self.reg_src_type.eq(RegSrc.ALU),
                     self.rd_addr.eq(self.insn[7:12]),
-                    # func
-                    self.alu_func.eq(AluFunc.ADD),
+                    self.alu_func.eq(self.insn[12:15]),
                 ]
+                with m.Switch(self.insn[12:15]):
+                    with m.Case("000","010","011","100","110","111"):
+                        pass
+                    with m.Default():
+                        comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
             with m.Case("0-00000------------------0110011"):  # ADD SUB XOR OR AND
                 insn_func = Cat(self.insn[12:15], self.insn[30])
                 with m.Switch(insn_func):
