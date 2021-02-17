@@ -28,7 +28,9 @@ INSNS_TESTS := \
 	xori \
 	ori \
 	andi \
-\
+	slli \
+	srli \
+	srai \
 	add \
 	sub \
 \

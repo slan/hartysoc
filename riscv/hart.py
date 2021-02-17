@@ -79,6 +79,7 @@ class Hart(Elaboratable):
                 registers.rs1_addr.eq(decoder.rs1_addr),
                 registers.rs2_addr.eq(decoder.rs2_addr),
                 alu.func.eq(decoder.alu_func),
+                alu.func_ex.eq(decoder.alu_func_ex),
                 alu.op1.eq(
                     Mux(
                         decoder.alu_src1_type == AluSrc1.PC,
