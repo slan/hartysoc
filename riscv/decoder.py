@@ -174,7 +174,7 @@ class Decoder(Elaboratable):
                     with m.Default():
                         comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
 
-            # ADD SUB XOR OR AND
+            # ADD SUB SLL SLT SLTU XOR SRL SRA OR AND
             with m.Case("0-00000------------------0110011"):
                 comb += [
                     # src
@@ -188,13 +188,13 @@ class Decoder(Elaboratable):
                     self.alu_func.eq(self.insn[12:15]),
                 ]
                 with m.Switch(self.insn[12:15]):
-                    with m.Case(AluFunc.XOR, AluFunc.OR, AluFunc.AND):
-                        with m.If(self.insn[30]):
-                            comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
-                    with m.Case(AluFunc.ADD_SUB):
+                    with m.Case(AluFunc.ADD_SUB, AluFunc.SRL_SRA):
                         comb += [
                             self.alu_func_ex.eq(self.insn[30]),
                         ]
+                    with m.Case(AluFunc.SLL, AluFunc.SLT, AluFunc.SLTU, AluFunc.XOR, AluFunc.OR, AluFunc.AND):
+                        with m.If(self.insn[30]):
+                            comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
                     with m.Default():
                         comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
             with m.Default():

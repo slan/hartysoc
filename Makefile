@@ -1,7 +1,7 @@
 SRCS := $(wildcard riscv/*.py) $(wildcard kitchensink/*.py)
 FORMAL_SRCS := checks.cfg wrapper.sv
-RISCV_FORMAL_CORE := /home/slan/src/riscv-formal/cores/HelloArty
-PYTHONPATH := /home/slan/src/HelloArty
+RISCV_FORMAL_CORE := ~/src/riscv-formal/cores/HelloArty
+PYTHONPATH := ~/src/HelloArty
 
 INSNS_TESTS := \
 	lui \
@@ -33,8 +33,12 @@ INSNS_TESTS := \
 	srai \
 	add \
 	sub \
-\
+	sll \
+	slt \
+	sltu \
 	xor \
+	srl \
+	sra \
 	or \
 	and \
 
