@@ -15,7 +15,7 @@ class Top(Elaboratable):
         domain = "hart"
 
         m = Module()
-        m.submodules.pll = PLL(mult=8, div=1, domains=[(domain, 10)])
+        m.submodules.pll = PLL(mult=16, div=1, domains=[(domain, 20)])
         m.submodules.hart = hart = Hart(domain=domain)
         m.submodules.imem = imem = ROM(bootcode)
         m.submodules.dmem = dmem = RAM([], domain=domain)
@@ -25,7 +25,7 @@ class Top(Elaboratable):
 
         with m.If(hart.trap):
             comb += platform.request("led").eq(1)
-
+            
         comb += [
             # imem read
             hart.imem_data.eq(imem.data),
@@ -36,6 +36,7 @@ class Top(Elaboratable):
             dmem.wmask.eq(hart.dmem_wmask),
             dmem.wdata.eq(hart.dmem_wdata),
         ]
+
         sync += [
             imem.addr.eq(hart.imem_addr),
         ]

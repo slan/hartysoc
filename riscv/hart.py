@@ -64,8 +64,6 @@ class Hart(Elaboratable):
 
         with m.FSM(domain=self._domain):
             with m.State("RUN"):
-                sync += self.mcycle.eq(self.mcycle + 1)
-
                 ### ID
                 comb += [
                     decoder.insn.eq(self.imem_data),
@@ -218,6 +216,7 @@ class Hart(Elaboratable):
                         m.next = "HALT"
                         
                 sync += [
+                    self.mcycle.eq(self.mcycle + 1),
                     self.minstret.eq(self.minstret + 1),
                     pc.eq(self.imem_addr),
                 ]

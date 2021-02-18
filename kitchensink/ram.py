@@ -14,10 +14,12 @@ class RAM(Elaboratable):
 
     def elaborate(self, platform):
         m = Module()
+
         m.submodules.read_port = self.read_port
         m.submodules.write_port = self.write_port
-        m.d.comb += [
-            self.write_port.addr.eq(self.addr >> 2),
-            self.read_port.addr.eq(self.addr >> 2),
-        ]
+        with m.If(self.wmask.any()):
+            m.d.comb += self.write_port.addr.eq(self.addr >> 2)
+        with m.Else():
+            m.d.comb += self.read_port.addr.eq(self.addr >> 2)
+
         return m

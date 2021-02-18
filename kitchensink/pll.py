@@ -23,8 +23,6 @@ class PLL(Elaboratable):
         o_clkout = {}
         for i, (cd, div) in enumerate(self._domains):
             p_clkout_divide[f"p_CLKOUT{i}_DIVIDE"] = div
-
-            clkout = Signal(name=f"pllout_{cd}")
             o_clkout[f"o_CLKOUT{i}"] = ClockSignal(cd)
 
             m.domains += ClockDomain(cd)
