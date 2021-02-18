@@ -25,7 +25,7 @@ class Top(Elaboratable):
 
         with m.If(hart.trap):
             comb += platform.request("led").eq(1)
-            
+
         comb += [
             # imem read
             hart.imem_data.eq(imem.data),
@@ -44,33 +44,50 @@ class Top(Elaboratable):
         if isinstance(platform, SimPlatform):
 
             def process():
+                print("~" * 148)
                 for _ in range(200):
                     yield
                     yield Settle()
                     trap = yield hart.trap
                     if trap:
                         mcause = yield hart.mcause
-                        print("-" * 148)
-                        print(f"*** TRAP - MCAUSE={mcause} ***")
+                        if TrapCause(mcause) == TrapCause.M_ECALL:
+                            # a7 is syscall
+                            # a0 is arg0
+                            SBI_EXT_0_1_CONSOLE_PUTCHAR = 0x1
+                            a7 = yield hart.registers._rp1.memory._array[17]
+                            if a7 == SBI_EXT_0_1_CONSOLE_PUTCHAR:
+                                a0 = yield hart.registers._rp1.memory._array[10]
+                                print(chr(a0))
+                                continue
+                                # ret.error = a0;
+                                # ret.value = a1;
+                        else:
+                            print("~" * 148)
+                            print(f"*** TRAP - MCAUSE={TrapCause(mcause).name}/{mcause} ***")
 
-                        mcycle = yield hart.mcycle
-                        minstret = yield hart.minstret
+                            mcycle = yield hart.mcycle
+                            minstret = yield hart.minstret
 
-                        time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
-                        print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
-                        cpi = mcycle / minstret if minstret != 0 else "N/A"
-                        print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
-                        print("-" * 148)
-                        pc = yield hart.rvfi.pc_rdata
-                        insn = yield hart.rvfi.insn
-                        print(f" pc: {pc:#010x}   insn: {insn:#010x}")
-                        for i in range(0, 32):
-                            x = yield hart.registers._rp1.memory._array[i]
-                            if i < 10:
-                                sys.stdout.write(" ")
-                            sys.stdout.write(f"x{i}: {x:#010x}    ")
-                            if i % 8 == 7:
-                                print()
+                            time = dt.timedelta(
+                                seconds=mcycle / platform.default_clk_frequency
+                            )
+                            print(
+                                f"Running time: {time} @{platform.default_clk_frequency}Hz"
+                            )
+                            cpi = mcycle / minstret if minstret != 0 else "N/A"
+                            print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
+                            print("-" * 148)
+                            pc = yield hart.rvfi.pc_rdata
+                            insn = yield hart.rvfi.insn
+                            print(f" pc: {pc:#010x}   insn: {insn:#010x}")
+                            for i in range(0, 32):
+                                x = yield hart.registers._rp1.memory._array[i]
+                                if i < 10:
+                                    sys.stdout.write(" ")
+                                sys.stdout.write(f"x{i}: {x:#010x}    ")
+                                if i % 8 == 7:
+                                    print()
                     halt = yield hart.halt
                     if halt:
                         break
@@ -141,6 +158,8 @@ if __name__ == "__main__":
         do_program=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+set_property CFGBVS VCCO [current_design]
+set_property CONFIG_VOLTAGE 3.3 [current_design]
 
 #add_files /home/slan/src/HelloArty/testbench.v
 #set_property used_in_synthesis false [get_files  /home/slan/src/HelloArty/testbench.v]

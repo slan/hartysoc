@@ -44,16 +44,29 @@ INSNS_TESTS := \
 
 OTHER_TESTS := reg causal pc_fwd pc_bwd
 FORMAL_TGTS := $(foreach src,${FORMAL_SRCS},${RISCV_FORMAL_CORE}/$(src))
-
 TESTS := $(foreach test,${OTHER_TESTS},$(test)_ch0) $(foreach test,${INSNS_TESTS},insn_$(test)_ch0)
 
-all:
-	make sim
-	make formal -j$(nproc)
+_dummy := $(shell mkdir -p build)
+
+CC=~/riscv64-unknown-elf-gcc-10.1.0-2020.08.2-x86_64-linux-ubuntu14/bin/riscv64-unknown-elf-gcc
+TARGET_ARCH=-march=rv32i -mabi=ilp32
+CFLAGS=-save-temps=obj
+LDFLAGS=-nostdlib
+OUTPUT_OPTION=-o $@
+
+all: build/main.elf
+
+build/%.o: %.c
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+	riscv64-unknown-elf-objdump -d -t -r $@
+
+build/main.elf: build/main.o
+	$(LINK.o) $(OUTPUT_OPTION) $<
+	riscv64-unknown-elf-objdump -d -t -r $@
 
 simwave: sim
 	gtkwave build/sim/top.vcd gtk-sim.gtkw&
-	
+
 formal: $(foreach test, ${TESTS}, ${RISCV_FORMAL_CORE}/checks/$(test)/PASS)
 	@rm -rf build/formal&&mkdir -p build/formal
 	@cd build/formal && \
@@ -85,15 +98,10 @@ ${RISCV_FORMAL_CORE}/checks/%/PASS: ${SRCS} ${FORMAL_TGTS}
 	rm -rf $(dir $@)
 	cd ${RISCV_FORMAL_CORE}&&PYTHONPATH=${PYTHONPATH} make -C checks $*
 
-build/%.elf: %.s
-	mkdir -p build
-	riscv64-unknown-elf-as $< -march=rv32i -mabi=ilp32 -mno-arch-attr -o $@
-	riscv64-unknown-elf-objdump -d -M numeric,no-aliases  $@
-
 build/__init__.py: build/bootcode.elf
-	@riscv64-unknown-elf-objcopy --reverse-bytes=2 -O binary $< build/$*.tmp
+	@riscv64-unknown-elf-objcopy -O binary $< build/$*.tmp
 	@echo "bootcode = [" > $@
-	@dd if=build/$*.tmp conv=swab status=none|hexdump -v -e "\"\t0x\" \"%08x,\n\"" >>$@
+	@hexdump build/$*.tmp -v -e "\"\t0x\" \"%08x,\n\"" >>$@
 	@echo "]" >> $@
 
 sim: build/__init__.py

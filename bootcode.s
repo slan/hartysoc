@@ -5,6 +5,8 @@ loop:
     addi x6, x6, -1
     bne x6, x0, loop
 
+    li a0,'!'
+    li a7,1
     ecall
 
     sw x7,28(x0)
