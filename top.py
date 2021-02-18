@@ -26,51 +26,53 @@ class Top(Elaboratable):
         with m.If(hart.trap):
             comb += platform.request("led").eq(1)
 
-        with m.If(~hart.halt):
-            comb += [
-                # imem read
-                hart.imem_data.eq(imem.data),
-                # dmem read
-                dmem.addr.eq(hart.dmem_addr),
-                hart.dmem_rdata.eq(dmem.rdata),
-                # dmem write
-                dmem.wmask.eq(hart.dmem_wmask),
-                dmem.wdata.eq(hart.dmem_wdata),
-            ]
-            sync += [
-                imem.addr.eq(hart.imem_addr),
-            ]
+        comb += [
+            # imem read
+            hart.imem_data.eq(imem.data),
+            # dmem read
+            dmem.addr.eq(hart.dmem_addr),
+            hart.dmem_rdata.eq(dmem.rdata),
+            # dmem write
+            dmem.wmask.eq(hart.dmem_wmask),
+            dmem.wdata.eq(hart.dmem_wdata),
+        ]
+        sync += [
+            imem.addr.eq(hart.imem_addr),
+        ]
 
         if isinstance(platform, SimPlatform):
 
             def process():
-                print("-" * 148)
                 for _ in range(200):
-                    yield Tick(domain=domain)
+                    yield
+                    yield Settle()
                     trap = yield hart.trap
-                    mcause = yield hart.mcause
                     if trap:
+                        mcause = yield hart.mcause
+                        print("-" * 148)
                         print(f"*** TRAP - MCAUSE={mcause} ***")
+
+                        mcycle = yield hart.mcycle
+                        minstret = yield hart.minstret
+
+                        time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
+                        print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
+                        cpi = mcycle / minstret if minstret != 0 else "N/A"
+                        print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
+                        print("-" * 148)
+                        pc = yield hart.rvfi.pc_rdata
+                        insn = yield hart.rvfi.insn
+                        print(f" pc: {pc:#010x}   insn: {insn:#010x}")
+                        for i in range(0, 32):
+                            x = yield hart.registers._rp1.memory._array[i]
+                            if i < 10:
+                                sys.stdout.write(" ")
+                            sys.stdout.write(f"x{i}: {x:#010x}    ")
+                            if i % 8 == 7:
+                                print()
+                    halt = yield hart.halt
+                    if halt:
                         break
-
-                mcycle = yield hart.mcycle
-                minstret = yield hart.minstret
-
-                time = dt.timedelta(seconds=mcycle / platform.default_clk_frequency)
-                print(f"Running time: {time} @{platform.default_clk_frequency}Hz")
-                cpi = mcycle / minstret if minstret != 0 else "N/A"
-                print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
-                print("-" * 148)
-                pc = yield hart.rvfi.pc_rdata
-                insn = yield hart.rvfi.insn
-                print(f" pc: {pc:#010x}   insn: {insn:#010x}")
-                for i in range(0, 32):
-                    x = yield hart.registers._rp1.memory._array[i]
-                    if i < 10:
-                        sys.stdout.write(" ")
-                    sys.stdout.write(f"x{i}: {x:#010x}    ")
-                    if i % 8 == 7:
-                        print()
 
             platform.add_sync_process(process, domain=domain)
 

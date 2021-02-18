@@ -24,7 +24,11 @@ class RegSrc(Enum):
 
 @unique
 class TrapCause(Enum):
-    ILLEGAL_INSTRUCTION = 2
+    IADDR = 0
+    DADDR_L = 4
+    DADDR_S = 6
+    INSN = 2
+    M_ECALL=11
 
 
 @unique

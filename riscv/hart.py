@@ -49,7 +49,7 @@ class Hart(Elaboratable):
     def elaborate(self, platform):
         self.mcycle = Signal(64)
         self.minstret = Signal(64)
-        self.mcause = Signal(32)
+        self.mcause = Signal(32, decoder=lambda x: f"{TrapCause(x).name}/{x}")
 
         m = Module()
         comb = m.d.comb
@@ -59,144 +59,177 @@ class Hart(Elaboratable):
         m.submodules.alu = alu = ALU()
         m.submodules.decoder = decoder = Decoder()
 
-        sync += self.mcycle.eq(self.mcycle + 1)
 
         pc = Signal(32)
 
-        with m.If(self.halt):
-            comb += [
-                self.trap.eq(1),
-            ]
-        with m.Else():
-            ### ID
-            comb += [
-                decoder.insn.eq(self.imem_data),
-                decoder.pc.eq(pc),
-            ]
+        with m.FSM(domain=self._domain):
+            with m.State("RUN"):
+                sync += self.mcycle.eq(self.mcycle + 1)
 
-            ### EX
-            comb += [
-                registers.rs1_addr.eq(decoder.rs1_addr),
-                registers.rs2_addr.eq(decoder.rs2_addr),
-                alu.func.eq(decoder.alu_func),
-                alu.func_ex.eq(decoder.alu_func_ex),
-                alu.op1.eq(
-                    Mux(
-                        decoder.alu_src1_type == AluSrc1.PC,
-                        pc,
-                        registers.rs1_rdata,
-                    )
-                ),
-                alu.op2.eq(
-                    Mux(
-                        decoder.alu_src2_type == AluSrc2.IMM,
-                        decoder.imm,
-                        registers.rs2_rdata,
-                    )
-                ),
-            ]
-
-            ### MEM
-            with m.If(decoder.mem_wmask.any() | decoder.reg_src_type == RegSrc.MEM):
+                ### ID
                 comb += [
-                    self.dmem_addr.eq(alu.out),
+                    decoder.insn.eq(self.imem_data),
+                    decoder.pc.eq(pc),
                 ]
-            with m.If(decoder.mem_wmask.any()):
+
+                ### EX
                 comb += [
-                    self.dmem_wmask.eq(decoder.mem_wmask),
-                    self.dmem_wdata.eq(
-                        registers.rs2_rdata
-                        & Cat(
-                            Repl(decoder.mem_wmask[0], 8),
-                            Repl(decoder.mem_wmask[1], 8),
-                            Repl(decoder.mem_wmask[2], 8),
-                            Repl(decoder.mem_wmask[3], 8),
+                    registers.rs1_addr.eq(decoder.rs1_addr),
+                    registers.rs2_addr.eq(decoder.rs2_addr),
+                    alu.func.eq(decoder.alu_func),
+                    alu.func_ex.eq(decoder.alu_func_ex),
+                    alu.op1.eq(
+                        Mux(
+                            decoder.alu_src1_type == AluSrc1.PC,
+                            pc,
+                            registers.rs1_rdata,
                         )
                     ),
-                    self.dmem_addr.eq(alu.out),
+                    alu.op2.eq(
+                        Mux(
+                            decoder.alu_src2_type == AluSrc2.IMM,
+                            decoder.imm,
+                            registers.rs2_rdata,
+                        )
+                    ),
                 ]
 
-            ### WB
-            rmask = Signal(4)
-            comb += [
-                registers.rd_addr.eq(decoder.rd_addr),
-            ]
-            with m.Switch(decoder.reg_src_type):
-                with m.Case(RegSrc.ALU):
+                ### MEM
+                with m.If(decoder.mem_wmask.any() | decoder.reg_src_type == RegSrc.MEM):
                     comb += [
-                        registers.rd_data.eq(alu.out),
+                        self.dmem_addr.eq(alu.out),
                     ]
-                with m.Case(RegSrc.PC_INCR):
+                with m.If(decoder.mem_wmask.any()):
                     comb += [
-                        registers.rd_data.eq(pc + 4),
+                        self.dmem_wmask.eq(decoder.mem_wmask),
+                        self.dmem_wdata.eq(
+                            registers.rs2_rdata
+                            & Cat(
+                                Repl(decoder.mem_wmask[0], 8),
+                                Repl(decoder.mem_wmask[1], 8),
+                                Repl(decoder.mem_wmask[2], 8),
+                                Repl(decoder.mem_wmask[3], 8),
+                            )
+                        ),
+                        self.dmem_addr.eq(alu.out),
                     ]
-                with m.Case(RegSrc.MEM):
-                    with m.Switch(decoder.load_func):
-                        with m.Case(LoadFunc.LB, LoadFunc.LBU):
-                            byte = self.dmem_rdata.word_select(self.dmem_addr[0:2], 8)
-                            comb += [
-                                rmask.eq(1 << self.dmem_addr[0:2]),
-                                registers.rd_data.eq(
-                                    Mux(decoder.load_func[2], byte, byte.as_signed())
-                                ),
-                            ]
-                        with m.Case(LoadFunc.LH, LoadFunc.LHU):
-                            half = self.dmem_rdata.word_select(self.dmem_addr[0], 16)
-                            comb += [
-                                rmask.eq(0b11 << (self.dmem_addr[0] << 1)),
-                                registers.rd_data.eq(
-                                    Mux(decoder.load_func[2], half, half.as_signed())
-                                ),
-                            ]
-                        with m.Case(LoadFunc.LW):
-                            comb += [
-                                rmask.eq(0b1111),
-                                registers.rd_data.eq(self.dmem_rdata),
-                            ]
-            with m.If(decoder.rd_addr == 0):
+
+                ### WB
+                rmask = Signal(4)
                 comb += [
-                    registers.rd_data.eq(0),
+                    registers.rd_addr.eq(decoder.rd_addr),
+                ]
+                with m.Switch(decoder.reg_src_type):
+                    with m.Case(RegSrc.ALU):
+                        comb += [
+                            registers.rd_data.eq(alu.out),
+                        ]
+                    with m.Case(RegSrc.PC_INCR):
+                        comb += [
+                            registers.rd_data.eq(pc + 4),
+                        ]
+                    with m.Case(RegSrc.MEM):
+                        with m.Switch(decoder.load_func):
+                            with m.Case(LoadFunc.LB, LoadFunc.LBU):
+                                byte = self.dmem_rdata.word_select(
+                                    self.dmem_addr[0:2], 8
+                                )
+                                comb += [
+                                    rmask.eq(1 << self.dmem_addr[0:2]),
+                                    registers.rd_data.eq(
+                                        Mux(
+                                            decoder.load_func[2], byte, byte.as_signed()
+                                        )
+                                    ),
+                                ]
+                            with m.Case(LoadFunc.LH, LoadFunc.LHU):
+                                half = self.dmem_rdata.word_select(
+                                    self.dmem_addr[0], 16
+                                )
+                                comb += [
+                                    rmask.eq(0b11 << (self.dmem_addr[0] << 1)),
+                                    registers.rd_data.eq(
+                                        Mux(
+                                            decoder.load_func[2], half, half.as_signed()
+                                        )
+                                    ),
+                                ]
+                            with m.Case(LoadFunc.LW):
+                                comb += [
+                                    rmask.eq(0b1111),
+                                    registers.rd_data.eq(self.dmem_rdata),
+                                ]
+                with m.If(decoder.rd_addr == 0):
+                    comb += [
+                        registers.rd_data.eq(0),
+                    ]
+
+                bc_ne = (registers.rs1_rdata ^ registers.rs2_rdata).any()
+                bc_lt = (
+                    registers.rs1_rdata.as_signed() < registers.rs2_rdata.as_signed()
+                )
+                bc_ltu = (
+                    registers.rs1_rdata.as_unsigned()
+                    < registers.rs2_rdata.as_unsigned()
+                )
+                branch_taken = (
+                    (decoder.branch_cond == BranchCond.ALWAYS)
+                    | ((decoder.branch_cond == BranchCond.NE) & bc_ne)
+                    | ((decoder.branch_cond == BranchCond.EQ) & ~bc_ne)
+                    | ((decoder.branch_cond == BranchCond.LT) & bc_lt)
+                    | ((decoder.branch_cond == BranchCond.GE) & ~bc_lt)
+                    | ((decoder.branch_cond == BranchCond.LTU) & bc_ltu)
+                    | ((decoder.branch_cond == BranchCond.GEU) & ~bc_ltu)
+                )
+
+                comb += [
+                    self.imem_addr.eq(
+                        Mux(
+                            branch_taken,
+                            alu.out,
+                            pc + 4,
+                        )
+                    ),
                 ]
 
-            bc_ne = (registers.rs1_rdata ^ registers.rs2_rdata).any()
-            bc_lt = registers.rs1_rdata.as_signed() < registers.rs2_rdata.as_signed()
-            bc_ltu = (
-                registers.rs1_rdata.as_unsigned() < registers.rs2_rdata.as_unsigned()
-            )
-            branch_taken = (
-                (decoder.branch_cond == BranchCond.ALWAYS)
-                | ((decoder.branch_cond == BranchCond.NE) & bc_ne)
-                | ((decoder.branch_cond == BranchCond.EQ) & ~bc_ne)
-                | ((decoder.branch_cond == BranchCond.LT) & bc_lt)
-                | ((decoder.branch_cond == BranchCond.GE) & ~bc_lt)
-                | ((decoder.branch_cond == BranchCond.LTU) & bc_ltu)
-                | ((decoder.branch_cond == BranchCond.GEU) & ~bc_ltu)
-            )
+                with m.If(decoder.trap):
+                    comb += [self.trap.eq(1), self.mcause.eq(decoder.mcause)]
+                with m.Elif(self.imem_addr[0:2].any()):
+                    comb += [self.trap.eq(1), self.mcause.eq(TrapCause.IADDR)]
+                with m.Elif(self.dmem_addr[0:2].any()):
+                    comb += [
+                        self.trap.eq(1),
+                        self.mcause.eq(
+                            Mux(
+                                decoder.mem_wmask.any(),
+                                TrapCause.DADDR_S,
+                                TrapCause.DADDR_L,
+                            )
+                        ),
+                    ]
 
-            comb += [
-                self.imem_addr.eq(
-                    Mux(
-                        branch_taken,
-                        alu.out,
-                        pc + 4,
-                    )
-                ),
-            ]
-
-            with m.If(decoder.mcause.any()):
-                comb += [self.trap.eq(1), self.mcause.eq(decoder.mcause)]
-                sync += [self.halt.eq(1)]
-            with m.Elif((self.imem_addr[0:2] | self.dmem_addr[0:2]).any()):
-                comb += [self.trap.eq(1), self.mcause.eq(-1)]
-                sync += [self.halt.eq(1)]
-            with m.Else():
+                with m.If(self.trap):
+                    with m.If(self.mcause==TrapCause.M_ECALL):
+                        pass
+                    with m.Else():
+                        comb += [
+                            self.halt.eq(1)
+                        ]
+                        m.next = "HALT"
+                        
                 sync += [
-                    pc.eq(self.imem_addr),
                     self.minstret.eq(self.minstret + 1),
+                    pc.eq(self.imem_addr),
+                ]
+
+            with m.State("HALT"):
+                comb += [
+                    self.trap.eq(1),
+                    self.halt.eq(1),
                 ]
 
         comb += [
-            self.rvfi.valid.eq(~self.trap),
+            self.rvfi.valid.eq(~self.halt),
             self.rvfi.pc_wdata.eq(self.imem_addr),
             self.rvfi.pc_rdata.eq(pc),
             self.rvfi.rd_wdata.eq(registers.rd_data),

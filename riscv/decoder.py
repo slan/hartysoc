@@ -10,6 +10,7 @@ class Decoder(Elaboratable):
         self.pc = Signal(32)
 
         # Out
+        self.trap = Signal()
         self.mcause = Signal(32)
         self.rs1_addr = Signal(5)
         self.rs2_addr = Signal(5)
@@ -28,6 +29,9 @@ class Decoder(Elaboratable):
     def elaborate(self, platform):
         m = Module()
         comb = m.d.comb
+
+        def trap(mcause, comb=comb):
+            comb += [self.trap.eq(1), self.mcause.eq(mcause)]
 
         with m.Switch(self.insn):
             with m.Case("-------------------------0110111"):  # LUI
@@ -97,8 +101,8 @@ class Decoder(Elaboratable):
                     self.branch_cond.eq(self.insn[12:15]),
                 ]
                 with m.If(self.insn[13] & ~self.insn[14]):
-                    comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
-            with m.Case("-------------------------0000011"):  # Lxx
+                    trap(TrapCause.INSN)
+            with m.Case("-------------------------0000011"):  # LOAD
                 comb += [
                     self.rs1_addr.eq(self.insn[15:20]),
                     self.alu_src2_type.eq(AluSrc2.IMM),
@@ -112,9 +116,9 @@ class Decoder(Elaboratable):
                     with m.Case("000", "001", "010", "100", "101"):
                         pass
                     with m.Default():
-                        comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+                        trap(TrapCause.INSN)
 
-            with m.Case("-------------------------0100011"):  # Sxx
+            with m.Case("-------------------------0100011"):  # STORE
                 comb += [
                     self.rs1_addr.eq(self.insn[15:20]),
                     self.alu_src2_type.eq(AluSrc2.IMM),
@@ -136,7 +140,7 @@ class Decoder(Elaboratable):
                             self.mem_wmask.eq(0b1111),
                         ]
                     with m.Default():
-                        comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+                        trap(TrapCause.INSN)
 
             # ADDI SLTI SLTIU XORI ORI ANDI SLLI SRLI SRAI
             with m.Case("-------------------------0010011"):
@@ -162,7 +166,7 @@ class Decoder(Elaboratable):
                         ]
                     with m.Case(AluFunc.SLL):
                         with m.If(self.insn[30]):
-                            comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+                            trap(TrapCause.INSN)
                         comb += [
                             self.imm.eq(self.insn[20:25]),
                         ]
@@ -172,7 +176,7 @@ class Decoder(Elaboratable):
                             self.alu_func_ex.eq(self.insn[30]),
                         ]
                     with m.Default():
-                        comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+                        trap(TrapCause.INSN)
 
             # ADD SUB SLL SLT SLTU XOR SRL SRA OR AND
             with m.Case("0-00000------------------0110011"):
@@ -192,12 +196,23 @@ class Decoder(Elaboratable):
                         comb += [
                             self.alu_func_ex.eq(self.insn[30]),
                         ]
-                    with m.Case(AluFunc.SLL, AluFunc.SLT, AluFunc.SLTU, AluFunc.XOR, AluFunc.OR, AluFunc.AND):
+                    with m.Case(
+                        AluFunc.SLL,
+                        AluFunc.SLT,
+                        AluFunc.SLTU,
+                        AluFunc.XOR,
+                        AluFunc.OR,
+                        AluFunc.AND,
+                    ):
                         with m.If(self.insn[30]):
-                            comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+                            trap(TrapCause.INSN)
                     with m.Default():
-                        comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+                        trap(TrapCause.INSN)
+            # ECALL
+            with m.Case("00000000000000000000000001110011"):
+                trap(TrapCause.M_ECALL)
+
             with m.Default():
-                comb += [self.mcause.eq(TrapCause.ILLEGAL_INSTRUCTION)]
+                trap(TrapCause.INSN)
 
         return m
