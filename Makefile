@@ -1,8 +1,7 @@
-SRCS := $(wildcard riscv/*.py) $(wildcard kitchensink/*.py)
-FORMAL_SRCS := checks.cfg wrapper.sv
-RISCV_FORMAL_CORE := ~/src/riscv-formal/cores/HelloArty
-PYTHONPATH := ~/src/HelloArty
+RISCV_FORMAL_ROOT := ~/src/riscv-formal
+PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
+SRCS := $(shell find src/rtl -name \*.py)
 INSNS_TESTS := \
 	lui \
 	auipc \
@@ -43,60 +42,62 @@ INSNS_TESTS := \
 	and \
 
 OTHER_TESTS := reg causal pc_fwd pc_bwd
-FORMAL_TGTS := $(foreach src,${FORMAL_SRCS},${RISCV_FORMAL_CORE}/$(src))
+FORMAL_SRCS := $(wildcard platform/formal/*)
 TESTS := $(foreach test,${OTHER_TESTS},$(test)_ch0) $(foreach test,${INSNS_TESTS},insn_$(test)_ch0)
 
 _dummy := $(shell mkdir -p build)
 
-CC=~/riscv64-unknown-elf-gcc-10.1.0-2020.08.2-x86_64-linux-ubuntu14/bin/riscv64-unknown-elf-gcc
+CC=riscv64-unknown-elf-gcc
+CFLAGS=-save-temps=obj -O3
 TARGET_ARCH=-march=rv32i -mabi=ilp32
-CFLAGS=-save-temps=obj
 LDFLAGS=-nostdlib
-OUTPUT_OPTION=-o $@
 
-all: build/main.elf
+all:
+	echo 
+
+build/%.o: %.s
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+	#riscv64-unknown-elf-objdump -d -t -r $@
 
 build/%.o: %.c
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
-	riscv64-unknown-elf-objdump -d -t -r $@
+	#riscv64-unknown-elf-objdump -d -t -r $@
 
 build/main.elf: build/main.o
 	$(LINK.o) $(OUTPUT_OPTION) $<
-	riscv64-unknown-elf-objdump -d -t -r $@
+	#riscv64-unknown-elf-objdump -d -S -t -r $@
+
+build/bootcode.elf: build/bootcode.o script.ld
+	$(LINK.o) $(OUTPUT_OPTION) -T script.ld $<
 
 simwave: sim
 	gtkwave build/sim/top.vcd gtk-sim.gtkw&
 
-formal: $(foreach test, ${TESTS}, ${RISCV_FORMAL_CORE}/checks/$(test)/PASS)
-	@rm -rf build/formal&&mkdir -p build/formal
-	@cd build/formal && \
-		files_pass="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/PASS))" && \
-		files_fail="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/FAIL))" && \
-		files_error="$(dir $(wildcard ${RISCV_FORMAL_CORE}/checks/*/ERROR))" && \
-		for i in $$files_error; do \
-			echo $$i; \
-		done>>asserts.txt && \
-		for i in $$files_fail; do \
-			[ $$sep ] && echo && echo --------------------------------------------------------------------------------; \
-			cp $$i/engine_0/trace.vcd $$(basename $$i).vcd; \
-			cp $$i/engine_0/logfile.txt $$(basename $$i).txt; \
-			python ${PYTHONPATH}/disasm.py $$i/engine_0/trace.vcd $$(basename $$i); \
-			echo; \
-			grep "Assert failed" $$i/logfile.txt; \
-			sep=1; \
-		done>>asserts.txt && \
-		[ -s asserts.txt ] && \
-			echo && echo -------------------------------------------------------------------------------- && \
-			cat asserts.txt && \
-			echo && \
-			echo -n " PASS: " && echo "$$files_pass" | wc -w && \
-			echo -n " FAIL: " && echo "$$files_fail" | wc -w && \
-			echo -n "ERROR: " && echo "$$files_error" | wc -w \
-		|| echo "All tests passed!"
+formal: $(foreach test, ${TESTS}, build/formal/checks/$(test)/PASS)
+	@echo
+	@files_fail="$(shell find build/formal -name FAIL -exec dirname {} \;)" && \
+	files_pass="$(shell find build/formal -name PASS -exec dirname {} \;)" && \
+	for i in $$files_fail; do \
+		[ $$sep ] && echo && echo --------------------------------------------------------------------------------; \
+		python platform/formal/disasm.py $$i/engine_0/trace.vcd build/formal/$$(basename $$i); \
+		echo; \
+		grep "Assert failed" $$i/logfile.txt; \
+		sep=1; \
+	done | tee build/formal/asserts.txt && \
+	echo && echo -------------------------------------------------------------------------------- && \
+	echo -n " PASS: " && echo -n "$$files_pass" | wc -w && \
+	echo -n " FAIL: " && echo "$$files_fail" | wc -w && for i in $$files_fail; do echo $$i/engine_0/trace.vcd; done
 
-${RISCV_FORMAL_CORE}/checks/%/PASS: ${SRCS} ${FORMAL_TGTS}
+build/formal/checks/%/PASS: ${SRCS} ${FORMAL_SRCS} | build/formal/checks
 	rm -rf $(dir $@)
-	cd ${RISCV_FORMAL_CORE}&&PYTHONPATH=${PYTHONPATH} make -C checks $*
+	PYTHONPATH=${PROJECT_ROOT}/src/rtl make -C build/formal/checks $*
+
+build/formal/checks: ${SRCS} ${FORMAL_SRCS} | build/formal
+	cp ${FORMAL_SRCS} build/formal
+	cd build/formal&&python ${RISCV_FORMAL_ROOT}/checks/genchecks.py checks ${RISCV_FORMAL_ROOT} ${PROJECT_ROOT}/platform/formal
+
+build/formal:
+	mkdir -p build/formal
 
 build/__init__.py: build/bootcode.elf
 	@riscv64-unknown-elf-objcopy -O binary $< build/$*.tmp
@@ -105,28 +106,21 @@ build/__init__.py: build/bootcode.elf
 	@echo "]" >> $@
 
 sim: build/__init__.py
-	python3 top.py sim
+	python top.py sim
 
 arty: build/arty/top.bit
 
 build/arty/top.bit: build/__init__.py #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
-	python3 top.py arty
+	python top.py arty
 
-prog: build/arty/top.bit
-	djtgcfg prog -d Arty -i 0 -f $<
-
-${FORMAL_TGTS}: ${FORMAL_SRCS} | ${RISCV_FORMAL_CORE}/checks
-
-${RISCV_FORMAL_CORE}/checks: ${SRCS}
-	mkdir -p ${RISCV_FORMAL_CORE}
-	cp ${FORMAL_SRCS} ${RISCV_FORMAL_CORE}
-	cd ${RISCV_FORMAL_CORE}&&python ../../checks/genchecks.py
+prog: build/arty/top.bit digilent_arty.cfg
+	openocd -f digilent_arty.cfg -c "init;pld load 0 $<;shutdown"
 
 build/formal/top.il: ${SRCS}
-	python3 top.py formal
+	python top.py formal
 
 clean:
-	rm -rf build ${RISCV_FORMAL_CORE}
+	rm -rf build
 
 build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci: mig.tcl mig_a.prj
 	mkdir -p build/vivado

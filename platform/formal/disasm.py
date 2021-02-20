@@ -29,13 +29,12 @@ for tv_valid, tv_order, tv_insn in zip(rvfi_valid, rvfi_order, rvfi_insn):
 
 out_name = argv[2]
 
-with open(f"{out_name}-raw.s", "w") as f:
+with open(f"{out_name}-hex.s", "w") as f:
     for tv_order, tv_insn in sorted(prog):
         if tv_insn & 3 != 3 and tv_insn & 0xffff0000 == 0:
             print(".hword 0x%04x # %d" % (tv_insn, tv_order), file=f)
         else:
             print(".word 0x%08x # %d" % (tv_insn, tv_order), file=f)
 
-system(f"riscv64-unknown-elf-gcc -c {out_name}-raw.s")
-system(f"riscv64-unknown-elf-objdump -d -M numeric,no-aliases {out_name}-raw.o|tee {out_name}.s")
-system(f"rm {out_name}-raw.o")
+system(f"riscv64-unknown-elf-gcc -c {out_name}-hex.s -o {out_name}.o")
+system(f"riscv64-unknown-elf-objdump -d -M numeric,no-aliases {out_name}.o|tee {out_name}.s")

@@ -58,7 +58,7 @@ class Top(Elaboratable):
                             a7 = yield hart.registers._rp1.memory._array[17]
                             if a7 == SBI_EXT_0_1_CONSOLE_PUTCHAR:
                                 a0 = yield hart.registers._rp1.memory._array[10]
-                                print(chr(a0))
+                                print(a0)
                                 continue
                                 # ret.error = a0;
                                 # ret.value = a1;
@@ -150,7 +150,7 @@ if __name__ == "__main__":
         exit()
 
     platform.add_resources(additional_resources)
-    fragment = Fragment.get(Top(), platform)
+    fragment = Fragment.get(VGA(), platform)
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
@@ -158,8 +158,9 @@ if __name__ == "__main__":
         do_program=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
-set_property CFGBVS VCCO [current_design]
-set_property CONFIG_VOLTAGE 3.3 [current_design]
+
+# set_property CFGBVS VCCO [current_design]
+# set_property CONFIG_VOLTAGE 3.3 [current_design]
 
 #add_files /home/slan/src/HelloArty/testbench.v
 #set_property used_in_synthesis false [get_files  /home/slan/src/HelloArty/testbench.v]
