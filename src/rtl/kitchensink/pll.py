@@ -67,7 +67,7 @@ class PLL(Elaboratable):
                         cd,
                         0,
                         Pins(cd, dir="i"),
-                        Clock(self.mult * platform.default_clk_frequency / self.div / div),
+                        Clock(10000),#self.mult * platform.default_clk_frequency / self.div / div),
                     ) for (cd, div) in self._domains
                 ]
             )

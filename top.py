@@ -1,14 +1,14 @@
 import datetime as dt
-import sys
+import array, sys
 
 from nmigen import *
 from nmigen.build import *
 from nmigen_boards.arty_a7 import ArtyA7Platform
 
-from build import *
-from kitchensink import *
-from riscv import *
+from src.rtl.riscv import *
+from src.rtl.kitchensink import *
 
+__all__ = ["main"]
 
 class Top(Elaboratable):
     def elaborate(self, platform):
@@ -17,8 +17,13 @@ class Top(Elaboratable):
         m = Module()
         m.submodules.pll = PLL(mult=16, div=1, domains=[(domain, 20)])
         m.submodules.hart = hart = Hart(domain=domain)
-        m.submodules.imem = imem = ROM(bootcode)
-        m.submodules.dmem = dmem = RAM([], domain=domain)
+        m.submodules.imem = imem = ROM(1024//4)
+        m.submodules.dmem = dmem = RAM(1024//4, domain=domain)
+
+        with open("build/firmware.bin", mode='rb') as f:
+            data = array.array("I")
+            data.frombytes(f.read())
+            imem.set_content(data)
 
         comb = m.d.comb
         sync = m.d[domain]
@@ -45,7 +50,7 @@ class Top(Elaboratable):
 
             def process():
                 print("~" * 148)
-                for _ in range(200):
+                for _ in range(1000):
                     yield
                     yield Settle()
                     trap = yield hart.trap
@@ -58,7 +63,7 @@ class Top(Elaboratable):
                             a7 = yield hart.registers._rp1.memory._array[17]
                             if a7 == SBI_EXT_0_1_CONSOLE_PUTCHAR:
                                 a0 = yield hart.registers._rp1.memory._array[10]
-                                print(a0)
+                                print(chr(a0))
                                 continue
                                 # ret.error = a0;
                                 # ret.value = a1;
@@ -69,12 +74,6 @@ class Top(Elaboratable):
                             mcycle = yield hart.mcycle
                             minstret = yield hart.minstret
 
-                            time = dt.timedelta(
-                                seconds=mcycle / platform.default_clk_frequency
-                            )
-                            print(
-                                f"Running time: {time} @{platform.default_clk_frequency}Hz"
-                            )
                             cpi = mcycle / minstret if minstret != 0 else "N/A"
                             print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
                             print("-" * 148)
@@ -96,8 +95,7 @@ class Top(Elaboratable):
 
         return m
 
-
-if __name__ == "__main__":
+def main():
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None
 
     if platform_name == "formal":
@@ -105,7 +103,7 @@ if __name__ == "__main__":
         additional_resources = []
 
     elif platform_name == "sim":
-        platform = SimPlatform(100)
+        platform = SimPlatform(200)
         additional_resources = [
             Resource("led", 0, Pins("led0", dir="o")),
             Resource("led", 1, Pins("led1", dir="o")),
@@ -150,7 +148,7 @@ if __name__ == "__main__":
         exit()
 
     platform.add_resources(additional_resources)
-    fragment = Fragment.get(VGA(), platform)
+    fragment = Fragment.get(Top(), platform)
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
@@ -159,12 +157,12 @@ if __name__ == "__main__":
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 
-# set_property CFGBVS VCCO [current_design]
-# set_property CONFIG_VOLTAGE 3.3 [current_design]
-
 #add_files /home/slan/src/HelloArty/testbench.v
 #set_property used_in_synthesis false [get_files  /home/slan/src/HelloArty/testbench.v]
 #set_property used_in_implementation false [get_files  /home/slan/src/HelloArty/testbench.v]
 #update_compile_order -fileset sources_1
         """,
     )
+
+if __name__ == "__main__":
+    main()

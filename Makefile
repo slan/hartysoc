@@ -1,79 +1,30 @@
-RISCV_FORMAL_ROOT := ~/src/riscv-formal
-PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+ROOT_RISCV_FORMAL := ~/src/riscv-formal
+ROOT_PROJECT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-SRCS := $(shell find src/rtl -name \*.py)
-INSNS_TESTS := \
-	lui \
-	auipc \
-	jal \
-	jalr \
-	beq \
-	bne \
-	blt \
-	bge \
-	bltu \
-	bgeu \
-	lb \
-	lh \
-	lw \
-	lbu \
-	lhu \
-	sb \
-	sh \
-	sw \
-	addi \
-	slti \
-	sltiu \
-	xori \
-	ori \
-	andi \
-	slli \
-	srli \
-	srai \
-	add \
-	sub \
-	sll \
-	slt \
-	sltu \
-	xor \
-	srl \
-	sra \
-	or \
-	and \
+SRCS_RTL := top.py $(shell find src/rtl -name \*.py)
+SRCS_FORMAL := $(wildcard platform/formal/*)
+SRCS_FIRMWARE := src/firmware/crt0.s src/firmware/main.c
+OBJS_FIRMWARE := $(SRCS_FIRMWARE:src/firmware/%=build/firmware/%.o)
 
-OTHER_TESTS := reg causal pc_fwd pc_bwd
-FORMAL_SRCS := $(wildcard platform/formal/*)
-TESTS := $(foreach test,${OTHER_TESTS},$(test)_ch0) $(foreach test,${INSNS_TESTS},insn_$(test)_ch0)
-
-_dummy := $(shell mkdir -p build)
+TESTS_INSN := lui auipc jal jalr beq bne blt bge bltu bgeu lb lh lw lbu lhu sb sh sw addi slti sltiu xori ori andi slli srli srai add sub sll slt sltu xor srl sra or and
+TESTS_XTRA := reg causal pc_fwd pc_bwd
+TESTS_ALL := $(foreach test,${TESTS_XTRA},$(test)_ch0) $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
 
 CC=riscv64-unknown-elf-gcc
-CFLAGS=-save-temps=obj -O3
+CFLAGS=-save-temps=obj
 TARGET_ARCH=-march=rv32i -mabi=ilp32
-LDFLAGS=-nostdlib
+LDFLAGS=-nostdlib -T src/firmware/script.ld
 
-all:
-	echo 
+all: sim
 
-build/%.o: %.s
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
-	#riscv64-unknown-elf-objdump -d -t -r $@
-
-build/%.o: %.c
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
-	#riscv64-unknown-elf-objdump -d -t -r $@
-
-build/main.elf: build/main.o
-	$(LINK.o) $(OUTPUT_OPTION) $<
-	#riscv64-unknown-elf-objdump -d -S -t -r $@
-
-build/bootcode.elf: build/bootcode.o script.ld
-	$(LINK.o) $(OUTPUT_OPTION) -T script.ld $<
+sim: firmware
+	riscv64-unknown-elf-objdump -d -M numeric,no-aliases build/firmware/firmware.elf
+	python top.py sim
 
 simwave: sim
-	gtkwave build/sim/top.vcd gtk-sim.gtkw&
+	gtkwave build/sim/top.vcd platform/sim/sim.gtkw&
 
-formal: $(foreach test, ${TESTS}, build/formal/checks/$(test)/PASS)
+formal: $(foreach test, ${TESTS_ALL}, build/formal/checks/$(test)/PASS)
 	@echo
 	@files_fail="$(shell find build/formal -name FAIL -exec dirname {} \;)" && \
 	files_pass="$(shell find build/formal -name PASS -exec dirname {} \;)" && \
@@ -88,45 +39,53 @@ formal: $(foreach test, ${TESTS}, build/formal/checks/$(test)/PASS)
 	echo -n " PASS: " && echo -n "$$files_pass" | wc -w && \
 	echo -n " FAIL: " && echo "$$files_fail" | wc -w && for i in $$files_fail; do echo $$i/engine_0/trace.vcd; done
 
-build/formal/checks/%/PASS: ${SRCS} ${FORMAL_SRCS} | build/formal/checks
-	rm -rf $(dir $@)
-	PYTHONPATH=${PROJECT_ROOT}/src/rtl make -C build/formal/checks $*
+firmware: build/firmware.bin
 
-build/formal/checks: ${SRCS} ${FORMAL_SRCS} | build/formal
-	cp ${FORMAL_SRCS} build/formal
-	cd build/formal&&python ${RISCV_FORMAL_ROOT}/checks/genchecks.py checks ${RISCV_FORMAL_ROOT} ${PROJECT_ROOT}/platform/formal
+prog: build/arty/top.bit platform/arty/digilent_arty.cfg
+	openocd -f platform/arty/digilent_arty.cfg -c "init;pld load 0 $<;shutdown"
+
+clean:
+	rm -rf build
+
+mig: build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+
+arty: ${RTL_SRCS} firmware
+	python top.py arty
+
+.PHONY: all sim simwave formal firmware arty prog clean mig arty
+
+################################################################################
+
+build/firmware.bin: build/firmware/firmware.elf
+	riscv64-unknown-elf-objcopy -O binary $< $@
+
+build/firmware/firmware.elf: ${OBJS_FIRMWARE} src/firmware/script.ld
+	$(LINK.o) $(OUTPUT_OPTION) ${OBJS_FIRMWARE}
+
+build/firmware/%.c.o: src/firmware/%.c | build/firmware
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+
+build/firmware/%.s.o: src/firmware/%.s | build/firmware
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+
+build/firmware:
+	mkdir -p $@
+
+build/formal/checks/%/PASS: ${SRCS_RTL} ${SRCS_FORMAL} | build/formal/checks
+	rm -rf $(dir $@)
+	PYTHONPATH=${ROOT_PROJECT}/src/rtl make -C build/formal/checks $*
+
+build/formal/checks: ${SRCS_RTL} ${SRCS_FORMAL} | build/formal
+	cp ${SRCS_FORMAL} build/formal
+	cd build/formal&&python ${ROOT_RISCV_FORMAL}/checks/genchecks.py checks ${ROOT_RISCV_FORMAL} ${ROOT_PROJECT}/platform/formal
 
 build/formal:
 	mkdir -p build/formal
 
-build/__init__.py: build/bootcode.elf
-	@riscv64-unknown-elf-objcopy -O binary $< build/$*.tmp
-	@echo "bootcode = [" > $@
-	@hexdump build/$*.tmp -v -e "\"\t0x\" \"%08x,\n\"" >>$@
-	@echo "]" >> $@
-
-sim: build/__init__.py
-	python top.py sim
-
-arty: build/arty/top.bit
-
-build/arty/top.bit: build/__init__.py #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+build/arty/top.bit: ${RTL_SRCS} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 	python top.py arty
-
-prog: build/arty/top.bit digilent_arty.cfg
-	openocd -f digilent_arty.cfg -c "init;pld load 0 $<;shutdown"
-
-build/formal/top.il: ${SRCS}
-	python top.py formal
-
-clean:
-	rm -rf build
 
 build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci: mig.tcl mig_a.prj
 	mkdir -p build/vivado
 	vivado -mode batch -source mig.tcl -nolog -nojournal
 
-mig: build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
-
-.PHONY: all formal sim arty prog clean mig
-.PRECIOUS: build/%.elf

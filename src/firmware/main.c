@@ -41,5 +41,7 @@ void sbi_console_putchar(int ch)
 
 int main()
 {
-	sbi_console_putchar('!');
+	for(int i=0; i<5; ++i) {
+		sbi_console_putchar('!');
+	}
 }

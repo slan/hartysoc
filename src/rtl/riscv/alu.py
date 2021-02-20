@@ -1,6 +1,6 @@
 from nmigen import *
 
-from riscv.enums import *
+from .enums import *
 
 
 class ALU(Elaboratable):

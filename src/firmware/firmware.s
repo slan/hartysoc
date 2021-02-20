@@ -5,7 +5,7 @@ loop:
     addi x6, x6, -1
     bne x6, x0, loop
 
-    lb a0,msg
+    li a0,'!'
     li a7,1
     ecall
 
@@ -13,7 +13,3 @@ loop:
     lw x28,28(x0)
 
     lui x29,0x12345
-
-.data
-msg:
-    .byte '!'

@@ -2,9 +2,8 @@ from nmigen import *
 
 
 class RAM(Elaboratable):
-    def __init__(self, init, domain):
-        self.init = init
-        mem = Memory(width=32, depth=256, init=self.init)
+    def __init__(self, depth, domain):
+        mem = Memory(width=32, depth=depth)
         self.read_port = mem.read_port(domain="comb")
         self.write_port = mem.write_port(domain=domain, granularity=8)
         self.addr = Signal(32)

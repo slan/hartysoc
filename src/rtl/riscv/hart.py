@@ -1,10 +1,9 @@
 from nmigen import *
 from nmigen.hdl.rec import *
 
-from riscv.enums import *
-
+from .enums import *
 from .alu import *
-from .decoder import Decoder
+from .decoder import *
 from .registers import *
 
 rvfi_layout = [
