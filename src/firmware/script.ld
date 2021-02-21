@@ -1,4 +1,13 @@
+/*
+MEMORY
+{
+    ROM (rx) : ORIGIN = 0x00000000, LENGTH = 0x400
+    RAM (rw) : ORIGIN = 0x00001000, LENGTH = 0x400
+}
+*/
 SECTIONS
 {
-    .root : { build/firmware/crt0.s.o(.text) *(.text) }
+   .firmware : {
+        build/firmware/*.o(.text);
+    }
 }

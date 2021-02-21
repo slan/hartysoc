@@ -10,6 +10,7 @@ from src.rtl.kitchensink import *
 
 __all__ = ["main"]
 
+
 class Top(Elaboratable):
     def elaborate(self, platform):
         domain = "hart"
@@ -17,13 +18,17 @@ class Top(Elaboratable):
         m = Module()
         m.submodules.pll = PLL(mult=16, div=1, domains=[(domain, 20)])
         m.submodules.hart = hart = Hart(domain=domain)
-        m.submodules.imem = imem = ROM(1024//4)
-        m.submodules.dmem = dmem = RAM(1024//4, domain=domain)
+        icache = Memory(width=32, depth=4096 // 4)
+        dcache = Memory(width=32, depth=4096 // 4)
+        m.submodules.imem_rp = imem_rp = icache.read_port(domain="comb")
+        m.submodules.dmem_rp = dmem_rp = dcache.read_port(domain="comb")
+        m.submodules.dmem_wp = dmem_wp = dcache.write_port(domain=domain, granularity=8)
 
-        with open("build/firmware.bin", mode='rb') as f:
-            data = array.array("I")
-            data.frombytes(f.read())
-            imem.set_content(data)
+        with open("build/firmware.bin", mode="rb") as f:
+            content = array.array("I")
+            assert content.itemsize == 4
+            content.fromfile(f, os.stat(f.name).st_size // 4)
+            icache.init = content
 
         comb = m.d.comb
         sync = m.d[domain]
@@ -32,19 +37,17 @@ class Top(Elaboratable):
             comb += platform.request("led").eq(1)
 
         comb += [
-            # imem read
-            hart.imem_data.eq(imem.data),
-            # dmem read
-            dmem.addr.eq(hart.dmem_addr),
-            hart.dmem_rdata.eq(dmem.rdata),
-            # dmem write
-            dmem.wmask.eq(hart.dmem_wmask),
-            dmem.wdata.eq(hart.dmem_wdata),
+            # mem read
+            dmem_rp.addr.eq(hart.dmem_addr[2:32]),
+            hart.dmem_rdata.eq(dmem_rp.data),
+            # mem write
+            dmem_wp.en.eq(hart.dmem_wmask),
+            dmem_wp.addr.eq(hart.dmem_addr[2:32]),
+            dmem_wp.data.eq(hart.dmem_wdata),
         ]
-
-        sync += [
-            imem.addr.eq(hart.imem_addr),
-        ]
+        # mem fetch
+        comb += [hart.imem_data.eq(imem_rp.data)]
+        sync += [imem_rp.addr.eq(hart.imem_addr[2:32])]
 
         if isinstance(platform, SimPlatform):
 
@@ -63,13 +66,18 @@ class Top(Elaboratable):
                             a7 = yield hart.registers._rp1.memory._array[17]
                             if a7 == SBI_EXT_0_1_CONSOLE_PUTCHAR:
                                 a0 = yield hart.registers._rp1.memory._array[10]
-                                print(chr(a0))
+                                print(chr(a0), end='')
+                                any_out = True
                                 continue
                                 # ret.error = a0;
                                 # ret.value = a1;
                         else:
+                            if any_out:
+                                print()
                             print("~" * 148)
-                            print(f"*** TRAP - MCAUSE={TrapCause(mcause).name}/{mcause} ***")
+                            print(
+                                f"*** TRAP - MCAUSE={TrapCause(mcause).name}/{mcause} ***"
+                            )
 
                             mcycle = yield hart.mcycle
                             minstret = yield hart.minstret
@@ -94,6 +102,7 @@ class Top(Elaboratable):
             platform.add_sync_process(process, domain=domain)
 
         return m
+
 
 def main():
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None
@@ -152,7 +161,7 @@ def main():
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
-        run_script=False,
+        run_script=True,
         do_program=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
@@ -163,6 +172,7 @@ def main():
 #update_compile_order -fileset sources_1
         """,
     )
+
 
 if __name__ == "__main__":
     main()

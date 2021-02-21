@@ -1,4 +1,6 @@
-    .globl _start
-_start:
-    jal main
-    .word 0
+    .section .text
+
+    lui sp,0
+    jal ra,main
+
+    .word 0x00000000
