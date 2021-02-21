@@ -2,6 +2,16 @@ from enum import Enum, unique
 
 
 @unique
+class MemAccessType(Enum):
+    NONE = 0b111
+    B = 0b000
+    H = 0b001
+    W = 0b010
+    BU = 0b100
+    HU = 0b101
+
+
+@unique
 class AluSrc1(Enum):
     REG = 0
     PC = 1
@@ -28,7 +38,7 @@ class TrapCause(Enum):
     DADDR_L = 4
     DADDR_S = 6
     INSN = 2
-    M_ECALL=11
+    M_ECALL = 11
 
 
 @unique
@@ -53,11 +63,3 @@ class AluFunc(Enum):
     SRL_SRA = 0b101
     OR = 0b110
     AND = 0b111
-
-@unique
-class LoadFunc(Enum):
-    LB = 0b000
-    LH = 0b001
-    LW = 0b010
-    LBU = 0b100
-    LHU = 0b101

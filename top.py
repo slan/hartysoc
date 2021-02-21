@@ -1,5 +1,5 @@
 import datetime as dt
-import array, sys
+import array, sys, random
 
 from nmigen import *
 from nmigen.build import *
@@ -29,6 +29,7 @@ class Top(Elaboratable):
             assert content.itemsize == 4
             content.fromfile(f, os.stat(f.name).st_size // 4)
             icache.init = content
+            dcache.init = content
 
         comb = m.d.comb
         sync = m.d[domain]
@@ -44,16 +45,18 @@ class Top(Elaboratable):
             dmem_wp.en.eq(hart.dmem_wmask),
             dmem_wp.addr.eq(hart.dmem_addr[2:32]),
             dmem_wp.data.eq(hart.dmem_wdata),
+            # mem fetch
+            hart.imem_data.eq(imem_rp.data),
+            imem_rp.addr.eq(hart.imem_addr[2:32]),
         ]
-        # mem fetch
-        comb += [hart.imem_data.eq(imem_rp.data)]
-        sync += [imem_rp.addr.eq(hart.imem_addr[2:32])]
 
         if isinstance(platform, SimPlatform):
 
             def process():
                 print("~" * 148)
+                any_out = False
                 for _ in range(1000):
+                    #yield hart.imem_stall.eq(random.randrange(100)<90)
                     yield
                     yield Settle()
                     trap = yield hart.trap
@@ -66,7 +69,7 @@ class Top(Elaboratable):
                             a7 = yield hart.registers._rp1.memory._array[17]
                             if a7 == SBI_EXT_0_1_CONSOLE_PUTCHAR:
                                 a0 = yield hart.registers._rp1.memory._array[10]
-                                print(chr(a0), end='')
+                                print(chr(a0), end="")
                                 any_out = True
                                 continue
                                 # ret.error = a0;

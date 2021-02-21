@@ -4,7 +4,8 @@ ROOT_PROJECT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 SRCS_RTL := top.py $(shell find src/rtl -name \*.py)
 SRCS_FORMAL := $(wildcard platform/formal/*)
 SRCS_FIRMWARE := src/firmware/sbi.c src/firmware/crt0.s src/firmware/dhry1.c src/firmware/dhry2.c src/firmware/stdlib.c
-SRCS_FIRMWARE := src/firmware/firmware.s
+SRCS_FIRMWARE := src/firmware/crt0.s src/firmware/main.c src/firmware/sbi.c src/firmware/stdlib.c
+# SRCS_FIRMWARE := src/firmware/firmware.s
 OBJS_FIRMWARE := $(SRCS_FIRMWARE:src/firmware/%=build/firmware/%.o)
 
 TESTS_INSN := lui auipc jal jalr beq bne blt bge bltu bgeu lb lh lw lbu lhu sb sh sw addi slti sltiu xori ori andi slli srli srai add sub sll slt sltu xor srl sra or and
@@ -12,13 +13,11 @@ TESTS_XTRA := reg causal pc_fwd pc_bwd
 TESTS_ALL := $(foreach test,${TESTS_XTRA},$(test)_ch0) $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
 
 CC=riscv64-unknown-elf-gcc
-CFLAGS=-mno-riscv-attribute -save-temps=obj -MD -O3 -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding -nostdlib
-#-ffreestanding -Map dhry.map --strip-debug
+CFLAGS=-save-temps=obj -MD -O3 -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding -mstrict-align
 TARGET_ARCH=-march=rv32i -mabi=ilp32
-#LDFLAGS=-ffreestanding -nostdlib -T src/firmware/script.ld -Bstatic -lgcc
+LDFLAGS=-nostdlib -mno-riscv-attribute -Wl,--strip-debug,-T,src/firmware/script.ld,-Map,build/firmware/firmware.map
 
-all: clean firmware
-	cat build/firmware/firmware.map
+all: sim
 
 sim: firmware
 	riscv64-unknown-elf-objdump -d -M numeric,no-aliases build/firmware/firmware.elf
@@ -59,11 +58,11 @@ arty: ${RTL_SRCS} firmware
 
 ################################################################################
 
+build/firmware/firmware.elf: ${OBJS_FIRMWARE} src/firmware/script.ld
+	$(LINK.o) $(OUTPUT_OPTION) ${OBJS_FIRMWARE} -lgcc
+
 build/firmware.bin: build/firmware/firmware.elf
 	riscv64-unknown-elf-objcopy -O binary $< $@
-
-build/firmware/firmware.elf: ${OBJS_FIRMWARE} src/firmware/script.ld
-	$(LINK.o) $(OUTPUT_OPTION) -mno-riscv-attribute -nostdlib -Wl,-Bstatic,-T,src/firmware/script.ld,-Map,build/firmware/firmware.map,--strip-debug -o $@ ${OBJS_FIRMWARE} -lgcc
 
 build/firmware/%.c.o: src/firmware/%.c | build/firmware
 	$(COMPILE.c) $(OUTPUT_OPTION) $<

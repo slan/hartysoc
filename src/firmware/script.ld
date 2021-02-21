@@ -8,6 +8,6 @@ MEMORY
 SECTIONS
 {
    .firmware : {
-        build/firmware/*.o(.text);
+        build/firmware/crt0.s.o(.text);
     }
 }

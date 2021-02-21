@@ -12,6 +12,7 @@ extern long time();
 extern long insn();
 
 #ifdef USE_MYSTDLIB
+extern void sbi_console_putchar(int);
 extern char *malloc();
 extern int printf(const char *format, ...);
 

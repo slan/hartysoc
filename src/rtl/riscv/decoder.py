@@ -16,12 +16,12 @@ class Decoder(Elaboratable):
         self.rs2_addr = Signal(5)
         self.rd_addr = Signal(5)
         self.imm = Signal(32)
-        self.mem_wmask = Signal(4)
+        self.mem_rtype = Signal(MemAccessType, reset=MemAccessType.NONE)
+        self.mem_wtype = Signal(MemAccessType, reset=MemAccessType.NONE)
 
         self.alu_src1_type = Signal(AluSrc1)
         self.alu_src2_type = Signal(AluSrc2)
         self.reg_src_type = Signal(RegSrc)
-        self.load_func = Signal(LoadFunc)
         self.alu_func = Signal(AluFunc)
         self.alu_func_ex = Signal()
         self.branch_cond = Signal(BranchCond, reset=BranchCond.NEVER)
@@ -108,9 +108,9 @@ class Decoder(Elaboratable):
                     self.alu_src2_type.eq(AluSrc2.IMM),
                     self.imm.eq(self.insn[20:32].as_signed()),
                     self.alu_func.eq(AluFunc.ADD_SUB),
-                    self.load_func.eq(self.insn[12:15]),
                     self.reg_src_type.eq(RegSrc.MEM),
                     self.rd_addr.eq(self.insn[7:12]),
+                    self.mem_rtype.eq(self.insn[12:15]),
                 ]
                 with m.Switch(self.insn[12:15]):
                     with m.Case("000", "001", "010", "100", "101"):
@@ -125,20 +125,11 @@ class Decoder(Elaboratable):
                     self.imm.eq(Cat(self.insn[7:12], self.insn[25:32]).as_signed()),
                     self.alu_func.eq(AluFunc.ADD_SUB),
                     self.rs2_addr.eq(self.insn[20:25]),
+                    self.mem_wtype.eq(self.insn[12:15]),
                 ]
                 with m.Switch(self.insn[12:15]):
-                    with m.Case("000"):
-                        comb += [
-                            self.mem_wmask.eq(0b0001),
-                        ]
-                    with m.Case("001"):
-                        comb += [
-                            self.mem_wmask.eq(0b0011),
-                        ]
-                    with m.Case("010"):
-                        comb += [
-                            self.mem_wmask.eq(0b1111),
-                        ]
+                    with m.Case("000", "001", "010"):
+                        pass
                     with m.Default():
                         trap(TrapCause.INSN)
 
