@@ -16,7 +16,7 @@ class Top(Elaboratable):
         domain = "hart"
 
         m = Module()
-        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 80})
+        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 48})
         m.submodules.hart = hart = Hart(domain=domain)
         m.submodules.uart = uart = UART(
             domain,
@@ -46,8 +46,6 @@ class Top(Elaboratable):
                 platform.request("led", 2).eq(uart.tx_o),
                 platform.request("uart").tx.eq(uart.tx_o),
             ]
-
-        if not isinstance(platform, SimPlatform):
             icache = Memory(width=32, depth=file_size // 4, init=firmware)
             dcache = Memory(width=32, depth=file_size // 4, init=firmware)
             m.submodules.imem_rp = imem_rp = icache.read_port(domain="comb")
@@ -56,6 +54,7 @@ class Top(Elaboratable):
                 domain=domain, granularity=8
             )
 
+            # MEMORY
             dmem_addr = hart.dmem_addr
             with m.If(dmem_addr[20:32].any()):
                 # I/O
@@ -69,17 +68,19 @@ class Top(Elaboratable):
                         hart.dmem_rdata.eq(uart.tx_ack),
                     ]
             with m.Else():
+                # DATA
                 comb += [
-                    # mem read
+                    # read
                     dmem_rp.addr.eq(dmem_addr[2:20]),
                     hart.dmem_rdata.eq(dmem_rp.data),
-                    # mem write
+                    # write
                     dmem_wp.en.eq(hart.dmem_wmask),
                     dmem_wp.addr.eq(dmem_addr[2:20]),
                     dmem_wp.data.eq(hart.dmem_wdata),
                 ]
+
+            # FETCH
             comb += [
-                # mem fetch
                 hart.imem_data.eq(imem_rp.data),
                 imem_rp.addr.eq(hart.imem_addr[2:32]),
             ]
@@ -88,7 +89,8 @@ class Top(Elaboratable):
             def process():
                 print("~" * 148)
                 needs_lf = False
-                for _ in range(20000):
+                while True:
+                    yield Settle()
                     imem_addr = yield hart.imem_addr
                     yield hart.imem_data.eq(firmware[imem_addr >> 2])
                     yield Settle()
@@ -122,24 +124,22 @@ class Top(Elaboratable):
 
                     # yield hart.imem_stall.eq(random.randrange(100)<90)
                     yield Tick(domain)
-                    yield Settle()
                     trap = yield hart.trap
                     if trap:
                         mcause = yield hart.mcause
-                        yield Settle()
                         
                         if needs_lf:
                             print()
                         print("~" * 148)
                         print(
-                            f"*** TRAP - MCAUSE={TrapCause(mcause).name}/{mcause} ***"
+                            f"*** TRAP ***\n  mcause: {TrapCause(mcause).name}/{mcause}"
                         )
 
                         mcycle = yield hart.mcycle
                         minstret = yield hart.minstret
 
                         cpi = mcycle / minstret if minstret != 0 else "N/A"
-                        print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
+                        print(f"  mcycle: {mcycle}\nminstret: {minstret}\n\ncpi={cpi}")
                         print("-" * 148)
                         pc = yield hart.rvfi.pc_rdata
                         insn = yield hart.rvfi.insn
@@ -151,10 +151,7 @@ class Top(Elaboratable):
                             sys.stdout.write(f"x{i}: {x:#010x}    ")
                             if i % 8 == 7:
                                 print()
-                        
-                        halt = yield hart.halt
-                        if halt:
-                            break
+                        break
 
             platform.add_sync_process(process, domain=domain)
 
@@ -218,7 +215,7 @@ def main():
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
-        run_script=False,
+        run_script=True,
         do_program=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci

@@ -204,6 +204,10 @@ class Hart(Elaboratable):
                                 comb += registers.rd_data.eq(pc + 4)
                             with m.Case(RegSrc.MEM):
                                 comb += registers.rd_data.eq(l_data)
+                            with m.Case(RegSrc.M_CYCLE):
+                                comb += registers.rd_data.eq(self.mcycle)
+                            with m.Case(RegSrc.M_INSTRET):
+                                comb += registers.rd_data.eq(self.minstret)
                         with m.If(decoder.rd_addr == 0):
                             comb += [
                                 registers.rd_data.eq(0),

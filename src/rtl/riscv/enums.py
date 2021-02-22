@@ -30,6 +30,8 @@ class RegSrc(Enum):
     ALU = 2
     PC_INCR = 3
     MEM = 4
+    M_CYCLE = 5
+    M_INSTRET = 6
 
 
 @unique
@@ -39,6 +41,7 @@ class TrapCause(Enum):
     DADDR_S = 6
     INSN = 2
     M_ECALL = 11
+    M_EBREAK = 3
 
 
 @unique

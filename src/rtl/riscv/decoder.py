@@ -34,6 +34,20 @@ class Decoder(Elaboratable):
             comb += [self.trap.eq(1), self.mcause.eq(mcause)]
 
         with m.Switch(self.insn):
+            with m.Case("00000000000000000000000001110011"):  # ECALL
+                trap(TrapCause.M_ECALL)
+            with m.Case("00000000000100000000000001110011"):  # EBREAK
+                trap(TrapCause.M_EBREAK)
+            with m.Case("11000000000000000010-----1110011"):  # RDCYCLE
+                comb += [
+                    self.reg_src_type.eq(RegSrc.M_CYCLE),
+                    self.rd_addr.eq(self.insn[7:12])
+                ]
+            with m.Case("11000000001000000010-----1110011"):  # RDINSTRET
+                comb += [
+                    self.reg_src_type.eq(RegSrc.M_INSTRET),
+                    self.rd_addr.eq(self.insn[7:12])
+                ]
             with m.Case("-------------------------0110111"):  # LUI
                 comb += [
                     self.rs1_addr.eq(0),
@@ -199,9 +213,6 @@ class Decoder(Elaboratable):
                             trap(TrapCause.INSN)
                     with m.Default():
                         trap(TrapCause.INSN)
-            # ECALL
-            with m.Case("00000000000000000000000001110011"):
-                trap(TrapCause.M_ECALL)
 
             with m.Default():
                 trap(TrapCause.INSN)

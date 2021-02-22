@@ -3,10 +3,9 @@ SECTIONS
     .firmware : {
         build/firmware/crt0.s.o(.text);
         *(.text);
-        *(*);
+        *(.data);
+        . = . + 1024;
         end = .;
-        . = . + 16*1024;
-        . = ALIGN(4);
         _stack = .;
     }
 }
