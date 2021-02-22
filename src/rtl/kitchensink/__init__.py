@@ -7,3 +7,4 @@ from .vga import *
 from .simplatform import *
 from .formalplatform import *
 from .sdram import *
+from .uart import *

@@ -44,7 +44,7 @@ long insn()
 char *malloc(int size)
 {
 	char *p = heap_memory + heap_memory_used;
-	// printf("[malloc(%d) -> %d (%d..%d)]", size, (int)p, heap_memory_used, heap_memory_used + size);
+	printf("[malloc(%d) -> %d (%d..%d)]", size, (int)p, heap_memory_used, heap_memory_used + size);
 	heap_memory_used += size;
 	if (heap_memory_used > 1024)
 		asm volatile ("ebreak");
@@ -53,13 +53,15 @@ char *malloc(int size)
 
 static void printf_c(int c)
 {
-	sbi_console_putchar(c);
+    volatile char* uart = (char*)0x10000000;
+    while(!*uart);
+    *uart = c;
 }
 
 static void printf_s(char *p)
 {
 	while (*p)
-		sbi_console_putchar(*(p++));
+		printf_c(*(p++));
 }
 
 static void printf_d(int val)

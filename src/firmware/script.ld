@@ -1,13 +1,12 @@
-/*
-MEMORY
-{
-    ROM (rx) : ORIGIN = 0x00000000, LENGTH = 0x400
-    RAM (rw) : ORIGIN = 0x00001000, LENGTH = 0x400
-}
-*/
 SECTIONS
 {
-   .firmware : {
+    .firmware : {
         build/firmware/crt0.s.o(.text);
+        *(.text);
+        *(*);
+        end = .;
+        . = . + 16*1024;
+        . = ALIGN(4);
+        _stack = .;
     }
 }

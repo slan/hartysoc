@@ -16,91 +16,145 @@ class Top(Elaboratable):
         domain = "hart"
 
         m = Module()
-        m.submodules.pll = PLL(mult=16, div=1, domains=[(domain, 20)])
+        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 80})
         m.submodules.hart = hart = Hart(domain=domain)
-        icache = Memory(width=32, depth=4096 // 4)
-        dcache = Memory(width=32, depth=4096 // 4)
-        m.submodules.imem_rp = imem_rp = icache.read_port(domain="comb")
-        m.submodules.dmem_rp = dmem_rp = dcache.read_port(domain="comb")
-        m.submodules.dmem_wp = dmem_wp = dcache.write_port(domain=domain, granularity=8)
+        m.submodules.uart = uart = UART(
+            domain,
+            4
+            if isinstance(platform, SimPlatform)
+            else round(
+                pll.get_frequency_ratio(domain)
+                * platform.default_clk_frequency
+                / 115200
+            ),
+        )
 
         with open("build/firmware.bin", mode="rb") as f:
-            content = array.array("I")
-            assert content.itemsize == 4
-            content.fromfile(f, os.stat(f.name).st_size // 4)
-            icache.init = content
-            dcache.init = content
+            firmware = array.array("I")
+            assert firmware.itemsize == 4
+            file_size = os.stat(f.name).st_size
+            assert file_size % 4 == 0
+            firmware.fromfile(f, file_size // 4)
 
         comb = m.d.comb
         sync = m.d[domain]
 
-        with m.If(hart.trap):
-            comb += platform.request("led").eq(1)
+        if not isinstance(platform, SimPlatform):
+            comb += [
+                platform.request("led", 0).eq(~hart.halt),
+                platform.request("led", 1).eq(~hart.imem_stall),
+                platform.request("led", 2).eq(uart.tx_o),
+                platform.request("uart").tx.eq(uart.tx_o),
+            ]
 
-        comb += [
-            # mem read
-            dmem_rp.addr.eq(hart.dmem_addr[2:32]),
-            hart.dmem_rdata.eq(dmem_rp.data),
-            # mem write
-            dmem_wp.en.eq(hart.dmem_wmask),
-            dmem_wp.addr.eq(hart.dmem_addr[2:32]),
-            dmem_wp.data.eq(hart.dmem_wdata),
-            # mem fetch
-            hart.imem_data.eq(imem_rp.data),
-            imem_rp.addr.eq(hart.imem_addr[2:32]),
-        ]
+        if not isinstance(platform, SimPlatform):
+            icache = Memory(width=32, depth=file_size // 4, init=firmware)
+            dcache = Memory(width=32, depth=file_size // 4, init=firmware)
+            m.submodules.imem_rp = imem_rp = icache.read_port(domain="comb")
+            m.submodules.dmem_rp = dmem_rp = dcache.read_port(domain="comb")
+            m.submodules.dmem_wp = dmem_wp = dcache.write_port(
+                domain=domain, granularity=8
+            )
 
-        if isinstance(platform, SimPlatform):
+            dmem_addr = hart.dmem_addr
+            with m.If(dmem_addr[20:32].any()):
+                # I/O
+                with m.If(hart.dmem_wdata.any()):
+                    comb += [
+                        uart.tx_rdy.eq(1),
+                        uart.tx_data.eq(hart.dmem_wdata),
+                    ]
+                with m.Else():
+                    comb += [
+                        hart.dmem_rdata.eq(uart.tx_ack),
+                    ]
+            with m.Else():
+                comb += [
+                    # mem read
+                    dmem_rp.addr.eq(dmem_addr[2:20]),
+                    hart.dmem_rdata.eq(dmem_rp.data),
+                    # mem write
+                    dmem_wp.en.eq(hart.dmem_wmask),
+                    dmem_wp.addr.eq(dmem_addr[2:20]),
+                    dmem_wp.data.eq(hart.dmem_wdata),
+                ]
+            comb += [
+                # mem fetch
+                hart.imem_data.eq(imem_rp.data),
+                imem_rp.addr.eq(hart.imem_addr[2:32]),
+            ]
+        else:
 
             def process():
                 print("~" * 148)
-                any_out = False
-                for _ in range(1000):
-                    #yield hart.imem_stall.eq(random.randrange(100)<90)
-                    yield
+                needs_lf = False
+                for _ in range(20000):
+                    imem_addr = yield hart.imem_addr
+                    yield hart.imem_data.eq(firmware[imem_addr >> 2])
+                    yield Settle()
+                    dmem_addr = yield hart.dmem_addr
+                    dmem_wmask = yield hart.dmem_wmask
+                    if dmem_wmask == 0:
+                        if dmem_addr >= 0x1000_0000:
+                            yield hart.dmem_rdata.eq(1)
+                        else:
+                            yield hart.dmem_rdata.eq(firmware[dmem_addr >> 2])
+                    else:
+                        dmem_wdata = yield hart.dmem_wdata
+                        if dmem_addr >= 0x1000_0000:
+                            char = chr(dmem_wdata & 0xFF)
+                            print(char, end='')
+                            needs_lf = char != "\n"
+                        else:
+                            if dmem_wmask == 0xF:
+                                firmware[dmem_addr >> 2] = dmem_wdata
+                            elif dmem_wmask == 0x1:
+                                firmware[dmem_addr >> 2] = dmem_wdata&0x000000ff
+                            elif dmem_wmask == 0x2:
+                                firmware[dmem_addr >> 2] = dmem_wdata&0x0000ff00
+                            elif dmem_wmask == 0x4:
+                                firmware[dmem_addr >> 2] = dmem_wdata&0x00ff0000
+                            elif dmem_wmask == 0x8:
+                                firmware[dmem_addr >> 2] = dmem_wdata&0xff000000
+                            else:
+                                print("Not implemented", hex(dmem_wmask))
+                                break
+
+                    # yield hart.imem_stall.eq(random.randrange(100)<90)
+                    yield Tick(domain)
                     yield Settle()
                     trap = yield hart.trap
                     if trap:
                         mcause = yield hart.mcause
-                        if TrapCause(mcause) == TrapCause.M_ECALL:
-                            # a7 is syscall
-                            # a0 is arg0
-                            SBI_EXT_0_1_CONSOLE_PUTCHAR = 0x1
-                            a7 = yield hart.registers._rp1.memory._array[17]
-                            if a7 == SBI_EXT_0_1_CONSOLE_PUTCHAR:
-                                a0 = yield hart.registers._rp1.memory._array[10]
-                                print(chr(a0), end="")
-                                any_out = True
-                                continue
-                                # ret.error = a0;
-                                # ret.value = a1;
-                        else:
-                            if any_out:
+                        yield Settle()
+                        
+                        if needs_lf:
+                            print()
+                        print("~" * 148)
+                        print(
+                            f"*** TRAP - MCAUSE={TrapCause(mcause).name}/{mcause} ***"
+                        )
+
+                        mcycle = yield hart.mcycle
+                        minstret = yield hart.minstret
+
+                        cpi = mcycle / minstret if minstret != 0 else "N/A"
+                        print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
+                        print("-" * 148)
+                        pc = yield hart.rvfi.pc_rdata
+                        insn = yield hart.rvfi.insn
+                        print(f" pc: {pc:#010x}   insn: {insn:#010x}")
+                        for i in range(0, 32):
+                            x = yield hart.registers._rp1.memory._array[i]
+                            if i < 10:
+                                sys.stdout.write(" ")
+                            sys.stdout.write(f"x{i}: {x:#010x}    ")
+                            if i % 8 == 7:
                                 print()
-                            print("~" * 148)
-                            print(
-                                f"*** TRAP - MCAUSE={TrapCause(mcause).name}/{mcause} ***"
-                            )
-
-                            mcycle = yield hart.mcycle
-                            minstret = yield hart.minstret
-
-                            cpi = mcycle / minstret if minstret != 0 else "N/A"
-                            print(f"mcycle={mcycle} minstret={minstret} cpi={cpi}")
-                            print("-" * 148)
-                            pc = yield hart.rvfi.pc_rdata
-                            insn = yield hart.rvfi.insn
-                            print(f" pc: {pc:#010x}   insn: {insn:#010x}")
-                            for i in range(0, 32):
-                                x = yield hart.registers._rp1.memory._array[i]
-                                if i < 10:
-                                    sys.stdout.write(" ")
-                                sys.stdout.write(f"x{i}: {x:#010x}    ")
-                                if i % 8 == 7:
-                                    print()
-                    halt = yield hart.halt
-                    if halt:
-                        break
+                        
+                        halt = yield hart.halt
+                        if halt:
+                            break
 
             platform.add_sync_process(process, domain=domain)
 
@@ -115,7 +169,7 @@ def main():
         additional_resources = []
 
     elif platform_name == "sim":
-        platform = SimPlatform(200)
+        platform = SimPlatform(100e6)
         additional_resources = [
             Resource("led", 0, Pins("led0", dir="o")),
             Resource("led", 1, Pins("led1", dir="o")),
@@ -164,7 +218,7 @@ def main():
     platform.build(
         fragment,
         build_dir=f"build/{platform_name}",
-        run_script=True,
+        run_script=False,
         do_program=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci

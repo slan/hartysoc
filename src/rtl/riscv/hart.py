@@ -36,6 +36,7 @@ class Hart(Elaboratable):
         self._domain = domain
         self.registers = Registers(domain)
         self.trap = Signal()
+        self.mcause = Signal(32, decoder=lambda x: f"{TrapCause(x).name}/{x}")
         self.halt = Signal()
         self.imem_addr = Signal(32)
         self.imem_data = Signal(32)
@@ -50,7 +51,6 @@ class Hart(Elaboratable):
     def elaborate(self, platform):
         self.mcycle = Signal(64)
         self.minstret = Signal(64)
-        self.mcause = Signal(32, decoder=lambda x: f"{TrapCause(x).name}/{x}")
 
         m = Module()
         comb = m.d.comb
@@ -65,6 +65,7 @@ class Hart(Elaboratable):
         def trap(mcause, comb=comb):
             comb += [
                 self.trap.eq(1),
+                self.halt.eq(1),
                 self.mcause.eq(mcause),
             ]
 
@@ -233,11 +234,7 @@ class Hart(Elaboratable):
                             trap(TrapCause.IADDR)
 
                         with m.If(self.trap):
-                            with m.If(self.mcause == TrapCause.M_ECALL):
-                                pass
-                            with m.Else():
-                                comb += [self.halt.eq(1)]
-                                m.next = "HALT"
+                            m.next = "HALT"
 
                         sync += [
                             pc.eq(
