@@ -12,7 +12,7 @@ module rvfi_wrapper(
 (* keep *) wire                 [ 3:0] dmem_wmask;
 (* keep *) wire                 [31:0] dmem_wdata;
 
-\riscv.Hart dut (
+\riscv.Hart #(.domain("sync"), .with_rvfi(1)) dut (
     .clk(clock),
     .rst(reset),
 

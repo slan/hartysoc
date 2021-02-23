@@ -15,7 +15,7 @@ class Top(Elaboratable):
         domain = "hart"
 
         m = Module()
-        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 80})
+        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 48})
         m.submodules.hart = hart = Hart(domain=domain)
         m.submodules.uart = uart = UART(
             domain,
@@ -140,8 +140,8 @@ class Top(Elaboratable):
                         cpi = mcycle / minstret if minstret != 0 else "N/A"
                         print(f"  mcycle: {mcycle}\nminstret: {minstret}\n\ncpi={cpi}")
                         print("-" * 148)
-                        pc = yield hart.rvfi.pc_rdata
-                        insn = yield hart.rvfi.insn
+                        pc = yield hart.decoder.pc
+                        insn = yield hart.decoder.insn
                         print(f" pc: {pc:#010x}   insn: {insn:#010x}")
                         for i in range(0, 32):
                             x = yield hart.registers._rp1.memory._array[i]
