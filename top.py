@@ -10,7 +10,6 @@ from src.rtl.kitchensink import *
 
 __all__ = ["main"]
 
-
 class Top(Elaboratable):
     def elaborate(self, platform):
         domain = "hart"
@@ -101,23 +100,24 @@ class Top(Elaboratable):
                             yield hart.dmem_rdata.eq(1)
                         else:
                             yield hart.dmem_rdata.eq(firmware[dmem_addr >> 2])
+                        yield Settle()
                     else:
                         dmem_wdata = yield hart.dmem_wdata
                         if dmem_addr >= 0x1000_0000:
                             char = chr(dmem_wdata & 0xFF)
-                            print(char, end='')
+                            print(char, end="")
                             needs_lf = char != "\n"
                         else:
                             if dmem_wmask == 0xF:
                                 firmware[dmem_addr >> 2] = dmem_wdata
                             elif dmem_wmask == 0x1:
-                                firmware[dmem_addr >> 2] = dmem_wdata&0x000000ff
+                                firmware[dmem_addr >> 2] = dmem_wdata & 0x000000FF
                             elif dmem_wmask == 0x2:
-                                firmware[dmem_addr >> 2] = dmem_wdata&0x0000ff00
+                                firmware[dmem_addr >> 2] = dmem_wdata & 0x0000FF00
                             elif dmem_wmask == 0x4:
-                                firmware[dmem_addr >> 2] = dmem_wdata&0x00ff0000
+                                firmware[dmem_addr >> 2] = dmem_wdata & 0x00FF0000
                             elif dmem_wmask == 0x8:
-                                firmware[dmem_addr >> 2] = dmem_wdata&0xff000000
+                                firmware[dmem_addr >> 2] = dmem_wdata & 0xFF000000
                             else:
                                 print("Not implemented", hex(dmem_wmask))
                                 break
@@ -127,7 +127,7 @@ class Top(Elaboratable):
                     trap = yield hart.trap
                     if trap:
                         mcause = yield hart.mcause
-                        
+
                         if needs_lf:
                             print()
                         print("~" * 148)
