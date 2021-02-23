@@ -15,7 +15,7 @@ class Top(Elaboratable):
         domain = "hart"
 
         m = Module()
-        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 48})
+        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 80})
         m.submodules.hart = hart = Hart(domain=domain)
         m.submodules.uart = uart = UART(
             domain,
@@ -40,21 +40,26 @@ class Top(Elaboratable):
 
         if not isinstance(platform, SimPlatform):
             comb += [
-                platform.request("led", 0).eq(~hart.halt),
-                platform.request("led", 1).eq(~hart.imem_stall),
-                platform.request("led", 2).eq(uart.tx_o),
+                platform.request("led", 0).eq(hart.halt),
+                platform.request("led", 1).eq(uart.tx_o),
                 platform.request("uart").tx.eq(uart.tx_o),
             ]
-            icache = Memory(width=32, depth=file_size // 4, init=firmware)
-            dcache = Memory(width=32, depth=file_size // 4, init=firmware)
-            m.submodules.imem_rp = imem_rp = icache.read_port(domain="comb")
-            m.submodules.dmem_rp = dmem_rp = dcache.read_port(domain="comb")
-            m.submodules.dmem_wp = dmem_wp = dcache.write_port(
+            mem = Memory(width=32, depth=file_size // 4, init=firmware)
+            m.submodules.imem_rp = imem_rp = mem.read_port(domain="comb")
+            m.submodules.dmem_rp = dmem_rp = mem.read_port(domain="comb")
+            m.submodules.dmem_wp = dmem_wp = mem.write_port(
                 domain=domain, granularity=8
             )
 
             # MEMORY
             dmem_addr = hart.dmem_addr
+
+            # FETCH
+            comb += [
+                hart.imem_data.eq(imem_rp.data),
+                imem_rp.addr.eq(hart.imem_addr[2:20]),
+            ]
+
             with m.If(dmem_addr[20:32].any()):
                 # I/O
                 with m.If(hart.dmem_wdata.any()):
@@ -77,12 +82,6 @@ class Top(Elaboratable):
                     dmem_wp.addr.eq(dmem_addr[2:20]),
                     dmem_wp.data.eq(hart.dmem_wdata),
                 ]
-
-            # FETCH
-            comb += [
-                hart.imem_data.eq(imem_rp.data),
-                imem_rp.addr.eq(hart.imem_addr[2:32]),
-            ]
         else:
 
             def process():
@@ -217,6 +216,10 @@ def main():
         build_dir=f"build/{platform_name}",
         run_script=True,
         do_program=False,
+        # script_after_synth="""
+        # set_property CONFIG_VOLTAGE 3.3 [current_design]
+        # set_property CFGBVS VCCO [current_design]
+        # """,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 

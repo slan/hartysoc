@@ -14,7 +14,7 @@ TESTS_XTRA := reg causal pc_fwd pc_bwd
 TESTS_ALL := $(foreach test,${TESTS_XTRA},$(test)_ch0) $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
 
 CC=riscv64-unknown-elf-gcc
-CFLAGS=-save-temps=obj -MD -O3 -DREG=register -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding -mstrict-align -mno-riscv-attribute
+CFLAGS=-save-temps=obj -MD -O3 -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding -mstrict-align -mno-riscv-attribute
 TARGET_ARCH=-march=rv32i -mabi=ilp32
 LDFLAGS=-nostdlib -mno-riscv-attribute -Wl,--strip-debug,-T,src/firmware/script.ld,-Map,build/firmware/firmware.map
 
