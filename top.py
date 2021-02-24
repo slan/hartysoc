@@ -1,12 +1,14 @@
+import array
 import datetime as dt
-import array, sys, random
+import random
+import sys
 
 from nmigen import *
 from nmigen.build import *
 from nmigen_boards.arty_a7 import ArtyA7Platform
 
-from src.rtl.riscv import *
 from src.rtl.kitchensink import *
+from src.rtl.riscv import *
 
 __all__ = ["main"]
 
@@ -41,7 +43,7 @@ class Top(Elaboratable):
         if not isinstance(platform, SimPlatform):
             comb += [
                 platform.request("led", 0).eq(hart.halt),
-                platform.request("led", 1).eq(uart.tx_o),
+                platform.request("led", 1).eq(~uart.tx_o),
                 platform.request("uart").tx.eq(uart.tx_o),
             ]
             mem = Memory(width=32, depth=file_size // 4, init=firmware)
@@ -155,7 +157,6 @@ class Top(Elaboratable):
             platform.add_sync_process(process, domain=domain)
 
         return m
-
 
 def main():
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None

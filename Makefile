@@ -22,7 +22,8 @@ LDFLAGS=-nostdlib -mno-riscv-attribute -Wl,-T,src/firmware/script.ld,-Map,build/
 
 all: cxxrtl
 
-cxxrtl: sim
+cxxrtl: 
+	python top.py
 	mkdir -p build/cxxrtl
 	yosys -p "read_rtlil build/sim/top.il; write_cxxrtl build/cxxrtl/top.cpp"
 	clang++ -g -O3 -std=c++14 -I $(shell yosys-config --datdir)/include -I build/cxxrtl platform/cxxrtl/main.cpp -o build/cxxrtl/sim

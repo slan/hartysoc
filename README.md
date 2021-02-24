@@ -1,24 +1,27 @@
-# HelloAr
+# Harty
 
 ## Setup
 
-### Simulation
-
 - nmigen
-- gtkwave
 - yosys
+
+### Simulation/Validation
+
+- gtkwave
 - sifive gcc toolchain
+- symbyosys
 
 ### Arty
 
-- Vivado
-- [Adept runtime v2.21.2](https://mautic.digilentinc.com/adept-runtime-download)
-- [Adept utilities v2.4.1](https://mautic.digilentinc.com/adept-utilities-download)
+- nmigen-boards
+- vivado
 - openocd
 
 ## Benchmark
 
-Single cycle: timing valid @33MHz with dhrystone:
+Single cycle: timing valid at 33MHz
+
+Dhrystone:
 ```
 Number_Of_Runs: 100
 User_Time: 39022 cycles, 39022 insn
