@@ -12,6 +12,7 @@ from src.rtl.riscv import *
 
 __all__ = ["main"]
 
+
 class Top(Elaboratable):
     def elaborate(self, platform):
         domain = "hart"
@@ -64,7 +65,7 @@ class Top(Elaboratable):
 
             with m.If(dmem_addr[20:32].any()):
                 # I/O
-                with m.If(hart.dmem_wdata.any()):
+                with m.If(hart.dmem_wmask.any()):
                     comb += [
                         uart.tx_rdy.eq(1),
                         uart.tx_data.eq(hart.dmem_wdata),
@@ -112,13 +113,21 @@ class Top(Elaboratable):
                             if dmem_wmask == 0xF:
                                 firmware[dmem_addr >> 2] = dmem_wdata
                             elif dmem_wmask == 0x1:
-                                firmware[dmem_addr >> 2] = dmem_wdata & 0x000000FF
+                                firmware[dmem_addr >> 2] = (dmem_wdata & 0x000000FF) | (
+                                    firmware[dmem_addr >> 2] & 0xFFFFFF00
+                                )
                             elif dmem_wmask == 0x2:
-                                firmware[dmem_addr >> 2] = dmem_wdata & 0x0000FF00
+                                firmware[dmem_addr >> 2] = (dmem_wdata & 0x0000FF00) | (
+                                    firmware[dmem_addr >> 2] & 0xFFFF00FF
+                                )
                             elif dmem_wmask == 0x4:
-                                firmware[dmem_addr >> 2] = dmem_wdata & 0x00FF0000
+                                firmware[dmem_addr >> 2] = (dmem_wdata & 0x00FF0000) | (
+                                    firmware[dmem_addr >> 2] & 0xFF00FFFF
+                                )
                             elif dmem_wmask == 0x8:
-                                firmware[dmem_addr >> 2] = dmem_wdata & 0xFF000000
+                                firmware[dmem_addr >> 2] = (dmem_wdata & 0xFF000000) | (
+                                    firmware[dmem_addr >> 2] & 0x00FFFFFF
+                                )
                             else:
                                 print("Not implemented", hex(dmem_wmask))
                                 break
@@ -157,6 +166,7 @@ class Top(Elaboratable):
             platform.add_sync_process(process, domain=domain)
 
         return m
+
 
 def main():
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None
@@ -206,30 +216,30 @@ def main():
                 ),
             )
         ]
-
-    if platform is None:
+    else:
+        print("Unknown platform")
         exit()
 
     platform.add_resources(additional_resources)
+
+    mig_dir = ""
+    build_dir = f"build/{platform_name}"
     fragment = Fragment.get(Top(), platform)
-    platform.build(
+    plan = platform.build(
         fragment,
-        build_dir=f"build/{platform_name}",
-        run_script=True,
-        do_program=False,
-        # script_after_synth="""
-        # set_property CONFIG_VOLTAGE 3.3 [current_design]
-        # set_property CFGBVS VCCO [current_design]
-        # """,
+        build_dir=build_dir,
+        do_build=False,
         script_after_read="""
 #add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 
-#add_files /home/slan/src/HelloArty/testbench.v
-#set_property used_in_synthesis false [get_files  /home/slan/src/HelloArty/testbench.v]
-#set_property used_in_implementation false [get_files  /home/slan/src/HelloArty/testbench.v]
+#add_files platform/formal/testbench.v
+#set_property used_in_synthesis false [get_files  platform/formal/testbench.v]
+#set_property used_in_implementation false [get_files platform/formal/testbench.v]
 #update_compile_order -fileset sources_1
         """,
     )
+    if plan is not None:
+        plan.execute_local(build_dir, run_script=True)
 
 
 if __name__ == "__main__":

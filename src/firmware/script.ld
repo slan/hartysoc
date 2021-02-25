@@ -1,16 +1,18 @@
 SECTIONS
 {
     .text : {
-        build/firmware/crt0.s.o(.text);
-        *(.text*);
+        KEEP(build/firmware/start.o(.text));
+        *(.text);
     }
     .data : {
-        *(.rodata);
         *(.data);
-        *(.bss);
-        *(.sbss);
         . = ALIGN(4);
+    }
+    .stack : {
         . = . + 1024;
         _stack = .;
+    }
+    /DISCARD/ : {
+        *(*);
     }
 }

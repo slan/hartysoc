@@ -1,14 +1,13 @@
 ROOT_RISCV_FORMAL := ~/src/riscv-formal
 ROOT_PROJECT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-SRCS_FIRMWARE := crt0.s stdlib.c endianness.c
-SRCS_FIRMWARE := crt0.s stdlib.c dhry1.c dhry2.c
+SRCS_FIRMWARE := start.s bonjour.s
 
 SRCS_RTL := top.py $(shell find src/rtl -name \*.py)
 SRCS_FORMAL := $(wildcard platform/formal/*)
 
 SRCS_FIRMWARE := $(SRCS_FIRMWARE:%=src/firmware/%)
-OBJS_FIRMWARE := $(SRCS_FIRMWARE:src/firmware/%=build/firmware/%.o)
+OBJS_FIRMWARE := $(SRCS_FIRMWARE:src/firmware/%.s=build/firmware/%.o)
 
 TESTS_INSN := lui auipc jal jalr beq bne blt bge bltu bgeu lb lh lw lbu lhu sb sh sw addi slti sltiu xori ori andi slli srli srai add sub sll slt sltu xor srl sra or and
 TESTS_XTRA := reg causal pc_fwd pc_bwd
@@ -16,11 +15,14 @@ TESTS_ALL := $(foreach test,${TESTS_XTRA},$(test)_ch0) $(foreach test,${TESTS_IN
 TESTS_ALL := $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
 
 CC=riscv64-unknown-elf-gcc
-CFLAGS=-save-temps=obj -MD -O3 -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding
+CFLAGS=-save-temps=obj -MD -O3 -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding -fdata-sections -ffunction-sections
 TARGET_ARCH=-march=rv32i -mabi=ilp32
-LDFLAGS=-nostdlib -mno-riscv-attribute -Wl,-T,src/firmware/script.ld,-Map,build/firmware/firmware.map
+LDFLAGS=-nostdlib -mno-riscv-attribute -Wl,--gc-sections,-T,src/firmware/script.ld,-Map,build/firmware/firmware.map
 
-all: cxxrtl
+all: clean firmware
+	riscv64-unknown-elf-objdump -x build/firmware/firmware.elf
+	# xxd build/firmware.bin
+	ls -l  build/firmware.bin
 
 cxxrtl: 
 	python top.py
@@ -72,10 +74,10 @@ build/firmware/firmware.elf: ${OBJS_FIRMWARE} src/firmware/script.ld
 build/firmware.bin: build/firmware/firmware.elf
 	riscv64-unknown-elf-objcopy -O binary $< $@
 
-build/firmware/%.c.o: src/firmware/%.c | build/firmware
+build/firmware/%.o: src/firmware/%.c | build/firmware
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
-build/firmware/%.s.o: src/firmware/%.s | build/firmware
+build/firmware/%.o: src/firmware/%.s | build/firmware
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 build/firmware:
