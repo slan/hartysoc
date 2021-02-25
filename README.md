@@ -1,5 +1,13 @@
 # Harty
 
+## Memory map
+
+Start|End|Type
+---|---|---
+`0x00000000` | `0x0fffffff` | RAM (256 MB)
+`0x10000000` | `0x1fffffff` | I/O
+`0x20000000` | `0x2fffffff` | ROM
+
 ## Setup
 
 - nmigen

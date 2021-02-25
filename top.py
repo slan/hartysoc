@@ -47,90 +47,88 @@ class Top(Elaboratable):
                 platform.request("led", 1).eq(~uart.tx_o),
                 platform.request("uart").tx.eq(uart.tx_o),
             ]
-            mem = Memory(width=32, depth=file_size // 4, init=firmware)
-            m.submodules.imem_rp = imem_rp = mem.read_port(domain="comb")
-            m.submodules.dmem_rp = dmem_rp = mem.read_port(domain="comb")
-            m.submodules.dmem_wp = dmem_wp = mem.write_port(
-                domain=domain, granularity=8
-            )
 
-            # MEMORY
-            dmem_addr = hart.dmem_addr
+        rom = Memory(width=32, depth=file_size // 4, init=firmware)
+        m.submodules.irom_rp = irom_rp = rom.read_port(domain="comb")
+        m.submodules.drom_rp = drom_rp = rom.read_port(domain="comb")
 
-            # FETCH
+        ram = Memory(width=32, depth=1024)
+        m.submodules.iram_rp = iram_rp = ram.read_port(domain="comb")
+        m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
+        m.submodules.dram_wp = dram_wp = ram.write_port(domain=domain, granularity=8)
+
+        # MEMORY
+        dmem_addr = hart.dmem_addr
+        imem_addr = hart.imem_addr
+
+        # IMEM
+        with m.If(imem_addr[28:32] == 2):
+            # ROM
             comb += [
-                hart.imem_data.eq(imem_rp.data),
-                imem_rp.addr.eq(hart.imem_addr[2:20]),
+                irom_rp.addr.eq(imem_addr[2:28]),
+                hart.imem_data.eq(irom_rp.data),
+            ]
+        with m.Else():
+            # RAM
+            comb += [
+                hart.imem_data.eq(iram_rp.data),
+                iram_rp.addr.eq(imem_addr[2:28]),
             ]
 
-            with m.If(dmem_addr[20:32].any()):
-                # I/O
-                with m.If(hart.dmem_wmask.any()):
-                    comb += [
-                        uart.tx_rdy.eq(1),
-                        uart.tx_data.eq(hart.dmem_wdata),
-                    ]
-                with m.Else():
-                    comb += [
-                        hart.dmem_rdata.eq(uart.tx_ack),
-                    ]
-            with m.Else():
-                # DATA
+        # DMEM
+        with m.If(dmem_addr[28:32] == 1):
+            # I/O
+            with m.If(hart.dmem_wmask.any()):
                 comb += [
-                    # read
-                    dmem_rp.addr.eq(dmem_addr[2:20]),
-                    hart.dmem_rdata.eq(dmem_rp.data),
-                    # write
-                    dmem_wp.en.eq(hart.dmem_wmask),
-                    dmem_wp.addr.eq(dmem_addr[2:20]),
-                    dmem_wp.data.eq(hart.dmem_wdata),
+                    uart.tx_rdy.eq(1),
+                    uart.tx_data.eq(hart.dmem_wdata),
                 ]
-        else:
+            with m.Else():
+                comb += [
+                    hart.dmem_rdata.eq(uart.tx_ack),
+                ]
+        with m.If(dmem_addr[28:32] == 2):
+            # ROM
+            comb += [
+                # read
+                drom_rp.addr.eq(dmem_addr[2:28]),
+                hart.dmem_rdata.eq(drom_rp.data),
+            ]
+        with m.Else():
+            # RAM
+            comb += [
+                # read
+                dram_rp.addr.eq(dmem_addr[2:28]),
+                hart.dmem_rdata.eq(dram_rp.data),
+                # write
+                dram_wp.en.eq(hart.dmem_wmask),
+                dram_wp.addr.eq(dmem_addr[2:28]),
+                dram_wp.data.eq(hart.dmem_wdata),
+            ]
+
+        if isinstance(platform, SimPlatform):
 
             def process():
                 print("~" * 148)
                 needs_lf = False
                 while True:
                     yield Settle()
-                    imem_addr = yield hart.imem_addr
-                    yield hart.imem_data.eq(firmware[imem_addr >> 2])
-                    yield Settle()
                     dmem_addr = yield hart.dmem_addr
+                    dmem_rmask = yield hart.dmem_rmask
+                    dmem_rdata = yield hart.dmem_rdata
                     dmem_wmask = yield hart.dmem_wmask
-                    if dmem_wmask == 0:
-                        if dmem_addr >= 0x1000_0000:
+                    dmem_wdata = yield hart.dmem_wdata
+                    # if dmem_rmask!=0:
+                    #     print(f"Reading {dmem_addr:#010x} mask {dmem_rmask:#06b}: {dmem_rdata:#010x}")
+                    # if dmem_wmask!=0:
+                    #     print(f"Writing {dmem_addr:#010x} mask {dmem_wmask:#06b}: {dmem_wdata:#010x}")
+                    if dmem_addr == 0x1000_0000:
+                        if dmem_rmask != 0:
                             yield hart.dmem_rdata.eq(1)
-                        else:
-                            yield hart.dmem_rdata.eq(firmware[dmem_addr >> 2])
-                        yield Settle()
-                    else:
-                        dmem_wdata = yield hart.dmem_wdata
-                        if dmem_addr >= 0x1000_0000:
+                        if dmem_wmask != 0:
                             char = chr(dmem_wdata & 0xFF)
                             print(char, end="")
                             needs_lf = char != "\n"
-                        else:
-                            if dmem_wmask == 0xF:
-                                firmware[dmem_addr >> 2] = dmem_wdata
-                            elif dmem_wmask == 0x1:
-                                firmware[dmem_addr >> 2] = (dmem_wdata & 0x000000FF) | (
-                                    firmware[dmem_addr >> 2] & 0xFFFFFF00
-                                )
-                            elif dmem_wmask == 0x2:
-                                firmware[dmem_addr >> 2] = (dmem_wdata & 0x0000FF00) | (
-                                    firmware[dmem_addr >> 2] & 0xFFFF00FF
-                                )
-                            elif dmem_wmask == 0x4:
-                                firmware[dmem_addr >> 2] = (dmem_wdata & 0x00FF0000) | (
-                                    firmware[dmem_addr >> 2] & 0xFF00FFFF
-                                )
-                            elif dmem_wmask == 0x8:
-                                firmware[dmem_addr >> 2] = (dmem_wdata & 0xFF000000) | (
-                                    firmware[dmem_addr >> 2] & 0x00FFFFFF
-                                )
-                            else:
-                                print("Not implemented", hex(dmem_wmask))
-                                break
 
                     # yield hart.imem_stall.eq(random.randrange(100)<90)
                     yield Tick(domain)
