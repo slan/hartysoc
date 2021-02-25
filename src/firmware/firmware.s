@@ -1,20 +1,25 @@
-start:
-    li a1, 6
-loop:
-    add a2, a1, a1
-    add a3, a3, a2
-    addi a1, a1, -1
-    bnez a1, loop
+    la a0, 0x10000000
 
-    li a7,1
+    la a1, _msg
+_loop:
+    lb a2, 0(a1)
+    beqz a2, _end
+    call _putc
+    addi a1, a1, 1
+    j _loop
 
-    li a0,'!'
-    ecall
+_end:
 
-    la a0,msg
-    lb a1,0(a0)
-    lb a2,1(a0)
-msg:
-    .string "Bonjour !"
-end:
-    #.zero 4096-(end-start)
+    la sp, _stack
+    call main
+    ebreak
+    
+_putc:
+    lb t0,0(a0)
+    beqz t0, _putc
+    sb a2,0(a0)
+    ret
+
+    .section .data
+_msg:
+    .string "Bonjour tout le monde !\n"

@@ -6,25 +6,25 @@ from .simplatform import SimPlatform
 
 
 class PLL(Elaboratable):
-    def __init__(self, *, mult: int, div: int = 1, domains):
+    def __init__(self, *, mult, div, domains):
+        self._domains = domains
         self.mult = mult
         self.div = div
-        self._domains = domains
+        self.locked = Signal()
 
     def get_frequency_ratio(self, domain):
         return self.mult / (self.div * self._domains[domain])
 
     def elaborate(self, platform):
-        locked = Signal()
 
         m = Module()
 
         for i, (cd, div) in enumerate(self._domains.items()):
             m.domains += ClockDomain(cd)
-            m.submodules[f"rs_{cd}"] = ResetSynchronizer(~locked, domain=cd)
+            m.submodules[f"rs_{cd}"] = ResetSynchronizer(~self.locked, domain=cd)
 
         if isinstance(platform, SimPlatform):
-            m.d.sync += locked.eq(1)
+            m.d.sync += self.locked.eq(1)
             platform.add_resources(
                 [
                     Resource(
@@ -66,7 +66,7 @@ class PLL(Elaboratable):
                 **o_clkout,
                 # Feedback Clocks: 1-bit (each) output: Clock feedback ports
                 o_CLKFBOUT=fb,  # 1-bit output: Feedback clock
-                o_LOCKED=locked,  # 1-bit output: LOCK
+                o_LOCKED=self.locked,  # 1-bit output: LOCK
                 i_CLKIN1=ClockSignal(),  # 1-bit input: Input clock
                 # Control Ports: 1-bit (each) input: PLL control ports
                 i_PWRDWN=Const(0),  # 1-bit input: Power-down

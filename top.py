@@ -18,7 +18,7 @@ class Top(Elaboratable):
         domain = "hart"
 
         m = Module()
-        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 48})
+        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 128})
         m.submodules.hart = hart = Hart(domain=domain)
         m.submodules.uart = uart = UART(
             domain,
@@ -41,21 +41,23 @@ class Top(Elaboratable):
         comb = m.d.comb
         sync = m.d[domain]
 
-        if not isinstance(platform, SimPlatform):
-            comb += [
-                platform.request("led", 0).eq(hart.halt),
-                platform.request("led", 1).eq(~uart.tx_o),
-                platform.request("uart").tx.eq(uart.tx_o),
-            ]
-
-        rom = Memory(width=32, depth=file_size // 4, init=firmware)
+        rom = Memory(width=32, depth=32)  # file_size // 4, init=firmware)
         m.submodules.irom_rp = irom_rp = rom.read_port(domain="comb")
         m.submodules.drom_rp = drom_rp = rom.read_port(domain="comb")
 
-        ram = Memory(width=32, depth=1024)
+        ram = Memory(width=32, depth=file_size // 4, init=firmware)
         m.submodules.iram_rp = iram_rp = ram.read_port(domain="comb")
         m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
         m.submodules.dram_wp = dram_wp = ram.write_port(domain=domain, granularity=8)
+
+        m.submodules.sdram = sdram = SDRAM()
+
+        if not isinstance(platform, SimPlatform):
+            comb += [
+                platform.request("led", 0).eq(hart.halt),
+                platform.request("led", 1).eq(sdram.app_rdy),
+                platform.request("uart").tx.eq(uart.tx_o),
+            ]
 
         # MEMORY
         dmem_addr = hart.dmem_addr
@@ -76,8 +78,8 @@ class Top(Elaboratable):
             ]
 
         # DMEM
-        with m.If(dmem_addr[28:32] == 1):
-            # I/O
+        with m.If(dmem_addr == 0x1000_0000):
+            # UART
             with m.If(hart.dmem_wmask.any()):
                 comb += [
                     uart.tx_rdy.eq(1),
@@ -87,7 +89,18 @@ class Top(Elaboratable):
                 comb += [
                     hart.dmem_rdata.eq(uart.tx_ack),
                 ]
-        with m.If(dmem_addr[28:32] == 2):
+        with m.Elif(dmem_addr == 0x1000_0004):
+            # SDRAM
+            with m.If(hart.dmem_rmask.any()):
+                comb += hart.dmem_rdata.eq(
+                    Cat(
+                        sdram.pll_locked,
+                        sdram.mig_init_calib_complete,
+                        sdram.app_rdy,
+                        sdram.app_wdf_rdy,
+                    )
+                )
+        with m.Elif(dmem_addr[28:32] == 2):
             # ROM
             comb += [
                 # read
@@ -118,10 +131,14 @@ class Top(Elaboratable):
                     dmem_rdata = yield hart.dmem_rdata
                     dmem_wmask = yield hart.dmem_wmask
                     dmem_wdata = yield hart.dmem_wdata
-                    # if dmem_rmask!=0:
-                    #     print(f"Reading {dmem_addr:#010x} mask {dmem_rmask:#06b}: {dmem_rdata:#010x}")
-                    # if dmem_wmask!=0:
-                    #     print(f"Writing {dmem_addr:#010x} mask {dmem_wmask:#06b}: {dmem_wdata:#010x}")
+                    # if dmem_rmask != 0:
+                    #     print(
+                    #         f"Reading {dmem_addr:#010x} rmask {dmem_rmask:#06b}: {dmem_rdata:#010x}"
+                    #     )
+                    # if dmem_wmask != 0:
+                    #     print(
+                    #         f"Writing {dmem_addr:#010x} wmask {dmem_wmask:#06b}: {dmem_wdata:#010x}"
+                    #     )
                     if dmem_addr == 0x1000_0000:
                         if dmem_rmask != 0:
                             yield hart.dmem_rdata.eq(1)
@@ -228,12 +245,12 @@ def main():
         build_dir=build_dir,
         do_build=False,
         script_after_read="""
-#add_files /home/slan/src/HelloArty/build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+add_files /home/slan/src/HelloArty/build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 
-#add_files platform/formal/testbench.v
-#set_property used_in_synthesis false [get_files  platform/formal/testbench.v]
-#set_property used_in_implementation false [get_files platform/formal/testbench.v]
-#update_compile_order -fileset sources_1
+# add_files platform/formal/testbench.v
+# set_property used_in_synthesis false [get_files  platform/formal/testbench.v]
+# set_property used_in_implementation false [get_files platform/formal/testbench.v]
+# update_compile_order -fileset sources_1
         """,
     )
     if plan is not None:

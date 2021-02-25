@@ -66,7 +66,7 @@ class Hart(Elaboratable):
         m.submodules.alu = alu = ALU()
         m.submodules.decoder = decoder = self.decoder
 
-        pc = Signal(32, reset=0x20000000)
+        pc = Signal(32, reset=0x00000000)
 
         def trap(mcause, comb=comb, sync=sync):
             comb += [

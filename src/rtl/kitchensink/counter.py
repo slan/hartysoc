@@ -2,8 +2,8 @@ from nmigen import *
 
 
 class Counter(Elaboratable):
-    def __init__(self, max_value: int, domain_name: str = "sync"):
-        self._domain_name = domain_name
+    def __init__(self, max_value: int, domain: str = "sync"):
+        self._domain_name = domain
         self._max_value = max_value
         self._counter = Signal(range(max_value))
         self.out = Signal()

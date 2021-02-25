@@ -1,13 +1,12 @@
 ROOT_RISCV_FORMAL := ~/src/riscv-formal
 ROOT_PROJECT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-SRCS_FIRMWARE := start.s bonjour.s
+SRCS_FIRMWARE := src/firmware/firmware.s
+SRCS_FIRMWARE := src/firmware/firmware.s src/firmware/sdram.c src/firmware/stdlib.c
+OBJS_FIRMWARE := $(SRCS_FIRMWARE:src/firmware/%=build/firmware/%.o)
 
 SRCS_RTL := top.py $(shell find src/rtl -name \*.py)
 SRCS_FORMAL := $(wildcard platform/formal/*)
-
-SRCS_FIRMWARE := $(SRCS_FIRMWARE:%=src/firmware/%)
-OBJS_FIRMWARE := $(SRCS_FIRMWARE:src/firmware/%.s=build/firmware/%.o)
 
 TESTS_INSN := lui auipc jal jalr beq bne blt bge bltu bgeu lb lh lw lbu lhu sb sh sw addi slti sltiu xori ori andi slli srli srai add sub sll slt sltu xor srl sra or and
 TESTS_XTRA := reg causal pc_fwd pc_bwd
@@ -17,7 +16,7 @@ TESTS_ALL := $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
 CC=riscv64-unknown-elf-gcc
 CFLAGS=-save-temps=obj -MD -O3 -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding -fdata-sections -ffunction-sections
 TARGET_ARCH=-march=rv32i -mabi=ilp32
-LDFLAGS=-nostdlib -mno-riscv-attribute -Wl,--gc-sections,-T,src/firmware/script.ld,-Map,build/firmware/firmware.map
+LDFLAGS=-nostdlib -Wl,--gc-sections
 
 all: clean firmware
 	riscv64-unknown-elf-objdump -x build/firmware/firmware.elf
@@ -57,9 +56,9 @@ prog: build/arty/top.bit platform/arty/digilent_arty.cfg
 	openocd -f platform/arty/digilent_arty.cfg -c "init;pld load 0 $<;shutdown"
 
 clean:
-	rm -rf build
+	#rm -rf build
 
-mig: build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+mig: build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 
 arty: ${RTL_SRCS} firmware
 	python top.py arty
@@ -68,16 +67,16 @@ arty: ${RTL_SRCS} firmware
 
 ################################################################################
 
-build/firmware/firmware.elf: ${OBJS_FIRMWARE} src/firmware/script.ld
-	$(LINK.o) $(OUTPUT_OPTION) ${OBJS_FIRMWARE} -lgcc
+build/firmware/firmware.elf: ${OBJS_FIRMWARE} src/firmware/firmware.ld
+	$(LINK.o) -Wl,-T,src/firmware/firmware.ld,-Map,build/firmware/firmware.map $(OUTPUT_OPTION) ${OBJS_FIRMWARE} -lgcc
 
 build/firmware.bin: build/firmware/firmware.elf
 	riscv64-unknown-elf-objcopy -O binary $< $@
 
-build/firmware/%.o: src/firmware/%.c | build/firmware
+build/firmware/%.c.o: src/firmware/%.c | build/firmware
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
-build/firmware/%.o: src/firmware/%.s | build/firmware
+build/firmware/%.s.o: src/firmware/%.s | build/firmware
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 build/firmware:
@@ -97,7 +96,8 @@ build/formal:
 build/arty/top.bit: ${RTL_SRCS} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 	python top.py arty
 
-build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci: mig.tcl mig_a.prj
-	mkdir -p build/vivado
-	vivado -mode batch -source mig.tcl -nolog -nojournal
+build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci: platform/arty/mig.tcl platform/arty/mig_a.prj | build/mig
+	cd build/mig&&vivado -mode batch -source ${ROOT_PROJECT}/platform/arty/mig.tcl -nolog -nojournal -tclargs ${ROOT_PROJECT}/platform/arty
 
+build/mig:
+	mkdir -p build/mig

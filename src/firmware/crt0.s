@@ -1,4 +1,4 @@
-    #la sp,_stack
+    la sp,_stack
     
     call main
 
