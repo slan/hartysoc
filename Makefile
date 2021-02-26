@@ -18,10 +18,7 @@ CFLAGS=-save-temps=obj -MD -O3 -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding -fda
 TARGET_ARCH=-march=rv32i -mabi=ilp32
 LDFLAGS=-nostdlib -Wl,--gc-sections
 
-all: clean firmware
-	riscv64-unknown-elf-objdump -x build/firmware/firmware.elf
-	# xxd build/firmware.bin
-	ls -l  build/firmware.bin
+all:
 
 cxxrtl: 
 	python top.py
@@ -56,7 +53,7 @@ prog: build/arty/top.bit platform/arty/digilent_arty.cfg
 	openocd -f platform/arty/digilent_arty.cfg -c "init;pld load 0 $<;shutdown"
 
 clean:
-	#rm -rf build
+	rm -rf build
 
 mig: build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 

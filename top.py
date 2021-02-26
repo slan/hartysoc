@@ -41,84 +41,42 @@ class Top(Elaboratable):
         comb = m.d.comb
         sync = m.d[domain]
 
-        rom = Memory(width=32, depth=32)  # file_size // 4, init=firmware)
-        m.submodules.irom_rp = irom_rp = rom.read_port(domain="comb")
-        m.submodules.drom_rp = drom_rp = rom.read_port(domain="comb")
-
         ram = Memory(width=32, depth=file_size // 4, init=firmware)
         m.submodules.iram_rp = iram_rp = ram.read_port(domain="comb")
         m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
         m.submodules.dram_wp = dram_wp = ram.write_port(domain=domain, granularity=8)
 
-        m.submodules.sdram = sdram = SDRAM()
+        # IMEM
+        comb += [
+            hart.ibus.rdata.eq(iram_rp.data),
+            iram_rp.addr.eq(hart.ibus.addr[2:28]),
+        ]
 
-        if not isinstance(platform, SimPlatform):
+        m.submodules.mmu = mmu = MMU()
+        comb += hart.dbus.connect(mmu.bus)
+
+        ram_bus = Record(bus_layout)
+        mmu.add_device(ram_bus, 0x0000_0000, 0x1000_0000)
+        comb += [
+            dram_rp.addr.eq(ram_bus.addr[2:28]),
+            ram_bus.rdata.eq(dram_rp.data),
+            dram_wp.addr.eq(ram_bus.addr[2:28]),
+            dram_wp.en.eq(ram_bus.wmask),
+            dram_wp.data.eq(ram_bus.wdata),
+        ]
+
+        uart_bus = Record(bus_layout)
+        mmu.add_device(uart_bus, 0x1000_0000, 0x2000_0000)
+        comb += [
+            uart_bus.rdata.eq(uart.tx_ack),
+            uart.tx_rdy.eq(uart_bus.wmask.any()),
+            uart.tx_data.eq(uart_bus.wdata),
+        ]
+
+        if isinstance(platform, ArtyA7Platform):
             comb += [
-                platform.request("led", 0).eq(hart.halt),
-                platform.request("led", 1).eq(sdram.app_rdy),
                 platform.request("uart").tx.eq(uart.tx_o),
             ]
-
-        # MEMORY
-        dmem_addr = hart.dmem_addr
-        imem_addr = hart.imem_addr
-
-        # IMEM
-        with m.If(imem_addr[28:32] == 2):
-            # ROM
-            comb += [
-                irom_rp.addr.eq(imem_addr[2:28]),
-                hart.imem_data.eq(irom_rp.data),
-            ]
-        with m.Else():
-            # RAM
-            comb += [
-                hart.imem_data.eq(iram_rp.data),
-                iram_rp.addr.eq(imem_addr[2:28]),
-            ]
-
-        # DMEM
-        with m.If(dmem_addr == 0x1000_0000):
-            # UART
-            with m.If(hart.dmem_wmask.any()):
-                comb += [
-                    uart.tx_rdy.eq(1),
-                    uart.tx_data.eq(hart.dmem_wdata),
-                ]
-            with m.Else():
-                comb += [
-                    hart.dmem_rdata.eq(uart.tx_ack),
-                ]
-        with m.Elif(dmem_addr == 0x1000_0004):
-            # SDRAM
-            with m.If(hart.dmem_rmask.any()):
-                comb += hart.dmem_rdata.eq(
-                    Cat(
-                        sdram.pll_locked,
-                        sdram.mig_init_calib_complete,
-                        sdram.app_rdy,
-                        sdram.app_wdf_rdy,
-                    )
-                )
-        with m.Elif(dmem_addr[28:32] == 2):
-            # ROM
-            comb += [
-                # read
-                drom_rp.addr.eq(dmem_addr[2:28]),
-                hart.dmem_rdata.eq(drom_rp.data),
-            ]
-        with m.Else():
-            # RAM
-            comb += [
-                # read
-                dram_rp.addr.eq(dmem_addr[2:28]),
-                hart.dmem_rdata.eq(dram_rp.data),
-                # write
-                dram_wp.en.eq(hart.dmem_wmask),
-                dram_wp.addr.eq(dmem_addr[2:28]),
-                dram_wp.data.eq(hart.dmem_wdata),
-            ]
-
         if isinstance(platform, SimPlatform):
 
             def process():
@@ -126,26 +84,24 @@ class Top(Elaboratable):
                 needs_lf = False
                 while True:
                     yield Settle()
-                    dmem_addr = yield hart.dmem_addr
-                    dmem_rmask = yield hart.dmem_rmask
-                    dmem_rdata = yield hart.dmem_rdata
-                    dmem_wmask = yield hart.dmem_wmask
-                    dmem_wdata = yield hart.dmem_wdata
-                    # if dmem_rmask != 0:
-                    #     print(
-                    #         f"Reading {dmem_addr:#010x} rmask {dmem_rmask:#06b}: {dmem_rdata:#010x}"
-                    #     )
+                    dmem_addr = yield hart.dbus.addr
+                    dmem_rdata = yield hart.dbus.rdata
+                    dmem_wmask = yield hart.dbus.wmask
+                    dmem_wdata = yield hart.dbus.wdata
                     # if dmem_wmask != 0:
                     #     print(
-                    #         f"Writing {dmem_addr:#010x} wmask {dmem_wmask:#06b}: {dmem_wdata:#010x}"
+                    #         f"Writing {dmem_addr:#010x}: {dmem_wdata:#010x} (wmask {dmem_wmask:#06b})"
                     #     )
-                    if dmem_addr == 0x1000_0000:
-                        if dmem_rmask != 0:
-                            yield hart.dmem_rdata.eq(1)
-                        if dmem_wmask != 0:
-                            char = chr(dmem_wdata & 0xFF)
-                            print(char, end="")
-                            needs_lf = char != "\n"
+                    # else:
+                    #     print(
+                    #         f"Reading {dmem_addr:#010x}: {dmem_rdata:#010x}"
+                    #     )
+                    uart_tx_rdy = yield uart.tx_rdy
+                    if uart_tx_rdy:
+                        uart_tx_data = yield uart.tx_data
+                        char = chr(uart_tx_data & 0xFF)
+                        print(char, end="")
+                        needs_lf = char != "\n"
 
                     # yield hart.imem_stall.eq(random.randrange(100)<90)
                     yield Tick(domain)
@@ -245,7 +201,7 @@ def main():
         build_dir=build_dir,
         do_build=False,
         script_after_read="""
-add_files /home/slan/src/HelloArty/build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+# add_files /home/slan/src/HelloArty/build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 
 # add_files platform/formal/testbench.v
 # set_property used_in_synthesis false [get_files  platform/formal/testbench.v]

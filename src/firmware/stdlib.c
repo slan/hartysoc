@@ -8,11 +8,10 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-extern long time();
-extern long insn();
+extern uint32_t time();
+extern uint32_t insn();
 
 #ifdef USE_MYSTDLIB
-extern void sbi_console_putchar(int);
 extern char *malloc();
 extern int printf(const char *format, ...);
 
@@ -24,7 +23,7 @@ char heap_memory[1024];
 int heap_memory_used = 0;
 #endif
 
-long time()
+uint32_t time()
 {
 	int cycles;
 	asm volatile ("rdcycle %0" : "=r"(cycles));
@@ -32,7 +31,7 @@ long time()
 	return cycles;
 }
 
-long insn()
+uint32_t insn()
 {
 	int insns;
 	asm volatile ("rdinstret %0" : "=r"(insns));
@@ -64,17 +63,42 @@ static void printf_s(char *p)
 		printf_c(*(p++));
 }
 
-static void printf_d(int val)
+static void printf_u(unsigned int n)
 {
 	char buffer[32];
 	char *p = buffer;
+	unsigned q, r;
+	while (n || p == buffer) {
+		q = (n >> 1) + (n >> 2);
+		q = q + (q >> 4);
+		q = q + (q >> 8);
+		q = q + (q >> 16);
+		q = q >> 3;
+		r = n - (((q << 2) + q) << 1);
+		*(p++) = '0' + (r > 9 ? r - 10 : r);
+		n = q + (r > 9);
+	}
+	while (p != buffer)
+		printf_c(*(--p));
+}
+
+static void printf_d(int val)
+{
 	if (val < 0) {
 		printf_c('-');
 		val = -val;
 	}
+	printf_u(val);
+}
+
+static void printf_x(unsigned int val)
+{
+	char buffer[32];
+	char *p = buffer;
 	while (val || p == buffer) {
-		*(p++) = '0' + val % 10;
-		val = val / 10;
+		int mod = val & 0xf;
+		*(p++) = (mod<10?'0':'A'-10)+mod;
+		val = val >> 4;
 	}
 	while (p != buffer)
 		printf_c(*(--p));
@@ -100,6 +124,14 @@ int printf(const char *format, ...)
 				}
 				if (format[i] == 'd') {
 					printf_d(va_arg(ap,int));
+					break;
+				}
+				if (format[i] == 'u') {
+					printf_u(va_arg(ap,unsigned int));
+					break;
+				}
+				if (format[i] == 'x') {
+					printf_x(va_arg(ap,unsigned int));
 					break;
 				}
 			}
