@@ -5,28 +5,29 @@ module rvfi_wrapper(
 );
 
 
-(* keep *) `rvformal_rand_reg          imem_stall;
-(* keep *) wire                 [31:0] imem_addr;
-(* keep *) `rvformal_rand_reg   [31:0] imem_rnd_data;
+(* keep *) `rvformal_rand_reg          ibus_rdy;
+(* keep *) wire                 [31:0] ibus_addr;
+(* keep *) `rvformal_rand_reg   [31:0] ibus_rnd_data;
 
-(* keep *) `rvformal_rand_reg          dmem_stall;
-(* keep *) wire                 [31:0] dmem_addr;
-(* keep *) `rvformal_rand_reg   [31:0] dmem_rnd_data;
-(* keep *) wire                 [ 3:0] dmem_wmask;
-(* keep *) wire                 [31:0] dmem_wdata;
+(* keep *) `rvformal_rand_reg          dbus_stall;
+(* keep *) wire                 [31:0] dbus_addr;
+(* keep *) `rvformal_rand_reg   [31:0] dbus_rnd_data;
+(* keep *) wire                 [ 3:0] dbus_wmask;
+(* keep *) wire                 [31:0] dbus_wdata;
 
 \riscv.Hart #(.domain("sync"), .with_rvfi(1)) dut (
     .clk(clock),
     .rst(reset),
 
-    .imem_stall(imem_stall),
-    .imem_addr(imem_addr),
-    .imem_data(imem_rnd_data),
-    .dmem_stall(dmem_stall),
-    .dmem_addr(dmem_addr),
-    .dmem_rdata(dmem_rnd_data),
-    .dmem_wmask(dmem_wmask),
-    .dmem_wdata(dmem_wdata),
+    .ibus__rdy(ibus_rdy),
+    .ibus__addr(ibus_addr),
+    .ibus__rdata(ibus_rnd_data),
+
+    .dbus__rdy(dbus_stall),
+    .dbus__addr(dbus_addr),
+    .dbus__rdata(dbus_rnd_data),
+    .dbus__wmask(dbus_wmask),
+    .dbus__wdata(dbus_wdata),
 
     .rvfi__valid(rvfi_valid),
     .rvfi__order(rvfi_order),

@@ -1,15 +1,13 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Sat Feb 27 21:17:28 2021
+[*] Sat Feb 27 22:49:53 2021
 [*]
-[dumpfile] "/home/slan/src/HelloArty/build/sim/top.vcd"
-[dumpfile_mtime] "Sat Feb 27 21:16:34 2021"
-[dumpfile_size] 42570
+[dumpfile] "(null)"
 [savefile] "/home/slan/src/HelloArty/platform/sim/sim.gtkw"
 [timestart] 0
 [size] 1800 1000
 [pos] -1 -1
-*-17.473013 483000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-17.473013 632200 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.hart.registers.
 [sst_width] 214

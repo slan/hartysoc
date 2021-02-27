@@ -246,8 +246,8 @@ class Hart(Elaboratable):
                 self.rvfi.valid.eq(
                     ~self.trap
                     & ~self.halt
-                    & ~self.imem_stall
-                    & ~(mem_access & self.dmem_stall)
+                    & self.ibus.rdy
+                    & (~mem_access | self.dbus.rdy)
                 ),
                 self.rvfi.pc_wdata.eq(pc_next),
                 self.rvfi.pc_rdata.eq(self.ibus.addr),

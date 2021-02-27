@@ -11,7 +11,7 @@ _loop:
 _end:
 
     la sp, _stack
-    #call main
+    call main
     ebreak
     
 _putc:

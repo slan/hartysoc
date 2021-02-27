@@ -12,24 +12,15 @@ from src.rtl.riscv import *
 
 __all__ = ["main"]
 
+with_sdram = False
 
 class Top(Elaboratable):
     def elaborate(self, platform):
         domain = "hart"
 
         m = Module()
-        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 128})
+        m.submodules.pll = pll = PLL(mult=8, div=1, domains={domain: 128})
         m.submodules.hart = hart = Hart(domain=domain)
-        m.submodules.uart = uart = UART(
-            domain,
-            4
-            if isinstance(platform, SimPlatform)
-            else round(
-                pll.get_frequency_ratio(domain)
-                * platform.default_clk_frequency
-                / 115200
-            ),
-        )
 
         with open("build/firmware.bin", mode="rb") as f:
             firmware = array.array("I")
@@ -46,27 +37,41 @@ class Top(Elaboratable):
         m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
         m.submodules.dram_wp = dram_wp = ram.write_port(domain=domain, granularity=8)
 
-        # IMEM
+        m.submodules.immu = immu = MMU()
+        comb += hart.ibus.connect(immu.bus)
+
+        ram_ibus = Record(bus_layout)
+        immu.add_device(ram_ibus, 0x0000_0000, 0x1000_0000)
         comb += [
-            hart.ibus.rdata.eq(iram_rp.data),
-            iram_rp.addr.eq(hart.ibus.addr[2:28]),
+            ram_ibus.rdata.eq(iram_rp.data),
+            iram_rp.addr.eq(ram_ibus.addr[2:28]),
         ]
 
-        m.submodules.mmu = mmu = MMU()
-        comb += hart.dbus.connect(mmu.bus)
+        m.submodules.dmmu = dmmu = MMU()
+        comb += hart.dbus.connect(dmmu.bus)
 
-        ram_bus = Record(bus_layout)
-        mmu.add_device(ram_bus, 0x0000_0000, 0x1000_0000)
+        ram_dbus = Record(bus_layout)
+        dmmu.add_device(ram_dbus, 0x0000_0000, 0x1000_0000)
         comb += [
-            dram_rp.addr.eq(ram_bus.addr[2:28]),
-            ram_bus.rdata.eq(dram_rp.data),
-            dram_wp.addr.eq(ram_bus.addr[2:28]),
-            dram_wp.en.eq(ram_bus.wmask),
-            dram_wp.data.eq(ram_bus.wdata),
+            dram_rp.addr.eq(ram_dbus.addr[2:28]),
+            ram_dbus.rdata.eq(dram_rp.data),
+            dram_wp.addr.eq(ram_dbus.addr[2:28]),
+            dram_wp.en.eq(ram_dbus.wmask),
+            dram_wp.data.eq(ram_dbus.wdata),
         ]
 
+        m.submodules.uart = uart = UART(
+            domain,
+            4
+            if isinstance(platform, SimPlatform)
+            else round(
+                pll.get_frequency_ratio(domain)
+                * platform.default_clk_frequency
+                / 115200
+            ),
+        )
         uart_bus = Record(bus_layout)
-        mmu.add_device(uart_bus, 0x1000_0000, 0x2000_0000)
+        dmmu.add_device(uart_bus, 0x1000_0000, 0x1000_0004)
         comb += [
             uart_bus.rdata.eq(uart.tx_ack),
             uart.tx_rdy.eq(uart_bus.wmask.any()),
@@ -77,6 +82,21 @@ class Top(Elaboratable):
             comb += [
                 platform.request("uart").tx.eq(uart.tx_o),
             ]
+
+        if with_sdram:
+            m.submodules.sdram = sdram = SDRAM(domain=domain)
+            sdram_bus = Record(bus_layout)
+            dmmu.add_device(sdram_bus, 0x1000_0004, 0x1000_0008)
+            comb += [
+                sdram_bus.rdata.eq(
+                    Cat(
+                        sdram.output.pll_locked,
+                        sdram.output.mig_init_calib_complete,
+                        sdram.output.app_rdy,
+                    )
+                ),
+            ]
+
         if isinstance(platform, SimPlatform):
 
             def process():
@@ -200,14 +220,9 @@ def main():
         fragment,
         build_dir=build_dir,
         do_build=False,
-        script_after_read="""
-# add_files /home/slan/src/HelloArty/build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
-
-# add_files platform/formal/testbench.v
-# set_property used_in_synthesis false [get_files  platform/formal/testbench.v]
-# set_property used_in_implementation false [get_files platform/formal/testbench.v]
-# update_compile_order -fileset sources_1
-        """,
+        script_after_read=""
+        if not with_sdram
+        else "add_files /home/slan/src/HelloArty/build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
     )
     if plan is not None:
         plan.execute_local(build_dir, run_script=True)
