@@ -75,11 +75,11 @@ class Hart(Elaboratable):
                 self.mcycle.eq(self.mcycle + 1),
             ]
 
-            with m.If(1):# TODO self.ibus.rdy):
+            comb += self.ibus.addr.eq(pc)
+            with m.If(self.ibus.rdy):
 
                 ### ID
                 comb += [
-                    self.ibus.addr.eq(pc),
                     decoder.insn.eq(self.ibus.rdata),
                     decoder.pc.eq(pc),
                 ]
@@ -112,8 +112,8 @@ class Hart(Elaboratable):
                 mem_access = read_access | write_access
                 mem_rmask = Signal(4)
 
-                with m.If(1): # TODO mem_access & self.dbus.rdy):
-                    comb += self.dbus.addr.eq(Cat(C(0, 2), alu.out[2:32]))
+                comb += self.dbus.addr[2:32].eq(alu.out[2:32])
+                with m.If(mem_access & self.dbus.rdy):
 
                     # LOAD
                     with m.If(read_access):
@@ -187,7 +187,7 @@ class Hart(Elaboratable):
                                     ]
 
                 ### WB
-                with m.If(1): # TODO ~mem_access | self.dbus.rdy):
+                with m.If(~mem_access | self.dbus.rdy):
                     comb += [
                         registers.rd_addr.eq(decoder.rd_addr),
                     ]

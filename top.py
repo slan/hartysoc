@@ -43,6 +43,7 @@ class Top(Elaboratable):
         ram_ibus = Record(bus_layout)
         immu.add_device(ram_ibus, 0x0000_0000, 0x1000_0000)
         comb += [
+            ram_ibus.rdy.eq(1),
             ram_ibus.rdata.eq(iram_rp.data),
             iram_rp.addr.eq(ram_ibus.addr[2:28]),
         ]
@@ -53,6 +54,7 @@ class Top(Elaboratable):
         ram_dbus = Record(bus_layout)
         dmmu.add_device(ram_dbus, 0x0000_0000, 0x1000_0000)
         comb += [
+            ram_dbus.rdy.eq(1),
             dram_rp.addr.eq(ram_dbus.addr[2:28]),
             ram_dbus.rdata.eq(dram_rp.data),
             dram_wp.addr.eq(ram_dbus.addr[2:28]),
@@ -73,6 +75,7 @@ class Top(Elaboratable):
         uart_bus = Record(bus_layout)
         dmmu.add_device(uart_bus, 0x1000_0000, 0x1000_0004)
         comb += [
+            uart_bus.rdy.eq(1),
             uart_bus.rdata.eq(uart.tx_ack),
             uart.tx_rdy.eq(uart_bus.wmask.any()),
             uart.tx_data.eq(uart_bus.wdata),
