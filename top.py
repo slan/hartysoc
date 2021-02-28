@@ -14,13 +14,10 @@ __all__ = ["main"]
 
 with_sdram = False
 
+
 class Top(Elaboratable):
     def elaborate(self, platform):
         domain = "hart"
-
-        m = Module()
-        m.submodules.pll = pll = PLL(mult=8, div=1, domains={domain: 128})
-        m.submodules.hart = hart = Hart(domain=domain)
 
         with open("build/firmware.bin", mode="rb") as f:
             firmware = array.array("I")
@@ -29,23 +26,71 @@ class Top(Elaboratable):
             assert file_size % 4 == 0
             firmware.fromfile(f, file_size // 4)
 
-        comb = m.d.comb
-        sync = m.d[domain]
+        m = Module()
+        m.submodules.pll = pll = PLL(mult=8, div=1, domains={domain: 128})
+        m.submodules.hart = hart = Hart(domain=domain)
 
-        ram = Memory(width=32, depth=file_size // 4, init=firmware)
-        m.submodules.iram_rp = iram_rp = ram.read_port(domain="comb")
-        m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
-        m.submodules.dram_wp = dram_wp = ram.write_port(domain=domain, granularity=8)
+        comb = m.d.comb
 
         m.submodules.immu = immu = MMU()
         comb += hart.ibus.connect(immu.bus)
+
+        # This starts to fail if firmware is too big... 11804 is the largest
+        # sys.setrecursionlimit(10**6) fixes it
+        # However simulation becomes very slow (2m49s for dhrystone)
+        # so let's fake the memory for simulation (1m45s)
+
+        if isinstance(platform, SimPlatform):
+            iram_rp = Record([("addr", 32), ("data", 32)])
+            dram_rp = Record([("addr", 32), ("data", 32)])
+            dram_wp = Record([("addr", 32), ("data", 32), ("en", 4)])
+            def ram_sim_process():
+                while True:
+                    yield Settle()
+                    halt = yield hart.halt
+                    if halt:
+                        break
+                    addr = yield iram_rp.addr
+                    data = firmware[addr]
+                    # print(f"iram  read addr: {addr:#010x}")
+                    yield iram_rp.data.eq(data)
+                    yield Settle()
+                    addr = yield dram_rp.addr
+                    en = yield dram_wp.en
+                    data = firmware[addr] if addr<len(firmware) else 0
+                    if en==0:
+                        # print(f"dram  read addr: {addr:#010x}")
+                        yield dram_rp.data.eq(data)
+                    else:
+                        wdata = yield dram_wp.data
+                        # print(f"dram write addr: {addr:#010x} wdata: {wdata:#010x} en: {en:#06b}")
+                        en_to_mask = {
+                            0b0001:0x0000_00ff,
+                            0b0010:0x0000_ff00,
+                            0b0100:0x00ff_0000,
+                            0b1000:0xff00_0000,
+                            0b1111:0xffff_ffff,
+                        }
+                        mask = en_to_mask[en]
+                        firmware[addr] = (firmware[addr] & ~mask)|(wdata & mask)
+                        # print(f"           data: {data:#010x} -> {firmware[addr]:#010x}")
+                    yield
+
+            platform.add_sync_process(ram_sim_process, domain=domain)
+        else:
+            ram = Memory(width=32, depth=len(firmware), init=firmware)
+            m.submodules.iram_rp = iram_rp = ram.read_port(domain="comb")
+            m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
+            m.submodules.dram_wp = dram_wp = ram.write_port(
+                domain=domain, granularity=8
+            )
 
         ram_ibus = Record(bus_layout)
         immu.add_device(ram_ibus, 0x0000_0000, 0x1000_0000)
         comb += [
             ram_ibus.rdy.eq(1),
-            ram_ibus.rdata.eq(iram_rp.data),
             iram_rp.addr.eq(ram_ibus.addr[2:28]),
+            ram_ibus.rdata.eq(iram_rp.data),
         ]
 
         m.submodules.dmmu = dmmu = MMU()
@@ -72,6 +117,25 @@ class Top(Elaboratable):
                 / 115200
             ),
         )
+        if isinstance(platform, SimPlatform):
+            def uart_sim_process():
+                needs_lf = False
+                while True:
+                    yield Settle()
+                    halt = yield hart.halt
+                    if halt:
+                        break
+                    uart_tx_rdy = yield uart.tx_rdy
+                    if uart_tx_rdy:
+                        uart_tx_data = yield uart.tx_data
+                        char = chr(uart_tx_data & 0xFF)
+                        print(char, end="")
+                        needs_lf = char != "\n"
+                    yield
+                if needs_lf:
+                    print()
+            platform.add_sync_process(uart_sim_process, domain=domain)
+
         uart_bus = Record(bus_layout)
         dmmu.add_device(uart_bus, 0x1000_0000, 0x1000_0004)
         comb += [
@@ -104,36 +168,15 @@ class Top(Elaboratable):
 
             def process():
                 print("~" * 148)
-                needs_lf = False
                 while True:
-                    yield Settle()
-                    dmem_addr = yield hart.dbus.addr
-                    dmem_rdata = yield hart.dbus.rdata
-                    dmem_wmask = yield hart.dbus.wmask
-                    dmem_wdata = yield hart.dbus.wdata
-                    # if dmem_wmask != 0:
-                    #     print(
-                    #         f"Writing {dmem_addr:#010x}: {dmem_wdata:#010x} (wmask {dmem_wmask:#06b})"
-                    #     )
-                    # else:
-                    #     print(
-                    #         f"Reading {dmem_addr:#010x}: {dmem_rdata:#010x}"
-                    #     )
-                    uart_tx_rdy = yield uart.tx_rdy
-                    if uart_tx_rdy:
-                        uart_tx_data = yield uart.tx_data
-                        char = chr(uart_tx_data & 0xFF)
-                        print(char, end="")
-                        needs_lf = char != "\n"
-
-                    # yield hart.imem_stall.eq(random.randrange(100)<90)
-                    yield Tick(domain)
+                    yield
+                    halt = yield hart.halt
+                    if halt:
+                        break
                     trap = yield hart.trap
                     if trap:
                         mcause = yield hart.mcause
 
-                        if needs_lf:
-                            print()
                         print("~" * 148)
                         print(
                             f"*** TRAP ***\n  mcause: {TrapCause(mcause).name}/{mcause}"
@@ -155,8 +198,6 @@ class Top(Elaboratable):
                             sys.stdout.write(f"x{i}: {x:#010x}    ")
                             if i % 8 == 7:
                                 print()
-                        break
-
             platform.add_sync_process(process, domain=domain)
 
         return m

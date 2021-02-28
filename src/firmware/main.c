@@ -1,4 +1,4 @@
 main()
 {
-    printf("Hello %d\n", 42);
+    printf("Hello %d abc\n", 123);
 }

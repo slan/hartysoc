@@ -11,11 +11,8 @@ SECTIONS
     } > rom
     .data : {
         *(.data*);
-        . = ALIGN(4);
         *(.rodata*);
-        . = ALIGN(4);
         *(.bss*);
-        . = ALIGN(4);
         *(.sbss*);
         . = ALIGN(4);
         . = . + 1024;

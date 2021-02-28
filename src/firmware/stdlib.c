@@ -43,7 +43,7 @@ uint32_t insn()
 char *malloc(int size)
 {
 	char *p = heap_memory + heap_memory_used;
-	printf("[malloc(%d) -> %d (%d..%d)]", size, (int)p, heap_memory_used, heap_memory_used + size);
+	// printf("[malloc(%d) -> %d (%d..%d)]", size, (int)p, heap_memory_used, heap_memory_used + size);
 	heap_memory_used += size;
 	if (heap_memory_used > 1024)
 		asm volatile ("ebreak");
