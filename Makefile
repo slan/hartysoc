@@ -1,8 +1,8 @@
 ROOT_RISCV_FORMAL := ~/src/riscv-formal
 ROOT_PROJECT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-SRCS_FIRMWARE := src/firmware/firmware.s
-SRCS_FIRMWARE := src/firmware/firmware.s src/firmware/sdram.c src/firmware/stdlib.c
+SRCS_FIRMWARE := src/firmware/firmware.s src/firmware/stdlib.c src/firmware/sdram.c
+SRCS_FIRMWARE := src/firmware/firmware.s src/firmware/stdlib.c src/firmware/dhry1.c src/firmware/dhry2.c
 OBJS_FIRMWARE := $(SRCS_FIRMWARE:src/firmware/%=build/firmware/%.o)
 
 SRCS_RTL := top.py $(shell find src/rtl -name \*.py)
