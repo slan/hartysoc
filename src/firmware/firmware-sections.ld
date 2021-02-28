@@ -12,12 +12,20 @@ SECTIONS
     .data : {
         *(.data*);
         . = ALIGN(4);
+    } > rom
+    .rodata : {
         *(.rodata*);
         . = ALIGN(4);
+    } > rom
+    .bss : {
         *(.bss*);
         . = ALIGN(4);
+    } > rom
+    .sbss : {
         *(.sbss*);
         . = ALIGN(4);
+    } > rom
+    .stack : {
         . = . + 1024;
         _stack = .;
     } > rom
