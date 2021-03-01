@@ -1,7 +1,8 @@
 from nmigen import *
 from nmigen.build import *
 from nmigen.lib.cdc import ResetSynchronizer
-from rtl.kitchensink.simplatform import SimPlatform
+from .simplatform import SimPlatform
+from nmigen_boards.arty_a7 import ArtyA7Platform
 
 #    Name        1920x1080p60
 #    Standard      SMPTE 274M
@@ -100,64 +101,28 @@ class VGA(Elaboratable):
         with m.Else():
             m.d.pxl += x.eq(x + 1)
 
-        if platform is SimPlatform:
-            pass
-        else:
-            self.add_resources(
-                [
-                    Resource(
-                        "vgapmod",
-                        0,
-                        Subsignal(
-                            "hsync",
-                            Pins("7", dir="o", conn=("pmod", 2)),
-                            Attrs(IOSTANDARD="LVCMOS33"),
-                        ),
-                        Subsignal(
-                            "vsync",
-                            Pins("8", dir="o", conn=("pmod", 2)),
-                            Attrs(IOSTANDARD="LVCMOS33"),
-                        ),
-                        Subsignal(
-                            "r",
-                            Pins("1 2 3 4", dir="o", conn=("pmod", 1)),
-                            Attrs(IOSTANDARD="LVCMOS33"),
-                        ),
-                        Subsignal(
-                            "g",
-                            Pins("1 2 3 4", dir="o", conn=("pmod", 2)),
-                            Attrs(IOSTANDARD="LVCMOS33"),
-                        ),
-                        Subsignal(
-                            "b",
-                            Pins("7 8 9 10", dir="o", conn=("pmod", 1)),
-                            Attrs(IOSTANDARD="LVCMOS33"),
-                        ),
-                    )
-                ]
-            )
-            vgapmod = platform.request("vgapmod")
+        vgapmod = platform.request("vgapmod")
 
-            with m.If((y < 1080) & (x < 1920)):
-                lfsr = Signal(21, reset=688348)  # xnor taps at 21,19
-                m.d.pxl += [
-                    lfsr.eq(Cat((lfsr >> 1)[:20], (lfsr[0] == lfsr[2]))),
-                ]
-                rnd = lfsr[:4]
-                with m.If(x < 640 - 8 + rnd):
-                    m.d.comb += [vgapmod.r.eq(0), vgapmod.g.eq(0), vgapmod.b.eq(rnd)]
-                with m.Elif(x < 640 + 640 - 8 + rnd):
-                    m.d.comb += [
-                        vgapmod.r.eq(rnd),
-                        vgapmod.g.eq(rnd),
-                        vgapmod.b.eq(rnd),
-                    ]
-                with m.Elif(x < 640 + 640 + 640):
-                    m.d.comb += [vgapmod.r.eq(rnd), vgapmod.g.eq(0), vgapmod.b.eq(0)]
-
+        with m.If((y < 1080) & (x < 1920)):
+            lfsr = Signal(21, reset=688348)  # xnor taps at 21,19
             m.d.pxl += [
-                vgapmod.hsync.eq((x >= 1920 + 88) & (x < 1920 + 88 + 44)),
-                vgapmod.vsync.eq((y >= 1080 + 4) & (y < 1080 + 4 + 5)),
+                lfsr.eq(Cat((lfsr >> 1)[:20], (lfsr[0] == lfsr[2]))),
             ]
+            rnd = lfsr[:4]
+            with m.If(x < 640 - 8 + rnd):
+                m.d.comb += [vgapmod.r.eq(0), vgapmod.g.eq(0), vgapmod.b.eq(rnd)]
+            with m.Elif(x < 640 + 640 - 8 + rnd):
+                m.d.comb += [
+                    vgapmod.r.eq(rnd),
+                    vgapmod.g.eq(rnd),
+                    vgapmod.b.eq(rnd),
+                ]
+            with m.Elif(x < 640 + 640 + 640):
+                m.d.comb += [vgapmod.r.eq(rnd), vgapmod.g.eq(0), vgapmod.b.eq(0)]
+
+        m.d.pxl += [
+            vgapmod.hsync.eq((x >= 1920 + 88) & (x < 1920 + 88 + 44)),
+            vgapmod.vsync.eq((y >= 1080 + 4) & (y < 1080 + 4 + 5)),
+        ]
 
         return m

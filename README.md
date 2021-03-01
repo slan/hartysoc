@@ -18,6 +18,12 @@ make sim
 - verified with [riscv-formal](https://github.com/SymbioticEDA/riscv-formal)
 - UART
 
+## WIP
+
+- SDRAM: automatic controller creation from Xilinx MIG is done, basic test shows calibration success and app ready (with occasional refresh downtime as expected). The core has support for ibus/dbus stalls... in theory.
+- GPU: basic VGA is in with a "racing the beam" 1920x1080@60Hz demo screen. If you have a [Pmod VGA](https://store.digilentinc.com/pmod-vga-video-graphics-array/), instantiate `ks.VGA()` rather than `Top()` in [top.py:111](top.py)
+
+
 ## Benchmark
 
 Dhrystone `-O3`:

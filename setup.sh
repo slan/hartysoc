@@ -22,3 +22,7 @@ git clone https://github.com/YosysHQ/yosys.git
 cd yosys&&make config-clang&&make -j$(nproc)&&sudo make install&&cd ..
 
 wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv64-unknown-elf-gcc-10.1.0-2020.08.2-x86_64-linux-ubuntu14.tar.gz|sudo tar -C /usr/local --strip-components=1 -xzf -
+
+git clone https://github.com/slan/riscv-formal.git
+
+wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv-openocd-0.10.0-2020.08.1-x86_64-linux-ubuntu14.tar.gz|sudo tar -C /usr/local --strip-components=1 -xzf -

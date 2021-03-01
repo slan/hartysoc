@@ -55,3 +55,31 @@ cd yosys&&make config-clang&&make -j$(nproc)&&sudo make install&&cd ..
 ```
 mkdir -p ~/tools&&wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv64-unknown-elf-gcc-10.1.0-2020.08.2-x86_64-linux-ubuntu14.tar.gz|sudo tar -C /usr/local --strip-components=1 -xzf -
 ```
+> STOP! you can now `make sim` to run Dhrystone
+
+7. Install [riscv-formal](https://github.com/slan/riscv-formal.git) from my fork to get out-of-tree verification:
+
+```
+git clone https://github.com/slan/riscv-formal.git
+```
+
+> STOP! you can now `make formal -j$(nproc)` to verify the core
+
+8. Install vivado (manually) and make sure it's in your `${PATH}`
+
+> STOP! you can now `make arty` to generate a bitstream
+
+9. Install openocd in `/usr/local`:
+
+```
+wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv-openocd-0.10.0-2020.08.1-x86_64-linux-ubuntu14.tar.gz|sudo tar -C /usr/local --strip-components=1 -xzf -
+```
+
+Configure serial (or use `minicom`), your device might be different...
+
+```
+sudo stty -F /dev/ttyUSB1 ispeed 115200 raw
+sudo cat /dev/ttyUSB1
+```
+
+> STOP! you can now `make prog` to run Dhrystone on the FPGA
