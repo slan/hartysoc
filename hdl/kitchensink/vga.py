@@ -1,5 +1,7 @@
 from nmigen import *
+from nmigen.build import *
 from nmigen.lib.cdc import ResetSynchronizer
+from rtl.kitchensink.simplatform import SimPlatform
 
 #    Name        1920x1080p60
 #    Standard      SMPTE 274M
@@ -98,7 +100,42 @@ class VGA(Elaboratable):
         with m.Else():
             m.d.pxl += x.eq(x + 1)
 
-        if platform is not None:
+        if platform is SimPlatform:
+            pass
+        else:
+            self.add_resources(
+                [
+                    Resource(
+                        "vgapmod",
+                        0,
+                        Subsignal(
+                            "hsync",
+                            Pins("7", dir="o", conn=("pmod", 2)),
+                            Attrs(IOSTANDARD="LVCMOS33"),
+                        ),
+                        Subsignal(
+                            "vsync",
+                            Pins("8", dir="o", conn=("pmod", 2)),
+                            Attrs(IOSTANDARD="LVCMOS33"),
+                        ),
+                        Subsignal(
+                            "r",
+                            Pins("1 2 3 4", dir="o", conn=("pmod", 1)),
+                            Attrs(IOSTANDARD="LVCMOS33"),
+                        ),
+                        Subsignal(
+                            "g",
+                            Pins("1 2 3 4", dir="o", conn=("pmod", 2)),
+                            Attrs(IOSTANDARD="LVCMOS33"),
+                        ),
+                        Subsignal(
+                            "b",
+                            Pins("7 8 9 10", dir="o", conn=("pmod", 1)),
+                            Attrs(IOSTANDARD="LVCMOS33"),
+                        ),
+                    )
+                ]
+            )
             vgapmod = platform.request("vgapmod")
 
             with m.If((y < 1080) & (x < 1920)):

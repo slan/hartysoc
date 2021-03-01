@@ -1,5 +1,11 @@
 # Harty
 
+A RISC-V SOC implemented in nmigen targeting the Arty FPGA board.
+
+- verified with [riscv-formal](https://github.com/nmigen/nmigen)
+- single-cycle
+- UART
+
 ## Memory map
 
 Start|End|Type
@@ -27,13 +33,19 @@ Start|End|Type
 
 ## Benchmark
 
-Single cycle: timing valid at 33MHz
-
-Dhrystone:
+Dhrystone `-O3`:
 ```
 Number_Of_Runs: 100
-User_Time: 39022 cycles, 39022 insn
+User_Time: 39131 cycles, 39129 insn
 Cycles_Per_Instruction: 1.000
-Dhrystones_Per_Second_Per_MHz: 2562
-DMIPS_Per_MHz: 1.458
+Dhrystones_Per_Second_Per_MHz: 2555
+DMIPS_Per_MHz: 1.454
+```
+Dhrystone `-O3 --no-inline`:
+```
+Number_Of_Runs: 100
+User_Time: 47628 cycles, 47627 insn
+Cycles_Per_Instruction: 1.000
+Dhrystones_Per_Second_Per_MHz: 2099
+DMIPS_Per_MHz: 1.194
 ```

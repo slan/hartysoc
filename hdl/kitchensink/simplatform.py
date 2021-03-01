@@ -1,17 +1,24 @@
 import os
+
 from nmigen import *
+from nmigen.back import rtlil, verilog
 from nmigen.build import *
 from nmigen.sim import *
-from nmigen.back import rtlil, verilog
 
 
 class SimPlatform(Platform):
     def __init__(self, default_frequency=100):
         super().__init__()
         self.add_resources(
-            [Resource("sync", 0, Pins("", dir="i"), Clock(default_frequency))]
+            [
+                Resource("sync", 0, Pins("", dir="i"), Clock(default_frequency)),
+                Resource("led", 0, Pins("led0", dir="o")),
+                Resource("led", 1, Pins("led1", dir="o")),
+                Resource("led", 2, Pins("led2", dir="o")),
+                Resource("led", 3, Pins("led3", dir="o")),
+            ]
         )
-        self.sync_processes= {}
+        self.sync_processes = {}
         self.processes = []
 
     # Abstract

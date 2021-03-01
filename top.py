@@ -1,14 +1,16 @@
-import array
 import datetime as dt
-import random
 import sys
+from hdl.riscv.enums import TrapCause
 
 from nmigen import *
 from nmigen.build import *
+from nmigen.sim.core import Settle
 from nmigen_boards.arty_a7 import ArtyA7Platform
 
-from src.rtl.kitchensink import *
-from src.rtl.riscv import *
+from hdl.harty import *
+from hdl.riscv import *
+
+import hdl.kitchensink as ks
 
 __all__ = ["main"]
 
@@ -17,154 +19,38 @@ with_sdram = False
 
 class Top(Elaboratable):
     def elaborate(self, platform):
-        domain = "hart"
-
-        with open("build/firmware.bin", mode="rb") as f:
-            firmware = array.array("I")
-            assert firmware.itemsize == 4
-            file_size = os.stat(f.name).st_size
-            assert file_size % 4 == 0
-            firmware.fromfile(f, file_size // 4)
-
         m = Module()
-        m.submodules.pll = pll = PLL(mult=8, div=1, domains={domain: 128})
+
+        domain = "hart"
+        m.submodules.pll = pll = ks.PLL(mult=16, div=1, domains={domain: 128})
+        hart_freq = pll.get_frequency_ratio(domain) * platform.default_clk_frequency
+
         m.submodules.hart = hart = Hart(domain=domain)
 
         comb = m.d.comb
 
-        m.submodules.immu = immu = MMU()
-        comb += hart.ibus.connect(immu.bus)
+        ibus_devices = []
+        dbus_devices = []
 
-        # This starts to fail if firmware is too big... 11804 is the largest
-        # sys.setrecursionlimit(10**6) fixes it
-        # However simulation becomes very slow (2m49s for dhrystone)
-        # so let's fake the memory for simulation (1m45s)
+        m.submodules.ram = ram = RAM(domain=domain)
+        ibus_devices += [(ram.ibus, 0x0000_0000, 0x1000_0000)]
+        dbus_devices += [(ram.dbus, 0x0000_0000, 0x1000_0000)]
 
-        if isinstance(platform, SimPlatform):
-            iram_rp = Record([("addr", 32), ("data", 32)])
-            dram_rp = Record([("addr", 32), ("data", 32)])
-            dram_wp = Record([("addr", 32), ("data", 32), ("en", 4)])
-            def ram_sim_process():
-                while True:
-                    yield Settle()
-                    halt = yield hart.halt
-                    if halt:
-                        break
-                    addr = yield iram_rp.addr
-                    data = firmware[addr]
-                    # print(f"iram  read addr: {addr:#010x}")
-                    yield iram_rp.data.eq(data)
-                    yield Settle()
-                    addr = yield dram_rp.addr
-                    en = yield dram_wp.en
-                    data = firmware[addr] if addr<len(firmware) else 0
-                    if en==0:
-                        # print(f"dram  read addr: {addr:#010x}")
-                        yield dram_rp.data.eq(data)
-                    else:
-                        wdata = yield dram_wp.data
-                        # print(f"dram write addr: {addr:#010x} wdata: {wdata:#010x} en: {en:#06b}")
-                        en_to_mask = {
-                            0b0001:0x0000_00ff,
-                            0b0010:0x0000_ff00,
-                            0b0100:0x00ff_0000,
-                            0b1000:0xff00_0000,
-                            0b1111:0xffff_ffff,
-                        }
-                        mask = en_to_mask[en]
-                        firmware[addr] = (firmware[addr] & ~mask)|(wdata & mask)
-                        # print(f"           data: {data:#010x} -> {firmware[addr]:#010x}")
-                    yield
+        m.submodules.uart = uart = UART(domain=domain, freq=hart_freq)
+        dbus_devices += [(uart.bus, 0x1000_0000, 0x1000_0004)]
 
-            platform.add_sync_process(ram_sim_process, domain=domain)
-        else:
-            ram = Memory(width=32, depth=len(firmware), init=firmware)
-            m.submodules.iram_rp = iram_rp = ram.read_port(domain="comb")
-            m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
-            m.submodules.dram_wp = dram_wp = ram.write_port(
-                domain=domain, granularity=8
-            )
+        for bus, start, end in ibus_devices:
+            with m.If((hart.ibus.addr >= start) & (hart.ibus.addr < end)):
+                comb += [hart.ibus.connect(bus)]
+        for bus, start, end in dbus_devices:
+            with m.If((hart.dbus.addr >= start) & (hart.dbus.addr < end)):
+                comb += [hart.dbus.connect(bus)]
 
-        ram_ibus = Record(bus_layout)
-        immu.add_device(ram_ibus, 0x0000_0000, 0x1000_0000)
-        comb += [
-            ram_ibus.rdy.eq(1),
-            iram_rp.addr.eq(ram_ibus.addr[2:28]),
-            ram_ibus.rdata.eq(iram_rp.data),
-        ]
+        # if with_sdram:
+        #     m.submodules.sdram = sdram = SDRAM(domain=domain)
+        #     dbus_devices+=[(sdram.bus, 0x1000_0004, 0x1000_0008)]
 
-        m.submodules.dmmu = dmmu = MMU()
-        comb += hart.dbus.connect(dmmu.bus)
-
-        ram_dbus = Record(bus_layout)
-        dmmu.add_device(ram_dbus, 0x0000_0000, 0x1000_0000)
-        comb += [
-            ram_dbus.rdy.eq(1),
-            dram_rp.addr.eq(ram_dbus.addr[2:28]),
-            ram_dbus.rdata.eq(dram_rp.data),
-            dram_wp.addr.eq(ram_dbus.addr[2:28]),
-            dram_wp.en.eq(ram_dbus.wmask),
-            dram_wp.data.eq(ram_dbus.wdata),
-        ]
-
-        m.submodules.uart = uart = UART(
-            domain,
-            4
-            if isinstance(platform, SimPlatform)
-            else round(
-                pll.get_frequency_ratio(domain)
-                * platform.default_clk_frequency
-                / 115200
-            ),
-        )
-        if isinstance(platform, SimPlatform):
-            def uart_sim_process():
-                needs_lf = False
-                while True:
-                    yield Settle()
-                    halt = yield hart.halt
-                    if halt:
-                        break
-                    uart_tx_rdy = yield uart.tx_rdy
-                    if uart_tx_rdy:
-                        uart_tx_data = yield uart.tx_data
-                        char = chr(uart_tx_data & 0xFF)
-                        print(char, end="")
-                        needs_lf = char != "\n"
-                    yield
-                if needs_lf:
-                    print()
-            platform.add_sync_process(uart_sim_process, domain=domain)
-
-        uart_bus = Record(bus_layout)
-        dmmu.add_device(uart_bus, 0x1000_0000, 0x1000_0004)
-        comb += [
-            uart_bus.rdy.eq(1),
-            uart_bus.rdata.eq(uart.tx_ack),
-            uart.tx_rdy.eq(uart_bus.wmask.any()),
-            uart.tx_data.eq(uart_bus.wdata),
-        ]
-
-        if isinstance(platform, ArtyA7Platform):
-            comb += [
-                platform.request("uart").tx.eq(uart.tx_o),
-            ]
-
-        if with_sdram:
-            m.submodules.sdram = sdram = SDRAM(domain=domain)
-            sdram_bus = Record(bus_layout)
-            dmmu.add_device(sdram_bus, 0x1000_0004, 0x1000_0008)
-            comb += [
-                sdram_bus.rdata.eq(
-                    Cat(
-                        sdram.output.pll_locked,
-                        sdram.output.mig_init_calib_complete,
-                        sdram.output.app_rdy,
-                    )
-                ),
-            ]
-
-        if isinstance(platform, SimPlatform):
+        if isinstance(platform, ks.SimPlatform):
 
             def process():
                 print("~" * 148)
@@ -173,8 +59,12 @@ class Top(Elaboratable):
                     halt = yield hart.halt
                     if halt:
                         break
+                    
                     trap = yield hart.trap
                     if trap:
+                        ram.halt = True
+                        uart.halt = True
+                        yield Settle()
                         mcause = yield hart.mcause
 
                         print("~" * 148)
@@ -198,6 +88,7 @@ class Top(Elaboratable):
                             sys.stdout.write(f"x{i}: {x:#010x}    ")
                             if i % 8 == 7:
                                 print()
+
             platform.add_sync_process(process, domain=domain)
 
         return m
@@ -207,57 +98,17 @@ def main():
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None
 
     if platform_name == "formal":
-        platform = FormalPlatform()
-        additional_resources = []
+        platform = ks.FormalPlatform()
 
     elif platform_name == "sim":
-        platform = SimPlatform(100e6)
-        additional_resources = [
-            Resource("led", 0, Pins("led0", dir="o")),
-            Resource("led", 1, Pins("led1", dir="o")),
-            Resource("led", 2, Pins("led2", dir="o")),
-            Resource("led", 3, Pins("led3", dir="o")),
-        ]
+        platform = ks.SimPlatform(100e6)
+        
     elif platform_name == "arty":
         platform = ArtyA7Platform()
-        additional_resources = [
-            Resource(
-                "vgapmod",
-                0,
-                Subsignal(
-                    "hsync",
-                    Pins("7", dir="o", conn=("pmod", 2)),
-                    Attrs(IOSTANDARD="LVCMOS33"),
-                ),
-                Subsignal(
-                    "vsync",
-                    Pins("8", dir="o", conn=("pmod", 2)),
-                    Attrs(IOSTANDARD="LVCMOS33"),
-                ),
-                Subsignal(
-                    "r",
-                    Pins("1 2 3 4", dir="o", conn=("pmod", 1)),
-                    Attrs(IOSTANDARD="LVCMOS33"),
-                ),
-                Subsignal(
-                    "g",
-                    Pins("1 2 3 4", dir="o", conn=("pmod", 2)),
-                    Attrs(IOSTANDARD="LVCMOS33"),
-                ),
-                Subsignal(
-                    "b",
-                    Pins("7 8 9 10", dir="o", conn=("pmod", 1)),
-                    Attrs(IOSTANDARD="LVCMOS33"),
-                ),
-            )
-        ]
     else:
         print("Unknown platform")
         exit()
 
-    platform.add_resources(additional_resources)
-
-    mig_dir = ""
     build_dir = f"build/{platform_name}"
     fragment = Fragment.get(Top(), platform)
     plan = platform.build(
