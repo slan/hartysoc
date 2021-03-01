@@ -56,15 +56,9 @@ class Top(Elaboratable):
                 print("~" * 148)
                 while True:
                     yield
-                    halt = yield hart.halt
-                    if halt:
-                        break
                     
                     trap = yield hart.trap
                     if trap:
-                        ram.halt = True
-                        uart.halt = True
-                        yield Settle()
                         mcause = yield hart.mcause
 
                         print("~" * 148)
@@ -88,6 +82,12 @@ class Top(Elaboratable):
                             sys.stdout.write(f"x{i}: {x:#010x}    ")
                             if i % 8 == 7:
                                 print()
+                                
+                    halt = yield hart.halt
+                    if halt:
+                        ram.halt = True
+                        uart.halt = True
+                        break
 
             platform.add_sync_process(process, domain=domain)
 

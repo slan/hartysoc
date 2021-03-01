@@ -1,35 +1,22 @@
-# Harty
+# hartysoc
 
-A RISC-V SOC implemented in nmigen targeting the Arty FPGA board.
+A RISC-V SOC implemented in [nmigen](https://github.com/nmigen/nmigen) targeting the [Arty](https://store.digilentinc.com/arty-a7-artix-7-fpga-development-board/) FPGA board.
 
-- verified with [riscv-formal](https://github.com/nmigen/nmigen)
-- single-cycle
+> Disclaimer: in it's current state, this repo is merely a playground for my learning journey. I am not an expert (read: PR/issues are welcome).
+
+Setup instructions are [here](SETUP.md)
+
+Check `SRCS_FIRMWARE` in the [Makefile](Makefile), default should run Dhrystone. There's also a simple [main.c](firmware/main.c) to hack around...
+
+```
+make sim
+```
+
+## Features
+
+- single-cycle, runs at 33MHz
+- verified with [riscv-formal](https://github.com/SymbioticEDA/riscv-formal)
 - UART
-
-## Memory map
-
-Start|End|Type
----|---|---
-`0x00000000` | `0x0fffffff` | RAM (256 MB)
-`0x10000000` | `0x1fffffff` | I/O
-`0x20000000` | `0x2fffffff` | ROM
-
-## Setup
-
-- nmigen
-- yosys
-
-### Simulation/Validation
-
-- gtkwave
-- sifive gcc toolchain
-- symbyosys
-
-### Arty
-
-- nmigen-boards
-- vivado
-- openocd
 
 ## Benchmark
 
@@ -49,3 +36,22 @@ Cycles_Per_Instruction: 1.000
 Dhrystones_Per_Second_Per_MHz: 2099
 DMIPS_Per_MHz: 1.194
 ```
+
+## References
+
+### Core
+
+- [nmigen](https://github.com/nmigen/nmigen)
+- [yosys](https://github.com/YosysHQ/yosys)
+
+### Simulation/Validation
+
+- [gtkwave](http://gtkwave.sourceforge.net/)
+- [sifive gcc toolchain](https://github.com/sifive/freedom-tools/releases)
+- [symbyosys](https://github.com/YosysHQ/SymbiYosys.git)
+
+### Arty
+
+- [nmigen-boards](https://github.com/nmigen/nmigen-boards)
+- [vivado](https://www.xilinx.com/products/design-tools/vivado.html)
+- [openocd-xpack](https://github.com/xpack-dev-tools/openocd-xpack)

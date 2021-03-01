@@ -1,5 +1,5 @@
     la a0, 0x10000000
-
+    
     la a1, _msg
 _loop:
     lb a2, 0(a1)
@@ -23,4 +23,4 @@ _putc:
 
     .section .data
 _msg:
-    .string "harty-soc 0.0.1 - Bonjour\n"
+    .string "Bonjour hartysoc 0.0.1\n"
