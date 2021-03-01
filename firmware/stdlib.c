@@ -50,20 +50,23 @@ char *malloc(int size)
 	return p;
 }
 
-static void printf_c(int c)
+static int printf_c(int c)
 {
     volatile char* uart = (char*)0x10000000;
     while(!*uart);
     *uart = c;
+	return 1;
 }
 
-static void printf_s(char *p)
+static int printf_s(char *p)
 {
+	char* p0 = p;
 	while (*p)
 		printf_c(*(p++));
+	return p-p0;
 }
 
-static void printf_u(unsigned int n)
+static int printf_u(unsigned int n)
 {
 	char buffer[32];
 	char *p = buffer;
@@ -78,20 +81,23 @@ static void printf_u(unsigned int n)
 		*(p++) = '0' + (r > 9 ? r - 10 : r);
 		n = q + (r > 9);
 	}
+	char* p0 = p;
 	while (p != buffer)
 		printf_c(*(--p));
+	return p0-p;
 }
 
-static void printf_d(int val)
+static int printf_d(int val)
 {
 	if (val < 0) {
 		printf_c('-');
-		val = -val;
+		return 1 + printf_u(-val);
+	} else {
+		return printf_u(val);
 	}
-	printf_u(val);
 }
 
-static void printf_x(unsigned int val)
+static int printf_x(unsigned int val)
 {
 	char buffer[32];
 	char *p = buffer;
@@ -100,8 +106,10 @@ static void printf_x(unsigned int val)
 		*(p++) = (mod<10?'0':'A'-10)+mod;
 		val = val >> 4;
 	}
+	char* p0 = p;
 	while (p != buffer)
 		printf_c(*(--p));
+	return p0 - p;
 }
 
 int printf(const char *format, ...)
@@ -111,34 +119,37 @@ int printf(const char *format, ...)
 
 	va_start(ap, format);
 
+	int ret = 0;
 	for (i = 0; format[i]; i++)
 		if (format[i] == '%') {
 			while (format[++i]) {
 				if (format[i] == 'c') {
-					printf_c(va_arg(ap,int));
+					ret += printf_c(va_arg(ap,int));
 					break;
 				}
 				if (format[i] == 's') {
-					printf_s(va_arg(ap,char*));
+					ret += printf_s(va_arg(ap,char*));
 					break;
 				}
 				if (format[i] == 'd') {
-					printf_d(va_arg(ap,int));
+					ret += printf_d(va_arg(ap,int));
 					break;
 				}
 				if (format[i] == 'u') {
-					printf_u(va_arg(ap,unsigned int));
+					ret += printf_u(va_arg(ap,unsigned int));
 					break;
 				}
 				if (format[i] == 'x') {
-					printf_x(va_arg(ap,unsigned int));
+					ret += printf_x(va_arg(ap,unsigned int));
 					break;
 				}
 			}
-		} else
-			printf_c(format[i]);
+		} else {
+			ret += printf_c(format[i]);
+		}
 
 	va_end(ap);
+	return ret;
 }
 
 void *memcpy(void *aa, const void *bb, long n)

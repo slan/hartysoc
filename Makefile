@@ -16,9 +16,13 @@ TESTS_ALL := $(foreach test,${TESTS_XTRA},$(test)_ch0) $(foreach test,${TESTS_IN
 TESTS_ALL := $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
 
 CC=riscv64-unknown-elf-gcc
-CFLAGS=-save-temps=obj -MD -O3 -DRISCV -DTIME -DUSE_MYSTDLIB -ffreestanding -fdata-sections -ffunction-sections
+CFLAGS=-Wall -save-temps=obj -ffreestanding -fdata-sections -ffunction-sections $(CFLAGS-$@)
 TARGET_ARCH=-march=rv32i -mabi=ilp32
 LDFLAGS=-nostdlib -Wl,--gc-sections
+
+CFLAGS-build/firmware/stdlib.c.o := -DUSE_MYSTDLIB
+CFLAGS-build/firmware/dhry1.c.o := -DTIME -DRISCV -O3 -Wno-implicit-function-declaration -Wno-implicit-int -Wno-return-type
+CFLAGS-build/firmware/dhry2.c.o := -DTIME -DRISCV -O3 -Wno-implicit-function-declaration -Wno-implicit-int -Wno-return-type
 
 all:
 
@@ -67,12 +71,14 @@ arty: ${HDL_SRCS} firmware
 ################################################################################
 
 build/firmware/firmware.elf: ${OBJS_FIRMWARE} firmware/firmware.ld
+	echo $(LINK.o)
 	$(LINK.o) -Wl,-T,firmware/firmware.ld,-Map,build/firmware/firmware.map $(OUTPUT_OPTION) ${OBJS_FIRMWARE} -lgcc
 
 build/firmware.bin: build/firmware/firmware.elf
 	riscv64-unknown-elf-objcopy -O binary $< $@
 
 build/firmware/%.c.o: firmware/%.c | build/firmware
+	echo $@
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 build/firmware/%.s.o: firmware/%.s | build/firmware

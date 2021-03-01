@@ -11,6 +11,7 @@ _loop:
 _end:
 
     la sp, _stack
+    li a0, 0
     call main
     ebreak
     
