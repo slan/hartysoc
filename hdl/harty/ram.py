@@ -8,8 +8,9 @@ from ..riscv.bus import bus_layout
 from ..kitchensink.simplatform import SimPlatform
 
 class RAM(Elaboratable):
-    def __init__(self, *, domain):
+    def __init__(self, *, domain, init):
         self._domain = domain
+        self._init = init
         self.halt = False
         self.ibus = Record(bus_layout)
         self.dbus = Record(bus_layout)
@@ -19,13 +20,6 @@ class RAM(Elaboratable):
         m = Module()
 
         comb = m.d.comb
-
-        with open("build/firmware.bin", mode="rb") as f:
-            firmware = array("I")
-            assert firmware.itemsize == 4
-            file_size = stat(f.name).st_size
-            assert file_size % 4 == 0
-            firmware.fromfile(f, file_size // 4)
 
         # This starts to fail if firmware is too big... 11804 is the largest
         # sys.setrecursionlimit(10**6) fixes it
@@ -41,7 +35,7 @@ class RAM(Elaboratable):
                 while not self.halt:
                     yield Settle()
                     i_addr = yield iram_rp.addr
-                    i_data = firmware[i_addr]
+                    i_data = self._init[i_addr]
                     # print(f"iram  read addr: {addr:#010x}")
                     yield iram_rp.data.eq(i_data)
                     yield Settle()
@@ -49,7 +43,7 @@ class RAM(Elaboratable):
                     wmask = yield dram_wp.en
                     if wmask == 0:
                         # print(f"dram  read addr: {addr:#010x}")
-                        yield dram_rp.data.eq(firmware[addr])
+                        yield dram_rp.data.eq(self._init[addr])
                     else:
                         wdata = yield dram_wp.data
                         # print(f"dram write addr: {addr:#010x} wdata: {wdata:#010x} en: {en:#06b}")
@@ -61,13 +55,13 @@ class RAM(Elaboratable):
                             0b1111: 0xFFFF_FFFF,
                         }
                         mask = en_to_mask[wmask]
-                        firmware[addr] = (firmware[addr] & ~mask) | (wdata & mask)
-                        # print(f"           data: {data:#010x} -> {firmware[addr]:#010x}")
+                        self._init[addr] = (self._init[addr] & ~mask) | (wdata & mask)
+                        # print(f"           data: {data:#010x} -> {self._init[addr]:#010x}")
                     yield
 
             platform.add_sync_process(ram_sim_process, domain=self._domain)
         else:
-            ram = Memory(width=32, depth=len(firmware), init=firmware)
+            ram = Memory(width=32, depth=len(self._init), init=self._init)
             m.submodules.iram_rp = iram_rp = ram.read_port(domain="comb")
             m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
             m.submodules.dram_wp = dram_wp = ram.write_port(

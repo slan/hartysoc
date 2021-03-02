@@ -10,8 +10,8 @@ SECTIONS
         *(.text*);
     } > rom
     .data : {
-        *(.data*);
         *(.rodata*);
+        *(.data*);
         *(.bss*);
         *(.sbss*);
         . = ALIGN(4);
