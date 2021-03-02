@@ -1,13 +1,12 @@
-import datetime as dt
 import sys
+
 from nmigen import *
 from nmigen.build import *
 from nmigen_boards.arty_a7 import ArtyA7Platform
 
+import hdl.kitchensink as ks
 from hdl.harty import *
 from hdl.riscv import *
-
-import hdl.kitchensink as ks
 
 with_sdram = False
 top = HartySOC(with_sdram=with_sdram)
