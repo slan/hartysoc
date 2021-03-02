@@ -20,7 +20,7 @@ class HartySOC(Elaboratable):
         m = Module()
 
         domain = "hart"
-        m.submodules.pll = pll = PLL(mult=16, div=1, domains={domain: 128})
+        m.submodules.pll = pll = PLL(mult=8, div=1, domains={domain: 80})
         hart_freq = pll.get_frequency_ratio(domain) * platform.default_clk_frequency
 
         m.submodules.hart = hart = Hart(domain=domain)
@@ -45,7 +45,7 @@ class HartySOC(Elaboratable):
         m.submodules.console = console = Console(domain=domain, domain_freq=hart_freq)
         dbus_devices += [(console.bus, 0x1000_0000, 0x1000_0004)]
 
-        m.submodules.info = info = Info(hart_freq)
+        m.submodules.info = info = Info(version="0.1.0", freq=hart_freq)
         dbus_devices += [(info.bus, 0x1000_0100, 0x1000_0200)]
 
         if self._with_sdram:
