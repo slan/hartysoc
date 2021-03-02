@@ -24,7 +24,7 @@ input_layout = [
 ("app_wdf_mask", 16, DIR_FANIN),
 ]
 
-class SDRAM(Elaboratable):
+class MIG(Elaboratable):
     def __init__(self, domain):
         self.input = Record(input_layout)
         self.output = Record(output_layout)

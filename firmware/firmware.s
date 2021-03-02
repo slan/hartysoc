@@ -21,6 +21,6 @@ _putc:
     sb a2,0(a0)
     ret
 
-    .section .data
+    .section .firmware
 _msg:
     .string "harty-soc 0.0.1 - Bonjour\n"

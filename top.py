@@ -70,7 +70,7 @@ def main():
         do_build=False,
         script_after_read=""
         if not with_sdram
-        else "add_files /home/slan/src/HelloArty/build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
+        else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
     )
     if plan is not None:
         plan.execute_local(build_dir, run_script=True)

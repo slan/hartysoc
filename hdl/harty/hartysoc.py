@@ -35,16 +35,16 @@ class HartySOC(Elaboratable):
         m.submodules.console = console = Console(domain=domain, domain_freq=hart_freq)
         dbus_devices += [(console.bus, 0x1000_0000, 0x1000_0004)]
 
+        if self._with_sdram:
+            m.submodules.sdram = sdram = SDRAM(domain)
+            dbus_devices += [(sdram.bus, 0x1000_0004, 0x1000_0008)]
+
         for bus, start, end in ibus_devices:
             with m.If((hart.ibus.addr >= start) & (hart.ibus.addr < end)):
                 comb += [hart.ibus.connect(bus)]
         for bus, start, end in dbus_devices:
             with m.If((hart.dbus.addr >= start) & (hart.dbus.addr < end)):
                 comb += [hart.dbus.connect(bus)]
-
-        if self._with_sdram:
-            m.submodules.sdram = sdram = SDRAM(domain=domain)
-            dbus_devices += [(sdram.bus, 0x1000_0004, 0x1000_0008)]
 
         if isinstance(platform, SimPlatform):
 
