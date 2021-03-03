@@ -49,8 +49,8 @@ class SDRAM(Elaboratable):
                 # BUS READ -> write to fifo_w, lock the bus
                 comb += self.bus.rdy.eq(0)
                 comb += [
-                    fifo_r.w_en.eq(1),
-                    fifo_r.w_data.eq(Cat(self.bus.wdata, self.bus.addr[0:26], 0)),
+                    fifo_w.w_en.eq(1),
+                    fifo_w.w_data.eq(Cat(self.bus.wdata, self.bus.addr[0:26], 0)),
                 ]
             with m.If(fifo_r.r_rdy):
                 # Response from MIG -> read from fifo_r, release the bus
@@ -64,12 +64,12 @@ class SDRAM(Elaboratable):
                 mig.input.app_en.eq(1),
                 mig.input.app_cmd.eq(fifo_w.r_data[32 + 26]),
                 mig.input.app_wdf_wren.eq(fifo_w.r_data[32 + 26]),
-                mig.input.app_wdf_data.eq(fifo_w.r_data[0:32]),
+                mig.input.app_wdf_data.eq(Repl(fifo_w.r_data[0:32], 4)),
                 mig.input.app_addr.eq(fifo_w.r_data[32 : 32 + 26]),
                 mig.input.app_wdf_end.eq(1),
                 mig.input.app_wdf_mask.eq(-1),
             ]
-        with m.If(mig.output.app_rd_data_valid & fifo_r.w_rdy):
+        with m.If(mig.output.app_rd_data_valid & mig.output.app_rd_data_end & fifo_r.w_rdy):
             # Outgoing read data -> write to fifo_r
             comb += [
                 fifo_r.w_en.eq(1),

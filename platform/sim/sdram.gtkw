@@ -1,17 +1,18 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Wed Mar  3 18:56:40 2021
+[*] Wed Mar  3 19:21:31 2021
 [*]
 [dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Wed Mar  3 18:53:39 2021"
-[dumpfile_size] 27300
+[dumpfile_mtime] "Wed Mar  3 19:20:09 2021"
+[dumpfile_size] 32273
 [savefile] "/home/slan/src/hartysoc/platform/sim/sdram.gtkw"
 [timestart] 0
 [size] 2073 900
 [pos] -1 -1
-*-15.451079 187400 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-16.504389 484300 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.hart.
+[treeopen] top.hart.registers.
 [treeopen] top.sdram.
 [treeopen] top.sdram.mig.pll.
 [sst_width] 318
@@ -23,6 +24,8 @@ top.hart.hart_clk
 top.hart.dbus__rdy
 @22
 top.hart.insn[31:0]
+top.hart.dbus__rmask[3:0]
+top.hart.dbus__wmask[3:0]
 @200
 -SDRAM
 @22
@@ -42,13 +45,12 @@ top.sdram.fifo_w.r_en
 -FIFO_R
 @28
 top.sdram.fifo_r.r_rdy
-@23
+@22
 top.sdram.fifo_r.r_data[31:0]
 @200
 -MIG
 @28
 top.sdram.mig.output__app_rdy
-top.sdram.mig.input__app_en
 top.sdram.mig.output__app_rd_data_valid
 top.sdram.mig.output__app_rd_data_end
 @22

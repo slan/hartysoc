@@ -1,14 +1,3 @@
-    la a0, 0x30000000
-    li t0, 0xdeadc0de
-    sw t0,0(a0)
-    nop
-    nop
-    nop
-    nop
-    nop
-    lw t1,0(a0)
-    ebreak
-
     la a0, 0x10000000
 
     la a1, 0x10000104 # greetings
@@ -48,7 +37,7 @@ _nok:
 _main:
     la sp, _stack
     li a0, 0
-    # call main
+    call main
     ebreak
 
     # IN: a0 uart

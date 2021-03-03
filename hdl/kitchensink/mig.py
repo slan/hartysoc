@@ -50,6 +50,9 @@ class MIG(Elaboratable):
         comb += self.output.pll_locked.eq(pll.locked)
 
         if isinstance(platform, SimPlatform):
+            mem = Memory(width=128, depth=4)
+            m.submodules.mem_rp = mem_rp = mem.read_port(domain="comb")
+            m.submodules.mem_wp = mem_wp = mem.write_port(domain=self.ui_domain)
             platform.add_resources(
                 [
                     Resource(
@@ -70,12 +73,22 @@ class MIG(Elaboratable):
                 self.output.app_rdy.eq(1),
                 self.output.app_wdf_rdy.eq(1),
             ]
-            with m.If(self.input.app_en & self.input.app_wdf_wren & self.input.app_cmd[0]):
-                comb += [
-                    self.output.app_rd_data.eq(0x1234),
-                    self.output.app_rd_data_valid.eq(1),
-                    self.output.app_rd_data_end.eq(1),
-                ]
+            with m.If(self.input.app_en):
+                with m.If(self.input.app_wdf_wren & self.input.app_cmd[0]):
+                    # WRITE
+                    comb += [
+                        mem_wp.addr.eq(self.input.app_addr),
+                        mem_wp.data.eq(self.input.app_wdf_data),
+                        mem_wp.en.eq(-1),
+                    ]
+                with m.If(~self.input.app_wdf_wren & ~self.input.app_cmd[0]):
+                    # READ
+                    comb += [
+                        mem_rp.addr.eq(self.input.app_addr),
+                        self.output.app_rd_data.eq(mem_rp.data),
+                        self.output.app_rd_data_valid.eq(1),
+                        self.output.app_rd_data_end.eq(1),
+                    ]
 
         else:
             ddr3 = platform.request(
