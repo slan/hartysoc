@@ -13,14 +13,14 @@ int main()
 
     const uint32_t CYCLES_PER_SECOND = *info_addr;
 
+    volatile uint32_t* addr = sdram_mem;
     uint32_t value_w = 0xdeadc0de;
-    printf("Writing 0x%x\n", value_w);
-    *sdram_mem = value_w;
-    printf("Reading...\n");
-    for(int i=0; i<1; ++i) {
-        uint32_t value_r = *(sdram_mem+i);
-        printf("...got 0x%x ", value_r);
-        printf(value_r==value_w ? "Cool\n" : "Hmm\n");
+    printf("Write to  0x%x: 0x%x\n", addr, value_w);
+    *addr = value_w;
+    for(int i=0; i<8; ++i) {
+        uint32_t value_r = *addr;
+        printf("Read from 0x%x: 0x%x\n", addr, value_r);
+        ++addr;
     }
 
 

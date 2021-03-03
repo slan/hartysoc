@@ -16,6 +16,7 @@ class SDRAM(Elaboratable):
         m = Module()
 
         comb = m.d.comb
+        sync = m.d[self._domain]
 
         m.submodules.mig = mig = MIG()
         m.submodules.fifo_r = fifo_r = AsyncFIFO(
@@ -48,13 +49,17 @@ class SDRAM(Elaboratable):
             with m.If(self.bus.rmask.any()):
                 # BUS READ -> write to fifo_w, lock the bus
                 comb += self.bus.rdy.eq(0)
-                comb += [
-                    fifo_w.w_en.eq(1),
-                    fifo_w.w_data.eq(Cat(self.bus.wdata, self.bus.addr[0:26], 0)),
-                ]
+                in_flight = Signal(4)
+                sync += in_flight.eq(in_flight+1)
+                with m.If(~in_flight.any()):
+                    comb += [
+                        fifo_w.w_en.eq(1),
+                        fifo_w.w_data.eq(Cat(self.bus.wdata, self.bus.addr[0:26], 0)),
+                    ]
             with m.If(fifo_r.r_rdy):
                 # Response from MIG -> read from fifo_r, release the bus
                 comb += self.bus.rdy.eq(1)
+                sync += in_flight.eq(in_flight-1)
                 comb += [fifo_r.r_en.eq(1), self.bus.rdata.eq(fifo_r.r_data)]
 
         with m.If(fifo_w.r_rdy & mig.output.app_rdy & mig.output.app_wdf_rdy):
@@ -64,12 +69,14 @@ class SDRAM(Elaboratable):
                 mig.input.app_en.eq(1),
                 mig.input.app_cmd.eq(fifo_w.r_data[32 + 26]),
                 mig.input.app_wdf_wren.eq(fifo_w.r_data[32 + 26]),
-                mig.input.app_wdf_data.eq(Repl(fifo_w.r_data[0:32], 4)),
-                mig.input.app_addr.eq(fifo_w.r_data[32 : 32 + 26]),
+                mig.input.app_wdf_data.eq(fifo_w.r_data[0:32]),
+                mig.input.app_addr.eq(fifo_w.r_data[36 : 32 + 26]),
                 mig.input.app_wdf_end.eq(1),
                 mig.input.app_wdf_mask.eq(-1),
             ]
-        with m.If(mig.output.app_rd_data_valid & mig.output.app_rd_data_end & fifo_r.w_rdy):
+        with m.If(
+            mig.output.app_rd_data_valid & mig.output.app_rd_data_end & fifo_r.w_rdy
+        ):
             # Outgoing read data -> write to fifo_r
             comb += [
                 fifo_r.w_en.eq(1),

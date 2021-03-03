@@ -1,3 +1,18 @@
+    la a0, 0x30000000
+
+    li t0, 0x12345678
+    li t1, 0x87654321
+
+    sw t0,0(a0)
+    sw t1,32(a0)
+
+    nop
+
+    lw t3,0(a0)
+    lw t4,32(a0)
+
+    ebreak
+
     la a0, 0x10000000
 
     la a1, 0x10000104 # greetings
@@ -58,7 +73,7 @@ _end_puts:
 
     .section .rodata
 _msg_waiting:
-    .string "Waiting for SDRAM..."
+    .string "SDRAM RDY..."
 _msg_sdram_test:
     .string "SDRAM R/W..."
 _msg_ok:

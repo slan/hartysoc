@@ -59,9 +59,7 @@ class MIG(Elaboratable):
                         self.ui_domain,
                         0,
                         Pins(self.ui_domain, dir="i"),
-                        Clock(
-                            platform.default_clk_frequency
-                            * pll.get_frequency_ratio("sys")
+                        Clock(pll.get_frequency_ratio("sys") * platform.default_clk_frequency
                             / 4
                         ),
                     )

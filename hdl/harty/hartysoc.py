@@ -36,7 +36,6 @@ class HartySOC(Elaboratable):
             file_size = stat(f.name).st_size
             assert file_size % 4 == 0
             firmware.fromfile(f, file_size // 4)
-            firmware.append(0x12345678)
 
         m.submodules.ram = ram = RAM(domain=domain, init=firmware)
         ibus_devices += [(ram.ibus, 0x0000_0000, 0x1000_0000)]

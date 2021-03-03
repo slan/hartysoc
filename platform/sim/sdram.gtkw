@@ -1,31 +1,47 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Wed Mar  3 19:21:31 2021
+[*] Wed Mar  3 22:55:45 2021
 [*]
 [dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Wed Mar  3 19:20:09 2021"
-[dumpfile_size] 32273
+[dumpfile_mtime] "Wed Mar  3 22:44:08 2021"
+[dumpfile_size] 37799
 [savefile] "/home/slan/src/hartysoc/platform/sim/sdram.gtkw"
 [timestart] 0
-[size] 2073 900
-[pos] -1 -1
-*-16.504389 484300 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[size] 2073 1107
+[pos] -1 -208
+*-17.011116 391600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
-[treeopen] top.hart.
 [treeopen] top.hart.registers.
+[treeopen] top.pll.
 [treeopen] top.sdram.
+[treeopen] top.sdram.mig.
 [treeopen] top.sdram.mig.pll.
 [sst_width] 318
-[signals_width] 367
+[signals_width] 581
 [sst_expanded] 1
-[sst_vpaned_height] 257
+[sst_vpaned_height] 327
 @28
+top.pll.clk
+top.sdram.mig.pll.rs_ref.ref_clk
+top.sdram.mig.pll.rs_sys.sys_clk
+top.sdram.mig.mem_wp.mig_clk
 top.hart.hart_clk
+@200
+-HART
+@22
+top.hart.pc[31:0]
+top.hart.insn[31:0]
+@200
+-DBUS
+@28
 top.hart.dbus__rdy
 @22
-top.hart.insn[31:0]
+top.hart.dbus__addr[31:0]
 top.hart.dbus__rmask[3:0]
+top.hart.dbus__rdata[31:0]
 top.hart.dbus__wmask[3:0]
+@23
+top.hart.dbus__wdata[31:0]
 @200
 -SDRAM
 @22
@@ -41,8 +57,14 @@ top.sdram.fifo_w.w_data[58:0]
 @28
 top.sdram.fifo_w.r_rdy
 top.sdram.fifo_w.r_en
+@22
+top.sdram.fifo_w.r_data[58:0]
 @200
 -FIFO_R
+@28
+top.sdram.fifo_r.w_en
+@22
+top.sdram.fifo_r.w_data[31:0]
 @28
 top.sdram.fifo_r.r_rdy
 @22
@@ -55,5 +77,30 @@ top.sdram.mig.output__app_rd_data_valid
 top.sdram.mig.output__app_rd_data_end
 @22
 top.sdram.mig.output__app_rd_data[127:0]
+@28
+top.sdram.mig.input__app_wdf_wren
+@22
+top.sdram.mig.input__app_addr[27:0]
+top.sdram.mig.input__app_wdf_data[127:0]
+@200
+-MEM_W
+@28
+top.sdram.mig.mem_wp.mem_w_en
+top.sdram.mig.mem_wp.mem_w_addr[1:0]
+@22
+top.sdram.mig.mem_wp.mem_w_data[127:0]
+@200
+-MEM_R
+@28
+top.sdram.mig.mem_rp.mem_r_addr[1:0]
+@22
+top.sdram.mig.mem_rp.mem_r_data[127:0]
+@200
+-MEM
+@22
+top.sdram.mig.mem_rp.memory(0)[127:0]
+top.sdram.mig.mem_rp.memory(1)[127:0]
+top.sdram.mig.mem_rp.memory(2)[127:0]
+top.sdram.mig.mem_rp.memory(3)[127:0]
 [pattern_trace] 1
 [pattern_trace] 0
