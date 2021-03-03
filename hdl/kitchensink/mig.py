@@ -1,3 +1,4 @@
+from nmigen.build.dsl import Clock, Pins, Resource
 from nmigen.hdl.rec import DIR_FANIN, DIR_FANOUT
 from .simplatform import SimPlatform
 from .counter import Counter
@@ -6,31 +7,35 @@ from nmigen import *
 
 
 output_layout = [
-("mig_init_calib_complete", 1, DIR_FANOUT),
-("app_rd_data", 128, DIR_FANOUT),
-("app_rd_data_end", 1, DIR_FANOUT),
-("app_rd_data_valid", 1, DIR_FANOUT),
-("app_rdy", 1, DIR_FANOUT),
-("app_wdf_rdy", 1, DIR_FANOUT),
-("pll_locked", 1, DIR_FANOUT),
+    ("mig_init_calib_complete", 1, DIR_FANOUT),
+    ("app_rd_data", 128, DIR_FANOUT),
+    ("app_rd_data_end", 1, DIR_FANOUT),
+    ("app_rd_data_valid", 1, DIR_FANOUT),
+    ("app_rdy", 1, DIR_FANOUT),
+    ("app_wdf_rdy", 1, DIR_FANOUT),
+    ("pll_locked", 1, DIR_FANOUT),
 ]
 input_layout = [
-("app_addr", 28, DIR_FANIN),
-("app_cmd", 3, DIR_FANIN),
-("app_en", 1, DIR_FANIN),
-("app_wdf_data", 128, DIR_FANIN),
-("app_wdf_end", 1, DIR_FANIN),
-("app_wdf_wren", 1, DIR_FANIN),
-("app_wdf_mask", 16, DIR_FANIN),
+    ("app_addr", 28, DIR_FANIN),
+    ("app_cmd", 3, DIR_FANIN),
+    ("app_en", 1, DIR_FANIN),
+    ("app_wdf_data", 128, DIR_FANIN),
+    ("app_wdf_end", 1, DIR_FANIN),
+    ("app_wdf_wren", 1, DIR_FANIN),
+    ("app_wdf_mask", 16, DIR_FANIN),
 ]
 
+
 class MIG(Elaboratable):
-    def __init__(self, domain):
+    def __init__(self):
+        self.ui_domain = "mig"
         self.input = Record(input_layout)
         self.output = Record(output_layout)
 
     def elaborate(self, platform):
         m = Module()
+
+        comb = m.d.comb
 
         m.submodules.pll = pll = PLL(
             mult=10,
@@ -40,12 +45,38 @@ class MIG(Elaboratable):
                 "ref": 5,
             },
         )
+        m.domains += ClockDomain(self.ui_domain)
 
-        m.d.comb += self.output.pll_locked.eq(pll.locked)
+        comb += self.output.pll_locked.eq(pll.locked)
 
         if isinstance(platform, SimPlatform):
-            m.submodules.cnt = cnt = Counter(255)
-            m.d.comb += self.output.app_rdy.eq(cnt._counter[7])
+            platform.add_resources(
+                [
+                    Resource(
+                        self.ui_domain,
+                        0,
+                        Pins(self.ui_domain, dir="i"),
+                        Clock(
+                            platform.default_clk_frequency
+                            * pll.get_frequency_ratio("sys")
+                            / 4
+                        ),
+                    )
+                ]
+            )
+            comb += [
+                self.output.pll_locked.eq(1),
+                self.output.mig_init_calib_complete.eq(1),
+                self.output.app_rdy.eq(1),
+                self.output.app_wdf_rdy.eq(1),
+            ]
+            with m.If(self.input.app_en & self.input.app_wdf_wren & self.input.app_cmd[0]):
+                comb += [
+                    self.output.app_rd_data.eq(0x1234),
+                    self.output.app_rd_data_valid.eq(1),
+                    self.output.app_rd_data_end.eq(1),
+                ]
+
         else:
             ddr3 = platform.request(
                 "ddr3",
@@ -101,14 +132,12 @@ class MIG(Elaboratable):
                 o_app_sr_active=Signal(1, name="app_sr_active"),
                 o_app_ref_ack=Signal(1, name="app_ref_ack"),
                 o_app_zq_ack=Signal(1, name="app_zq_ack"),
-                o_ui_clk=ClockSignal("ui"),
-                o_ui_clk_sync_rst=ResetSignal("ui"),
+                o_ui_clk=ClockSignal(self.ui_domain),
+                o_ui_clk_sync_rst=ResetSignal(self.ui_domain),
                 i_app_wdf_mask=self.input.app_wdf_mask,
                 i_sys_clk_i=ClockSignal("sys"),
                 i_clk_ref_i=ClockSignal("ref"),
                 i_sys_rst=~ResetSignal("sys"),
             )
-
-        m.domains += ClockDomain("ui")
 
         return m

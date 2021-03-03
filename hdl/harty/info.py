@@ -13,14 +13,20 @@ class Info(Elaboratable):
     def elaborate(self, platform):
         m = Module()
 
-        message = f"hartysoc {self._version} @{round(self._freq/1000)/1000}MHz - Bonjour"
+        # write freq first
+        init = [round(self._freq)]
+
+        # write greetings message
+        message = (
+            f"hartysoc {self._version} @{round(self._freq/1000)/1000}MHz - Bonjour\n"
+        )
 
         # null-terminate
         message += "\0"
         # add padding
         message += "\0" * (-(len(message) % 4) % 4)
         # pack to unsigned int
-        init = unpack(f"{len(message)//4}I", message.encode("ascii"))
+        init += unpack(f"{len(message)//4}I", message.encode("ascii"))
 
         rom = Memory(width=32, depth=len(init), init=init)
         m.submodules.rom_rp = rom_rp = rom.read_port(domain="comb")

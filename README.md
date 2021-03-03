@@ -20,6 +20,7 @@ make sim
 
 ## WIP
 
+- an easy way to plug memory-mapped devices on the buses
 - SDRAM: automatic controller creation from Xilinx MIG is done, basic test shows calibration success and app ready (with occasional refresh downtime as expected). The core has support for ibus/dbus stalls... in theory.
 - GPU: basic VGA is in with a "racing the beam" 1920x1080@60Hz demo screen if you have a [Pmod VGA](https://store.digilentinc.com/pmod-vga-video-graphics-array/).
 

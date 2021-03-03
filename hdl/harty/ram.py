@@ -46,7 +46,6 @@ class RAM(Elaboratable):
                         yield dram_rp.data.eq(self._init[addr])
                     else:
                         wdata = yield dram_wp.data
-                        # print(f"dram write addr: {addr:#010x} wdata: {wdata:#010x} en: {en:#06b}")
                         en_to_mask = {
                             0b0001: 0x0000_00FF,
                             0b0010: 0x0000_FF00,
@@ -55,8 +54,12 @@ class RAM(Elaboratable):
                             0b1111: 0xFFFF_FFFF,
                         }
                         mask = en_to_mask[wmask]
-                        self._init[addr] = (self._init[addr] & ~mask) | (wdata & mask)
-                        # print(f"           data: {data:#010x} -> {self._init[addr]:#010x}")
+                        try:
+                            self._init[addr] = (self._init[addr] & ~mask) | (wdata & mask)
+                        except:
+                            print(f"dram write addr: {addr:#010x} wdata: {wdata:#010x} wmask: {wmask:#06b}")
+                            raise
+
                     yield
 
             platform.add_sync_process(ram_sim_process, domain=self._domain)

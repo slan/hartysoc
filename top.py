@@ -1,14 +1,16 @@
 import sys
 
 from nmigen import *
+from nmigen.lib.fifo import AsyncFIFO
 from nmigen.build import *
+from nmigen.sim.core import Settle
 from nmigen_boards.arty_a7 import ArtyA7Platform
 
 import hdl.kitchensink as ks
 from hdl.harty import *
 from hdl.riscv import *
 
-with_sdram = False
+with_sdram = True
 top = HartySOC(with_sdram=with_sdram)
 # top = ks.VGA()
 

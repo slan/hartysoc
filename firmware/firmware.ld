@@ -8,14 +8,12 @@ SECTIONS
     .text : {
         KEEP(build/firmware/firmware.s.o(.text));
         *(.text*);
-    } > rom
-    .data : {
         *(.rodata*);
         *(.data*);
         *(.bss*);
         *(.sbss*);
         . = ALIGN(4);
-        . = . + 1024;
+       . = . + 1024;
         _stack = .;
     } > rom
 }
