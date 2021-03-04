@@ -21,7 +21,7 @@ class PLL(Elaboratable):
 
         for i, (cd, div) in enumerate(self._domains.items()):
             m.domains += ClockDomain(cd)
-            m.submodules[f"rs_{cd}"] = ResetSynchronizer(~self.locked, domain=cd)
+            m.submodules[f"rs_{cd}"] = ResetSynchronizer(~self.locked|ResetSignal(), domain=cd)
 
         if isinstance(platform, SimPlatform):
             m.d.sync += self.locked.eq(1)
@@ -43,7 +43,9 @@ class PLL(Elaboratable):
             o_clkout = {}
             for i, (cd, div) in enumerate(self._domains.items()):
                 p_clkout_divide[f"p_CLKOUT{i}_DIVIDE"] = div
-                o_clkout[f"o_CLKOUT{i}"] = ClockSignal(cd)
+                clk_out = Signal(name=f"o_CLKOUT{i}")
+                o_clkout[f"o_CLKOUT{i}"] = clk_out
+                m.submodules[f"bufg_{cd}"] = Instance("BUFG", i_I=clk_out, o_O=ClockSignal(cd))
 
             fb = Signal()
             m.submodules.pll = Instance(

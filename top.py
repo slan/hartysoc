@@ -13,6 +13,9 @@ from hdl.riscv import *
 
 
 class MIGTester(Elaboratable):
+    def __init__(self):
+        self.my_counter = Signal(8)
+
     def elaborate(self, platform):
         m = Module()
 
@@ -21,34 +24,38 @@ class MIGTester(Elaboratable):
         comb = m.d.comb
         sync = m.d[mig.ui_domain]
 
-        xor = Signal(32)
         with m.FSM(domain=mig.ui_domain):
-            with m.State("WAIT_RDY"):
-                with m.If(mig.mig_init_calib_complete & mig.app_rdy & mig.app_wdf_rdy):
-                    comb += [
-                        mig.app_en.eq(1),
-                        mig.app_cmd.eq(1),
-                        mig.app_addr.eq(0),
-                        mig.app_wdf_data.eq(0x12345678_aaaaaaaa_87654321_55555555),
-                        mig.app_wdf_end.eq(1),
-                        mig.app_wdf_wren.eq(1),
-                        mig.app_wdf_mask.eq(1),
-                    ]
-                    m.next = "DO_READ"
-            with m.State("DO_READ"):
+            with m.State("WAIT_CALIB"):
                 with m.If(mig.mig_init_calib_complete & mig.app_rdy):
                     comb += [
                         mig.app_en.eq(1),
                         mig.app_cmd.eq(0),
                         mig.app_addr.eq(0),
+                        mig.app_wdf_data.eq(0xa5a5),
+                        mig.app_wdf_end.eq(1),
+                        mig.app_wdf_wren.eq(1),
+                        mig.app_wdf_mask.eq(0xfff0),
                     ]
-                m.next = "WAIT_DATA"
+                    with m.If(mig.app_wdf_rdy):
+                        m.next = "DO_NOP"
+            with m.State("DO_NOP"):
+                sync += [self.my_counter.eq(self.my_counter + 1)]
+                with m.If(self.my_counter>=5):
+                    m.next = "DO_READ"
+            with m.State("DO_READ"):
+                sync += [self.my_counter.eq(self.my_counter + 1)]
+                comb += [
+                    mig.app_en.eq(1),
+                    mig.app_cmd.eq(1),
+                    mig.app_addr.eq(0),
+                ]
+                with m.If(mig.app_rdy):
+                    m.next = "WAIT_DATA"
             with m.State("WAIT_DATA"):
+                sync += [self.my_counter.eq(self.my_counter + 1)]
                 with m.If(mig.app_rd_data_valid):
-                    result = 0
                     for i in range(4):
-                        result = result ^ mig.app_rd_data.word_select(0, 32)
-                    sync += xor.eq(result)
+                        sync += platform.request("led", i).eq(mig.app_rd_data[i])
                     m.next = "END"
             with m.State("END"):
                 pass
@@ -68,9 +75,9 @@ class MIGTester(Elaboratable):
 
 
 with_sdram = True
-top = HartySOC(with_sdram=with_sdram)
+# top = HartySOC(with_sdram=with_sdram)
 # top = ks.VGA()
-#top = MIGTester()
+top = MIGTester()
 
 
 def main():

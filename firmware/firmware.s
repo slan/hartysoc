@@ -27,7 +27,7 @@ _wait_sdram:
     xori t0, t0, 0xf
     bnez t0, _wait_sdram
 
-    la a1, _msg_ok
+    la a1, _buf
     call _puts
 
     #####
@@ -36,15 +36,120 @@ _wait_sdram:
     call _puts
 
     la a2, 0x30000000
-    li t0, 0xdeadc0de
+    li t0, 0x61626364
+    
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    
     sw t0, 0(a2)
+    
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+
     lw t1, 0(a2)
     bne t0,t1, _nok
     la a1, _msg_ok
     call _puts
     j _main
 _nok:
-    la a1, _msg_nok
+    la a1, _buf
+    sw t1, 0(a1)
     call _puts
 
     #####
@@ -52,7 +157,7 @@ _nok:
 _main:
     la sp, _stack
     li a0, 0
-    call main
+    #call main
     ebreak
 
     # IN: a0 uart
@@ -80,3 +185,6 @@ _msg_ok:
     .string "OK\n"
 _msg_nok:
     .string "Oops\n"
+_buf:
+    .string "????\n"
+

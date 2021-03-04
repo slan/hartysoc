@@ -67,14 +67,14 @@ class MIG(Elaboratable):
                 self.app_wdf_rdy.eq(self.pll_locked),
             ]
             with m.If(self.app_en):
-                with m.If(self.app_wdf_wren & self.app_cmd[0]):
+                with m.If(self.app_wdf_wren & ~self.app_cmd[0]):
                     # WRITE
                     comb += [
                         mem_wp.addr.eq(self.app_addr),
                         mem_wp.data.eq(self.app_wdf_data),
                         mem_wp.en.eq(-1),
                     ]
-                with m.If(~self.app_wdf_wren & ~self.app_cmd[0]):
+                with m.If(~self.app_wdf_wren & self.app_cmd[0]):
                     # READ
                     comb += [
                         mem_rp.addr.eq(self.app_addr),
