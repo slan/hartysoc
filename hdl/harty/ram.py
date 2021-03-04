@@ -51,6 +51,8 @@ class RAM(Elaboratable):
                             0b0010: 0x0000_FF00,
                             0b0100: 0x00FF_0000,
                             0b1000: 0xFF00_0000,
+                            0b1100: 0xFFFF_0000,
+                            0b0011: 0x0000_FFFF,
                             0b1111: 0xFFFF_FFFF,
                         }
                         mask = en_to_mask[wmask]

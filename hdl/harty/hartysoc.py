@@ -21,7 +21,7 @@ class HartySOC(Elaboratable):
 
         hart_domain = "hart"
         m.submodules.pll = pll = PLL(
-            mult=16, div=2, cd_specs={hart_domain: PLL.cd_spec(div=128, local=False)}
+            mult=8, div=1, cd_specs={hart_domain: PLL.cd_spec(div=128, local=False)}
         )
         hart_freq = (
             pll.get_frequency_ratio(hart_domain) * platform.default_clk_frequency

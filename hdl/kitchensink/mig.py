@@ -8,7 +8,7 @@ from nmigen import *
 
 class MIG(Elaboratable):
     def __init__(self):
-        self.ui_domain = "mig"
+        self.ui_domain = "mig_ui"
         # IN
         self.app_en = Signal(1)
         self.app_cmd = Signal(3)
@@ -27,6 +27,7 @@ class MIG(Elaboratable):
         self.pll_locked = Signal(1)
 
     def elaborate(self, platform):
+
         m = Module()
 
         comb = m.d.comb

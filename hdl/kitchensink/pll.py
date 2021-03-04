@@ -49,12 +49,12 @@ class PLL(Elaboratable):
         else:
             p_clkout_divide = {}
             o_clkout = {}
-            for i, (cd, (div, _)) in enumerate(self._cd_specs.items()):
-                p_clkout_divide[f"p_CLKOUT{i}_DIVIDE"] = div
-                clk_out = Signal(name=f"o_CLKOUT{i}")
+            for i, (cd_name, cd_spec) in enumerate(self._cd_specs.items()):
+                p_clkout_divide[f"p_CLKOUT{i}_DIVIDE"] = cd_spec._div
+                clk_out = Signal(name=f"pll_clk_{cd_name}")
                 o_clkout[f"o_CLKOUT{i}"] = clk_out
-                m.submodules[f"bufg_{cd}"] = Instance(
-                    "BUFG", i_I=clk_out, o_O=ClockSignal(cd)
+                m.submodules[f"pll_bufg_{cd_name}"] = Instance(
+                    "BUFG", i_I=clk_out, o_O=ClockSignal(cd_name)
                 )
 
             fb = Signal()
