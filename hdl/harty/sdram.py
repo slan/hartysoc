@@ -38,7 +38,7 @@ class SDRAM(Elaboratable):
                     )
                 ),
             ]
-        with m.Else():
+        with m.Elif(mig.mig_init_calib_complete):
             with m.If(self.bus.wmask.any()):
                 # BUS WRITE -> write to fifo_w, fire & forget
                 comb += self.bus.rdy.eq(fifo_w.w_rdy)
@@ -74,7 +74,7 @@ class SDRAM(Elaboratable):
                 mig.app_en.eq(1),
                 mig.app_cmd.eq(fifo_w.r_data[32 + 26]),
                 mig.app_wdf_wren.eq(~fifo_w.r_data[32 + 26]),
-                mig.app_wdf_data.eq(~fifo_w.r_data[0:32]),
+                mig.app_wdf_data.eq(fifo_w.r_data[0:32]),
                 mig.app_addr.eq(fifo_w.r_data[36 : 32 + 26]),
                 mig.app_wdf_end.eq(1),
                 mig.app_wdf_mask.eq(0),

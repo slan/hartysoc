@@ -34,9 +34,9 @@ class MIG(Elaboratable):
         m.submodules.pll = pll = PLL(
             mult=10,
             div=1,
-            domains={
-                "sys": 6,
-                "ref": 5,
+            cd_specs={
+                "sys": PLL.cd_spec(div=6, local=False),
+                "ref": PLL.cd_spec(div=5, local=False),
             },
         )
         m.domains += ClockDomain(self.ui_domain)

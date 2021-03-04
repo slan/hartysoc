@@ -17,7 +17,7 @@ int main()
     uint32_t value_w = 0xdeadc0de;
     printf("Write to  0x%x: 0x%x\n", addr, value_w);
     *addr = value_w;
-    for(int i=0; i<8; ++i) {
+    for(int i=0; i<1; ++i) {
         uint32_t value_r = *addr;
         printf("Read from 0x%x: 0x%x\n", addr, value_r);
         ++addr;

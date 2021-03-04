@@ -14,7 +14,7 @@ from hdl.riscv import *
 
 class MIGTester(Elaboratable):
     def __init__(self):
-        self.my_counter = Signal(8)
+        self.my_counter = Signal(32)
 
     def elaborate(self, platform):
         m = Module()
@@ -24,6 +24,7 @@ class MIGTester(Elaboratable):
         comb = m.d.comb
         sync = m.d[mig.ui_domain]
 
+        sync += [self.my_counter.eq(self.my_counter + 1)]
         with m.FSM(domain=mig.ui_domain):
             with m.State("WAIT_CALIB"):
                 with m.If(mig.mig_init_calib_complete & mig.app_rdy):
@@ -31,19 +32,14 @@ class MIGTester(Elaboratable):
                         mig.app_en.eq(1),
                         mig.app_cmd.eq(0),
                         mig.app_addr.eq(0),
-                        mig.app_wdf_data.eq(0xa5a5),
+                        mig.app_wdf_data.eq(self.my_counter),
                         mig.app_wdf_end.eq(1),
                         mig.app_wdf_wren.eq(1),
                         mig.app_wdf_mask.eq(0xfff0),
                     ]
                     with m.If(mig.app_wdf_rdy):
-                        m.next = "DO_NOP"
-            with m.State("DO_NOP"):
-                sync += [self.my_counter.eq(self.my_counter + 1)]
-                with m.If(self.my_counter>=5):
-                    m.next = "DO_READ"
+                        m.next = "DO_READ"
             with m.State("DO_READ"):
-                sync += [self.my_counter.eq(self.my_counter + 1)]
                 comb += [
                     mig.app_en.eq(1),
                     mig.app_cmd.eq(1),
@@ -52,13 +48,10 @@ class MIGTester(Elaboratable):
                 with m.If(mig.app_rdy):
                     m.next = "WAIT_DATA"
             with m.State("WAIT_DATA"):
-                sync += [self.my_counter.eq(self.my_counter + 1)]
                 with m.If(mig.app_rd_data_valid):
                     for i in range(4):
-                        sync += platform.request("led", i).eq(mig.app_rd_data[i])
-                    m.next = "END"
-            with m.State("END"):
-                pass
+                        sync += platform.request("led", i).eq(mig.app_rd_data[i*8])
+                    m.next = "WAIT_CALIB"
 
         if isinstance(platform, SimPlatform):
 
@@ -75,9 +68,9 @@ class MIGTester(Elaboratable):
 
 
 with_sdram = True
-# top = HartySOC(with_sdram=with_sdram)
+top = HartySOC(with_sdram=with_sdram)
 # top = ks.VGA()
-top = MIGTester()
+# top = MIGTester()
 
 
 def main():
@@ -136,7 +129,7 @@ def main():
         do_build=False,
         script_after_read=""
         if not with_sdram
-        else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci;quit",
+        else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
     )
     if plan is not None:
         plan.execute_local(build_dir, run_script=True)

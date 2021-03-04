@@ -6,46 +6,56 @@ from .simplatform import SimPlatform
 
 
 class PLL(Elaboratable):
-    def __init__(self, *, mult, div, domains):
-        self._domains = domains
+    class cd_spec:
+        def __init__(self, *, div, local):
+            self._div = div
+            self._local = local
+
+    def __init__(self, *, mult, div, cd_specs):
+        self._cd_specs = cd_specs
         self.mult = mult
         self.div = div
         self.locked = Signal()
 
     def get_frequency_ratio(self, domain):
-        return self.mult / (self.div * self._domains[domain])
+        return self.mult / (self.div * self._cd_specs[domain]._div)
 
     def elaborate(self, platform):
 
         m = Module()
 
-        for i, (cd, div) in enumerate(self._domains.items()):
-            m.domains += ClockDomain(cd)
-            m.submodules[f"rs_{cd}"] = ResetSynchronizer(~self.locked|ResetSignal(), domain=cd)
+        for cd_name, cd_spec in self._cd_specs.items():
+            m.domains += ClockDomain(cd_name, local=cd_spec._local)
+            m.submodules[f"rs_{cd_name}"] = ResetSynchronizer(
+                ~self.locked | ResetSignal(), domain=cd_name
+            )
 
         if isinstance(platform, SimPlatform):
             m.d.sync += self.locked.eq(1)
             platform.add_resources(
                 [
                     Resource(
-                        cd,
+                        cd_name,
                         0,
-                        Pins(cd, dir="i"),
+                        Pins(cd_name, dir="i"),
                         Clock(
-                            self.mult * platform.default_clk_frequency / self.div / div
+                            platform.default_clk_frequency
+                            * self.get_frequency_ratio(cd_name)
                         ),
                     )
-                    for (cd, div) in self._domains.items()
+                    for cd_name in self._cd_specs.keys()
                 ]
             )
         else:
             p_clkout_divide = {}
             o_clkout = {}
-            for i, (cd, div) in enumerate(self._domains.items()):
+            for i, (cd, (div, _)) in enumerate(self._cd_specs.items()):
                 p_clkout_divide[f"p_CLKOUT{i}_DIVIDE"] = div
                 clk_out = Signal(name=f"o_CLKOUT{i}")
                 o_clkout[f"o_CLKOUT{i}"] = clk_out
-                m.submodules[f"bufg_{cd}"] = Instance("BUFG", i_I=clk_out, o_O=ClockSignal(cd))
+                m.submodules[f"bufg_{cd}"] = Instance(
+                    "BUFG", i_I=clk_out, o_O=ClockSignal(cd)
+                )
 
             fb = Signal()
             m.submodules.pll = Instance(

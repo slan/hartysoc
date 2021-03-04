@@ -1,18 +1,3 @@
-    # la a0, 0x30000000
-
-    # li t0, 0x12345678
-    # li t1, 0x87654321
-
-    # sw t0,0(a0)
-    # sw t1,32(a0)
-
-    # nop
-
-    # lw t3,0(a0)
-    # lw t4,32(a0)
-
-    # ebreak
-
     la a0, 0x10000000
 
     la a1, 0x10000104 # greetings
@@ -27,7 +12,7 @@ _wait_sdram:
     xori t0, t0, 0xf
     bnez t0, _wait_sdram
 
-    la a1, _buf
+    la a1, _msg_ok
     call _puts
 
     #####
@@ -37,119 +22,16 @@ _wait_sdram:
 
     la a2, 0x30000000
     li t0, 0x61626364
-    
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    
+        
     sw t0, 0(a2)
     
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-
     lw t1, 0(a2)
     bne t0,t1, _nok
     la a1, _msg_ok
-    call _puts
-    j _main
+    j _end_test
 _nok:
-    la a1, _buf
-    sw t1, 0(a1)
+    la a1, _msg_nok
+_end_test:
     call _puts
 
     #####
@@ -157,7 +39,7 @@ _nok:
 _main:
     la sp, _stack
     li a0, 0
-    #call main
+    call main
     ebreak
 
     # IN: a0 uart

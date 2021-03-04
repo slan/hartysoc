@@ -19,11 +19,15 @@ class HartySOC(Elaboratable):
     def elaborate(self, platform):
         m = Module()
 
-        domain = "hart"
-        m.submodules.pll = pll = PLL(mult=16, div=2, domains={domain: 128})
-        hart_freq = pll.get_frequency_ratio(domain) * platform.default_clk_frequency
+        hart_domain = "hart"
+        m.submodules.pll = pll = PLL(
+            mult=16, div=2, cd_specs={hart_domain: PLL.cd_spec(div=128, local=False)}
+        )
+        hart_freq = (
+            pll.get_frequency_ratio(hart_domain) * platform.default_clk_frequency
+        )
 
-        m.submodules.hart = hart = Hart(domain=domain)
+        m.submodules.hart = hart = Hart(domain=hart_domain)
 
         comb = m.d.comb
 
@@ -37,18 +41,20 @@ class HartySOC(Elaboratable):
             assert file_size % 4 == 0
             firmware.fromfile(f, file_size // 4)
 
-        m.submodules.ram = ram = RAM(domain=domain, init=firmware)
+        m.submodules.ram = ram = RAM(domain=hart_domain, init=firmware)
         ibus_devices += [(ram.ibus, 0x0000_0000, 0x1000_0000)]
         dbus_devices += [(ram.dbus, 0x0000_0000, 0x1000_0000)]
 
-        m.submodules.console = console = Console(domain=domain, domain_freq=hart_freq)
+        m.submodules.console = console = Console(
+            domain=hart_domain, domain_freq=hart_freq
+        )
         dbus_devices += [(console.bus, 0x1000_0000, 0x1000_0004)]
 
         m.submodules.info = info = Info(version="0.1.0", freq=hart_freq)
         dbus_devices += [(info.bus, 0x1000_0100, 0x1000_0200)]
 
         if self._with_sdram:
-            m.submodules.sdram = sdram = SDRAM(domain=domain)
+            m.submodules.sdram = sdram = SDRAM(domain=hart_domain)
             dbus_devices += [(sdram.bus, 0x2000_0000, 0x4000_0000)]
 
         for bus, start, end in ibus_devices:
@@ -100,6 +106,6 @@ class HartySOC(Elaboratable):
                         console.halt = True
                         break
 
-            platform.add_sync_process(process, domain=domain)
+            platform.add_sync_process(process, domain=hart_domain)
 
         return m
