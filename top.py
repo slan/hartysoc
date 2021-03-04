@@ -1,3 +1,4 @@
+from hdl.kitchensink.simplatform import SimPlatform
 import sys
 
 from nmigen import *
@@ -10,9 +11,26 @@ import hdl.kitchensink as ks
 from hdl.harty import *
 from hdl.riscv import *
 
+class Test(Elaboratable):
+    def elaborate(self, platform):
+        m = Module()
+        
+        m.submodules.mig = mig =  ks.MIG()
+
+        if isinstance(platform, SimPlatform):
+            def process():
+                yield
+            platform.add_sync_process(process, mig.ui_domain)
+
+        return m
+
+
 with_sdram = True
-top = HartySOC(with_sdram=with_sdram)
+# top = HartySOC(with_sdram=with_sdram)
 # top = ks.VGA()
+top = Test()
+
+
 
 
 def main():
