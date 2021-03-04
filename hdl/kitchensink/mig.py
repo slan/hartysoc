@@ -10,9 +10,9 @@ class MIG(Elaboratable):
     def __init__(self):
         self.ui_domain = "mig"
         # IN
-        self.app_addr = Signal(28)
-        self.app_cmd = Signal(3)
         self.app_en = Signal(1)
+        self.app_cmd = Signal(3)
+        self.app_addr = Signal(28)
         self.app_wdf_data = Signal(128)
         self.app_wdf_end = Signal(1)
         self.app_wdf_wren = Signal(1)
@@ -62,10 +62,9 @@ class MIG(Elaboratable):
                 ]
             )
             comb += [
-                self.pll_locked.eq(1),
-                self.mig_init_calib_complete.eq(1),
-                self.app_rdy.eq(1),
-                self.app_wdf_rdy.eq(1),
+                self.mig_init_calib_complete.eq(self.pll_locked),
+                self.app_rdy.eq(self.pll_locked),
+                self.app_wdf_rdy.eq(self.pll_locked),
             ]
             with m.If(self.app_en):
                 with m.If(self.app_wdf_wren & self.app_cmd[0]):

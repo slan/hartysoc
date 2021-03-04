@@ -31,10 +31,10 @@ class SDRAM(Elaboratable):
                 self.bus.rdy.eq(1),
                 self.bus.rdata.eq(
                     Cat(
-                        mig.output.pll_locked,
-                        mig.output.mig_init_calib_complete,
-                        mig.output.app_rdy,
-                        mig.output.app_wdf_rdy,
+                        mig.pll_locked,
+                        mig.mig_init_calib_complete,
+                        mig.app_rdy,
+                        mig.app_wdf_rdy,
                     )
                 ),
             ]
@@ -67,25 +67,25 @@ class SDRAM(Elaboratable):
                     self.bus.rdata.eq(fifo_r.r_data),
                 ]
 
-        with m.If(fifo_w.r_rdy & mig.output.app_rdy & mig.output.app_wdf_rdy):
+        with m.If(fifo_w.r_rdy & mig.app_rdy & mig.app_wdf_rdy):
             # Execute command -> read from fifo_w
             comb += [
                 fifo_w.r_en.eq(1),
-                mig.input.app_en.eq(1),
-                mig.input.app_cmd.eq(fifo_w.r_data[32 + 26]),
-                mig.input.app_wdf_wren.eq(fifo_w.r_data[32 + 26]),
-                mig.input.app_wdf_data.eq(fifo_w.r_data[0:32]),
-                mig.input.app_addr.eq(fifo_w.r_data[36 : 32 + 26]),
-                mig.input.app_wdf_end.eq(1),
-                mig.input.app_wdf_mask.eq(-1),
+                mig.app_en.eq(1),
+                mig.app_cmd.eq(fifo_w.r_data[32 + 26]),
+                mig.app_wdf_wren.eq(fifo_w.r_data[32 + 26]),
+                mig.app_wdf_data.eq(fifo_w.r_data[0:32]),
+                mig.app_addr.eq(fifo_w.r_data[36 : 32 + 26]),
+                mig.app_wdf_end.eq(1),
+                mig.app_wdf_mask.eq(0xffff),
             ]
         with m.If(
-            mig.output.app_rd_data_valid & mig.output.app_rd_data_end & fifo_r.w_rdy
+            mig.app_rd_data_valid & mig.app_rd_data_end & fifo_r.w_rdy
         ):
             # Send read data -> write to fifo_r
             comb += [
                 fifo_r.w_en.eq(1),
-                fifo_r.w_data.eq(mig.output.app_rd_data),
+                fifo_r.w_data.eq(mig.app_rd_data),
             ]
 
         return m
