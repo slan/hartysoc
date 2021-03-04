@@ -54,7 +54,7 @@
     <DeepMemory>1</DeepMemory>
     <DataMask>1</DataMask>
     <ECC>Disabled</ECC>
-    <Ordering>Strict</Ordering>
+    <Ordering>Normal</Ordering>
     <BankMachineCnt>4</BankMachineCnt>
     <CustomPart>FALSE</CustomPart>
     <NewPartName/>

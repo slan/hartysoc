@@ -77,11 +77,9 @@ class SDRAM(Elaboratable):
                 mig.app_wdf_data.eq(fifo_w.r_data[0:32]),
                 mig.app_addr.eq(fifo_w.r_data[36 : 32 + 26]),
                 mig.app_wdf_end.eq(1),
-                mig.app_wdf_mask.eq(0xffff),
+                mig.app_wdf_mask.eq(0xFFFF),
             ]
-        with m.If(
-            mig.app_rd_data_valid & mig.app_rd_data_end & fifo_r.w_rdy
-        ):
+        with m.If(mig.app_rd_data_valid & fifo_r.w_rdy):
             # Send read data -> write to fifo_r
             comb += [
                 fifo_r.w_en.eq(1),

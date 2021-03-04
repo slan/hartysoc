@@ -12,7 +12,7 @@ from hdl.harty import *
 from hdl.riscv import *
 
 
-class Test(Elaboratable):
+class MIGTester(Elaboratable):
     def elaborate(self, platform):
         m = Module()
 
@@ -49,7 +49,9 @@ class Test(Elaboratable):
                     for i in range(4):
                         result = result ^ mig.app_rd_data.word_select(0, 32)
                     sync += xor.eq(result)
-                    m.next = "WAIT_RDY"
+                    m.next = "END"
+            with m.State("END"):
+                pass
 
         if isinstance(platform, SimPlatform):
 
@@ -68,7 +70,7 @@ class Test(Elaboratable):
 with_sdram = True
 top = HartySOC(with_sdram=with_sdram)
 # top = ks.VGA()
-# top = Test()
+#top = MIGTester()
 
 
 def main():
@@ -127,7 +129,7 @@ def main():
         do_build=False,
         script_after_read=""
         if not with_sdram
-        else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
+        else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci;quit",
     )
     if plan is not None:
         plan.execute_local(build_dir, run_script=True)
