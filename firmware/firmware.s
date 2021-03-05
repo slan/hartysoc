@@ -11,6 +11,7 @@
     # nop
 
     # ebreak
+    j _main
 
     la a0, 0x10000000
 

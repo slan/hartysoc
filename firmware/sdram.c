@@ -21,27 +21,40 @@ int main()
     const uint32_t CYCLES_PER_SECOND = *info_addr;
 
     volatile uint32_t *sdram_ctrl = 0x20000000;
+    uint32_t *sdram_addr = 0x30000000;
 
-    uint32_t *sdram_mem = 0x30000000;
+    printf("-----------------------------------------------\n");
+    const int LOOPS = 256;
+    for (int j = 0; j < LOOPS; ++j)
+    {
+        uint8_t *addr_r = ((uint8_t*)sdram_addr)+j;
+        if(*addr_r<0x10) printf("0");
+        printf("%x ",*addr_r);
+        if((j%16)==15) printf("\n");
+    }
+    printf("\n");
+    for (int j = 0; j < LOOPS/4; ++j)
+    {
+        uint32_t *addr_r = ((uint32_t*)sdram_addr)+j;
+        if(*addr_r<0x10) printf("0");
+        if(*addr_r<0x100) printf("0");
+        if(*addr_r<0x1000) printf("0");
+        if(*addr_r<0x10000) printf("0");
+        if(*addr_r<0x100000) printf("0");
+        if(*addr_r<0x1000000) printf("0");
+        if(*addr_r<0x10000000) printf("0");
+        printf("%x ",*addr_r);
+        if((j%4)==3) printf("\n");
+    }
 
-    const int LOOPS = 8;
 
-    uint32_t *ptr;
-    ptr = sdram_mem;
+}
+/*
     for (int i = 0; i < LOOPS; ++i)
     {
         uint32_t value_w = (lfsr1() << 16) | lfsr1();
-        *ptr = value_w;
-        printf("Write to  0x%x: 0x%x\n", ptr, value_w);
-        ++ptr;
-    }
-
-    ptr = sdram_mem;
-    for (int i = 0; i < LOOPS; ++i)
-    {
-        uint32_t value_r = *ptr;
-        printf("Read from 0x%x: 0x%x\n", ptr, value_r);
-        ++ptr;
+        uint32_t *addr_w = sdram_addr+i;
+        printf("Write to 0x%x: 0x%x\n", addr_w, value_w);
     }
 
     uint32_t instret = insn();
@@ -64,3 +77,4 @@ int main()
     }
     printf("%u\n", cpi_f);
 }
+*/

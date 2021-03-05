@@ -86,9 +86,9 @@ class SDRAM(Elaboratable):
                 mig.app_cmd.eq(is_read),
                 mig.app_wdf_wren.eq(~is_read),
                 mig.app_wdf_data.eq(data),
-                mig.app_addr.eq(addr),
+                mig.app_addr.eq(addr[1:]), # addr is in memory words (16 bits)
                 mig.app_wdf_end.eq(~is_read),
-                mig.app_wdf_mask.eq(0xFFF0),
+                mig.app_wdf_mask.eq(0xffff),
             ]
 
         with m.If(mig.app_rd_data_valid & fifo_r.w_rdy):
