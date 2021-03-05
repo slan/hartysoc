@@ -27,7 +27,7 @@ class MIGTester(Elaboratable):
         sync += [self.my_counter.eq(self.my_counter + 1)]
         with m.FSM(domain=mig.ui_domain):
             with m.State("WAIT_CALIB"):
-                with m.If(mig.mig_init_calib_complete & mig.app_rdy):
+                with m.If(mig.app_rdy):
                     comb += [
                         mig.app_en.eq(1),
                         mig.app_cmd.eq(0),

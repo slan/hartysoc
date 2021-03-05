@@ -38,7 +38,7 @@ class SDRAM(Elaboratable):
                     )
                 ),
             ]
-        with m.Elif(mig.mig_init_calib_complete):
+        with m.Else():
             # HART domain: write to fifo_w, read from fifo_r
             cd_hart = m.d[self._domain]
             with m.If(self.bus.wmask.any()):

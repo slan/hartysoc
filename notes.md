@@ -1,2 +1,25 @@
 # Notes
 
+- with bufg: 4m41s -3.235
+- without: 5m13s -1.897
+
+- MIG UI  address space?
+
+```
+Write to  0x30000000: 0x5670AB38
+Write to  0x30000004: 0x559C2ACE
+Write to  0x30000008: 0x15678AB3
+Write to  0x3000000C: 0x455922AC
+Write to  0x30000010: 0x9156C8AB
+Write to  0x30000014: 0xE455722A
+Write to  0x30000018: 0x39151C8A
+Write to  0x3000001C: 0x8E454722
+Read from 0x30000000: 0x559C2ACE
+Read from 0x30000004: 0xAAAA5555
+Read from 0x30000008: 0x455922AC
+Read from 0x3000000C: 0xEEEE4444
+Read from 0x30000010: 0xE455722A
+Read from 0x30000014: 0xEEEE4444
+Read from 0x30000018: 0x8E454722
+Read from 0x3000001C: 0xEEEE4444
+```
