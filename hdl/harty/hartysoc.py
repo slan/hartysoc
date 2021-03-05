@@ -3,6 +3,7 @@ from os import stat
 from sys import stdout
 
 from nmigen import *
+from nmigen.sim.core import Passive
 
 from ..kitchensink import PLL, SimPlatform
 from ..riscv import *
@@ -66,7 +67,8 @@ class HartySOC(Elaboratable):
 
         if isinstance(platform, SimPlatform):
 
-            def process():
+            def trap_process():
+                yield Passive()
                 print("~" * 148)
                 while True:
                     yield
@@ -79,16 +81,12 @@ class HartySOC(Elaboratable):
                             print()
 
                         print("~" * 148)
-                        print(
-                            f"*** TRAP ***\n  mcause: {TrapCause(mcause).name}/{mcause}"
-                        )
-
                         mcycle = yield hart.mcycle
                         minstret = yield hart.minstret
+                        print(
+                            f"*** TRAP *** mcause={TrapCause(mcause).name}/{mcause} mcycle={mcycle} minstret={minstret}"
+                        )
 
-                        cpi = mcycle / minstret if minstret != 0 else "N/A"
-                        print(f"  mcycle: {mcycle}\nminstret: {minstret}\n\ncpi={cpi}")
-                        print("-" * 148)
                         pc = yield hart.decoder.pc
                         insn = yield hart.decoder.insn
                         print(f" pc: {pc:#010x}   insn: {insn:#010x}")
@@ -100,12 +98,22 @@ class HartySOC(Elaboratable):
                             if i % 8 == 7:
                                 print()
 
+            platform.add_sync_process(trap_process, domain=hart_domain)
+
+            def watchdog_process():
+                while True:
+                    yield
                     halt = yield hart.halt
                     if halt:
-                        ram.halt = True
-                        # console.halt = True
                         break
+                print("=" * 148)
+                mcycle = yield hart.mcycle
+                minstret = yield hart.minstret
+                cpi = mcycle / minstret if minstret != 0 else "N/A"
+                print(
+                    f"*** HALT *** mcycle={mcycle} minstret={minstret} (cpi: {cpi})"
+                )
 
-            platform.add_sync_process(process, domain=hart_domain)
+            platform.add_sync_process(watchdog_process, domain=hart_domain)
 
         return m

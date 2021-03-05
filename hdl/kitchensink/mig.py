@@ -63,7 +63,7 @@ class MIG(Elaboratable):
 
             mem = Memory(width=128, depth=4)
             m.submodules.mem_rp = mem_rp = mem.read_port(domain="comb")
-            m.submodules.mem_wp = mem_wp = mem.write_port(domain=self.ui_domain)
+            m.submodules.mem_wp = mem_wp = mem.write_port(domain=self.ui_domain, granularity=8)
 
             def process():
                 yield Passive()
@@ -75,7 +75,6 @@ class MIG(Elaboratable):
                         yield self.mig_init_calib_complete.eq(1)
                         for _ in range(20):
                             yield Tick(self.ui_domain)
-                        print("ready")
                         yield self.app_rdy.eq(1)
                         yield self.app_wdf_rdy.eq(1)
                         break
@@ -89,20 +88,24 @@ class MIG(Elaboratable):
                         app_addr = yield self.app_addr
                         if app_cmd == 0:
                             app_wdf_data = yield self.app_wdf_data
+                            app_wdf_mask = yield self.app_wdf_mask
+                            app_wdf_wren = yield self.app_wdf_wren
                             print(
                                 f"Write addr={app_addr:#010x} data={app_wdf_data:#034x} mask={app_wdf_mask:#018b}"
                             )
+                            yield mem_wp.addr.eq(app_addr)
+                            yield mem_wp.en.eq(-1)
+                            yield mem_wp.data.eq(app_wdf_data)
                         elif app_cmd == 1:
-                            print(f"Read addr={app_addr:#010x}")
                             yield mem_rp.addr.eq(app_addr)
-                            yield self.app_rd_data.eq(mem_rp.data)
+                            mem_rp_data = yield mem_rp.data
+                            print(f" Read addr={app_addr:#010x} data={mem_rp_data:#034x}")
+                            yield self.app_rd_data.eq(mem_rp_data)
                             yield self.app_rd_data_valid.eq(1)
                         else:
                             raise Exception(f"Unknown cmd {app_cmd}")
 
                     app_wdf_end = yield self.app_wdf_end
-                    app_wdf_wren = yield self.app_wdf_wren
-                    app_wdf_mask = yield self.app_wdf_mask
 
                     # print(app_en)
                     # print(app_cmd)
