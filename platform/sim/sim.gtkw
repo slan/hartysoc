@@ -1,15 +1,17 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Sat Feb 27 22:49:53 2021
+[*] Fri Mar  5 00:30:05 2021
 [*]
-[dumpfile] "(null)"
-[savefile] "/home/slan/src/HelloArty/platform/sim/sim.gtkw"
+[dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
+[dumpfile_mtime] "Fri Mar  5 00:29:55 2021"
+[dumpfile_size] 2789319
+[savefile] "/home/slan/src/hartysoc/platform/sim/sim.gtkw"
 [timestart] 0
 [size] 1800 1000
 [pos] -1 -1
-*-17.473013 632200 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.740326 335000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
-[treeopen] top.hart.registers.
+[treeopen] top.hart.
 [sst_width] 214
 [signals_width] 300
 [sst_expanded] 1
@@ -17,16 +19,54 @@
 @200
 -HART
 @28
+top.hart.hart_rst
 top.hart.hart_clk
-@23
+top.hart.trap
+top.hart.halt
+top.hart.mcause
+@c00022
 top.hart.pc[31:0]
 @28
-top.hart.hart_rst
-top.hart.trap
-top.hart.mcause
-top.hart.halt
+(0)top.hart.pc[31:0]
+(1)top.hart.pc[31:0]
+(2)top.hart.pc[31:0]
+(3)top.hart.pc[31:0]
+(4)top.hart.pc[31:0]
+(5)top.hart.pc[31:0]
+(6)top.hart.pc[31:0]
+(7)top.hart.pc[31:0]
+(8)top.hart.pc[31:0]
+(9)top.hart.pc[31:0]
+(10)top.hart.pc[31:0]
+(11)top.hart.pc[31:0]
+(12)top.hart.pc[31:0]
+(13)top.hart.pc[31:0]
+(14)top.hart.pc[31:0]
+(15)top.hart.pc[31:0]
+(16)top.hart.pc[31:0]
+(17)top.hart.pc[31:0]
+(18)top.hart.pc[31:0]
+(19)top.hart.pc[31:0]
+(20)top.hart.pc[31:0]
+(21)top.hart.pc[31:0]
+(22)top.hart.pc[31:0]
+(23)top.hart.pc[31:0]
+(24)top.hart.pc[31:0]
+(25)top.hart.pc[31:0]
+(26)top.hart.pc[31:0]
+(27)top.hart.pc[31:0]
+(28)top.hart.pc[31:0]
+(29)top.hart.pc[31:0]
+(30)top.hart.pc[31:0]
+(31)top.hart.pc[31:0]
+@1401200
+-group_end
 @22
 top.hart.insn[31:0]
+@29
+top.hart.ibus__rdy
+@28
+top.hart.dbus__rdy
 @200
 -IF
 @22
@@ -65,14 +105,5 @@ top.hart.registers.wp.mem_w_addr[4:0]
 top.hart.registers.wp.mem_w_data[31:0]
 @200
 -UART
-@28
-top.uart.tx_rdy
-@22
-top.uart.tx_data[7:0]
-top.dram_wp.ram_w_en[3:0]
-top.uart.tx_data[7:0]
-@28
-top.uart.tx_o
-top.uart.tx_ack
 [pattern_trace] 1
 [pattern_trace] 0

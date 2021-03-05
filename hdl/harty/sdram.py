@@ -51,9 +51,9 @@ class SDRAM(Elaboratable):
                 # BUS READ -> write to fifo_w, lock the bus
                 comb += self.bus.rdy.eq(0)
                 with m.If(fifo_w.w_rdy):
-                    in_flight = Signal()
-                    sync += in_flight.eq(1)
-                    with m.If(~in_flight):
+                    in_flight = Signal(3)
+                    sync += in_flight.eq(Cat(self.bus.addr[2:4], 1))
+                    with m.If(~in_flight.any()):
                         comb += [
                             fifo_w.w_en.eq(1),
                             fifo_w.w_data.eq(Cat(Repl(0, 32), self.bus.addr[0:26], 1)),
@@ -64,7 +64,7 @@ class SDRAM(Elaboratable):
                 sync += in_flight.eq(0)
                 comb += [
                     fifo_r.r_en.eq(1),
-                    self.bus.rdata.eq(fifo_r.r_data),
+                    self.bus.rdata.eq(fifo_r.r_data.word_select(in_flight[0:2], 32)),
                 ]
 
         with m.If(fifo_w.r_rdy & mig.app_rdy & mig.app_wdf_rdy):

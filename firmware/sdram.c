@@ -19,7 +19,7 @@ int main()
 {
     volatile uint32_t *info_addr = 0x10000100;
     const uint32_t CYCLES_PER_SECOND = *info_addr;
-    
+
     volatile uint32_t *sdram_ctrl = 0x20000000;
 
     uint32_t *sdram_mem = 0x30000000;
@@ -55,7 +55,7 @@ int main()
     uint32_t cpi_i = (uint32_t)cpi;
     uint32_t cpi_f = (uint32_t)(cpi * digits - cpi_i * digits);
 
-    printf("cpi_%u.", cpi_i);
+    printf("cpi=%u.", cpi_i);
     while (cpi_f < digits)
     {
         printf("0");

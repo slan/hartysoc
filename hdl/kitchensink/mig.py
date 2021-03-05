@@ -1,5 +1,6 @@
 from nmigen.build.dsl import Clock, Pins, Resource
 from nmigen.hdl.rec import DIR_FANIN, DIR_FANOUT
+from nmigen.sim.core import Passive, Settle, Tick
 from .simplatform import SimPlatform
 from .counter import Counter
 from .pll import PLL
@@ -45,9 +46,6 @@ class MIG(Elaboratable):
         comb += self.pll_locked.eq(pll.locked)
 
         if isinstance(platform, SimPlatform):
-            mem = Memory(width=128, depth=4)
-            m.submodules.mem_rp = mem_rp = mem.read_port(domain="comb")
-            m.submodules.mem_wp = mem_wp = mem.write_port(domain=self.ui_domain)
             platform.add_resources(
                 [
                     Resource(
@@ -62,27 +60,84 @@ class MIG(Elaboratable):
                     )
                 ]
             )
-            comb += [
-                self.mig_init_calib_complete.eq(self.pll_locked),
-                self.app_rdy.eq(self.pll_locked),
-                self.app_wdf_rdy.eq(self.pll_locked),
-            ]
-            with m.If(self.app_en):
-                with m.If(self.app_wdf_wren & ~self.app_cmd[0]):
-                    # WRITE
-                    comb += [
-                        mem_wp.addr.eq(self.app_addr),
-                        mem_wp.data.eq(self.app_wdf_data),
-                        mem_wp.en.eq(-1),
-                    ]
-                with m.If(~self.app_wdf_wren & self.app_cmd[0]):
-                    # READ
-                    comb += [
-                        mem_rp.addr.eq(self.app_addr),
-                        self.app_rd_data.eq(mem_rp.data),
-                        self.app_rd_data_valid.eq(1),
-                        self.app_rd_data_end.eq(1),
-                    ]
+
+            mem = Memory(width=128, depth=4)
+            m.submodules.mem_rp = mem_rp = mem.read_port(domain="comb")
+            m.submodules.mem_wp = mem_wp = mem.write_port(domain=self.ui_domain)
+
+            def process():
+                yield Passive()
+                while True:
+                    locked = yield self.pll_locked
+                    mig_init_calib_complete = yield self.mig_init_calib_complete
+
+                    if locked and not mig_init_calib_complete:
+                        yield self.mig_init_calib_complete.eq(1)
+                        for _ in range(20):
+                            yield Tick(self.ui_domain)
+                        print("ready")
+                        yield self.app_rdy.eq(1)
+                        yield self.app_wdf_rdy.eq(1)
+                        break
+
+                while True:
+                    yield Settle()
+
+                    app_en = yield self.app_en
+                    if app_en:
+                        app_cmd = yield self.app_cmd
+                        app_addr = yield self.app_addr
+                        if app_cmd == 0:
+                            app_wdf_data = yield self.app_wdf_data
+                            print(
+                                f"Write addr={app_addr:#010x} data={app_wdf_data:#034x} mask={app_wdf_mask:#018b}"
+                            )
+                        elif app_cmd == 1:
+                            print(f"Read addr={app_addr:#010x}")
+                            yield mem_rp.addr.eq(app_addr)
+                            yield self.app_rd_data.eq(mem_rp.data)
+                            yield self.app_rd_data_valid.eq(1)
+                        else:
+                            raise Exception(f"Unknown cmd {app_cmd}")
+
+                    app_wdf_end = yield self.app_wdf_end
+                    app_wdf_wren = yield self.app_wdf_wren
+                    app_wdf_mask = yield self.app_wdf_mask
+
+                    # print(app_en)
+                    # print(app_cmd)
+                    # print(app_addr)
+                    # print(app_wdf_data)
+                    # print(app_wdf_end)
+                    # print(app_wdf_wren)
+                    # print(app_wdf_mask)
+
+                    yield
+
+            platform.add_sync_process(process, domain=self.ui_domain)
+
+            # comb += [
+            #     self.mig_init_calib_complete.eq(self.pll_locked),
+            #     self.app_rdy.eq(self.pll_locked),
+            #     self.app_wdf_rdy.eq(self.pll_locked),
+            # ]
+
+            # with m.If(self.app_en):
+            #     with m.If(self.app_wdf_wren & ~self.app_cmd[0]):
+            #         # WRITE
+            #         comb += [
+            #             mem_wp.addr.eq(self.app_addr),
+            #             mem_wp.data.eq(self.app_wdf_data),
+            #             mem_wp.en.eq(-1),
+            #         ]
+            #     with m.If(~self.app_wdf_wren & self.app_cmd[0]):
+            #         # READ
+            #         comb += [
+            #             mem_rp.addr.eq(self.app_addr),
+            #             self.app_rd_data.eq(mem_rp.data),
+            #             self.app_rd_data_valid.eq(1),
+            #             self.app_rd_data_end.eq(1),
+            #         ]
 
         else:
             ddr3 = platform.request(

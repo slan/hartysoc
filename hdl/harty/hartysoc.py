@@ -103,7 +103,7 @@ class HartySOC(Elaboratable):
                     halt = yield hart.halt
                     if halt:
                         ram.halt = True
-                        console.halt = True
+                        # console.halt = True
                         break
 
             platform.add_sync_process(process, domain=hart_domain)

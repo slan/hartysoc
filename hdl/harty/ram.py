@@ -11,7 +11,6 @@ class RAM(Elaboratable):
     def __init__(self, *, domain, init):
         self._domain = domain
         self._init = init
-        self.halt = False
         self.ibus = Record(bus_layout)
         self.dbus = Record(bus_layout)
 
@@ -32,7 +31,8 @@ class RAM(Elaboratable):
             dram_wp = Record([("addr", 32), ("data", 32), ("en", 4)])
 
             def ram_sim_process():
-                while not self.halt:
+                yield Passive()
+                while True:
                     yield Settle()
                     i_addr = yield iram_rp.addr
                     i_data = self._init[i_addr]

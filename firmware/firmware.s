@@ -1,8 +1,18 @@
+    # la a0, 0x30000000
+    
+    # li t0, 0x12345678
+    # sw t0,0(a0)
+    # lw t1,0(a0)
+    
+    # li t1, 0x90abcdef
+
+    # ebreak
+
     la a0, 0x10000000
 
     la a1, 0x10000104 # greetings
     call _puts
-
+    ebreak
     la a1, _msg_waiting
     call _puts
 

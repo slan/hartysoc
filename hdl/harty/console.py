@@ -10,7 +10,6 @@ class Console(Elaboratable):
     def __init__(self, *, domain, domain_freq):
         self._domain = domain
         self._domain_freq = domain_freq
-        self.halt = False
         self.last_output = 0
         self.bus = Record(bus_layout)
 
@@ -25,7 +24,8 @@ class Console(Elaboratable):
                 self.bus.rdata.eq(1),
             ]
             def uart_sim_process():
-                while not self.halt:
+                yield Passive()
+                while True:
                     yield
                     uart_tx_rdy = yield self.bus.wmask.any()
                     if uart_tx_rdy:
