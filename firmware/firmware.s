@@ -1,16 +1,16 @@
-    la a0, 0x30000000
+    # la a0, 0x30000000
     
-    li t0, 0x12345678
-    sw t0,0(a0)
-    lw t1,0(a0)
+    # li t0, 0x12345678
+    # sw t0,0(a0)
+    # lw t1,0(a0)
     
-    li t2, 0x90abcdef
-    sw t2, 4(a0)
-    lw t3, 4(a0)
+    # li t2, 0x90abcdef
+    # sw t2, 4(a0)
+    # lw t3, 4(a0)
 
-    nop
+    # nop
 
-    ebreak
+    # ebreak
 
     la a0, 0x10000000
 

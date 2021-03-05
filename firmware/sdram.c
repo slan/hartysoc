@@ -24,7 +24,7 @@ int main()
 
     uint32_t *sdram_mem = 0x30000000;
 
-    const int LOOPS = 2;
+    const int LOOPS = 8;
 
     uint32_t *ptr;
     ptr = sdram_mem;
@@ -44,23 +44,23 @@ int main()
         ++ptr;
     }
 
-    uint32_t instret = insn();
-    uint32_t cycle = time();
+    // uint32_t instret = insn();
+    // uint32_t cycle = time();
 
-    printf("cycle=%u insn=%u\n", cycle, instret);
+    // printf("cycle=%u insn=%u\n", cycle, instret);
 
-    float cpi = (float)cycle / instret;
+    // float cpi = (float)cycle / instret;
 
-    uint32_t digits = 1e9;
+    // uint32_t digits = 1e9;
 
-    uint32_t cpi_i = (uint32_t)cpi;
-    uint32_t cpi_f = (uint32_t)(cpi * digits - cpi_i * digits);
+    // uint32_t cpi_i = (uint32_t)cpi;
+    // uint32_t cpi_f = (uint32_t)(cpi * digits - cpi_i * digits);
 
-    printf("cpi=%u.", cpi_i);
-    while (cpi_f < digits)
-    {
-        printf("0");
-        digits /= 10;
-    }
-    printf("%u\n", cpi_f);
+    // printf("cpi=%u.", cpi_i);
+    // while (cpi_f < digits)
+    // {
+    //     printf("0");
+    //     digits /= 10;
+    // }
+    // printf("%u\n", cpi_f);
 }
