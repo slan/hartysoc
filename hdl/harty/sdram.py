@@ -66,7 +66,7 @@ class SDRAM(Elaboratable):
                 cd_hart += req_in_flight.eq(0)
                 comb += [
                     fifo_r.r_en.eq(1),
-                    self.bus.rdata.eq(fifo_r.r_data.word_select(req_in_flight[0:2], 32)),
+                    self.bus.rdata.eq(fifo_r.r_data),
                 ]
 
         # MIG domain

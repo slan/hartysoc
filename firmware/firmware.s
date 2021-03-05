@@ -5,11 +5,9 @@
     lw t1,0(a0)
     
     li t2, 0x90abcdef
-    sw t2, 0(a0)
-    lw t3, 0(a0)
+    sw t2, 4(a0)
+    lw t3, 4(a0)
 
-    nop
-    nop
     nop
 
     ebreak
