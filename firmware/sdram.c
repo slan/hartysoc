@@ -24,10 +24,11 @@ int main()
 
     uint32_t *sdram_mem = 0x30000000;
 
+    const int LOOPS = 2;
 
     uint32_t *ptr;
     ptr = sdram_mem;
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < LOOPS; ++i)
     {
         uint32_t value_w = (lfsr1() << 16) | lfsr1();
         *ptr = value_w;
@@ -36,7 +37,7 @@ int main()
     }
 
     ptr = sdram_mem;
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < LOOPS; ++i)
     {
         uint32_t value_r = *ptr;
         printf("Read from 0x%x: 0x%x\n", ptr, value_r);

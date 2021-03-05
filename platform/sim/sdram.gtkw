@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Wed Mar  3 22:55:45 2021
+[*] Fri Mar  5 09:40:48 2021
 [*]
 [dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Wed Mar  3 22:44:08 2021"
-[dumpfile_size] 37799
+[dumpfile_mtime] "Fri Mar  5 09:40:10 2021"
+[dumpfile_size] 17558175
 [savefile] "/home/slan/src/hartysoc/platform/sim/sdram.gtkw"
 [timestart] 0
 [size] 2073 1107
-[pos] -1 -208
-*-17.011116 391600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -1
+*-18.583126 968000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.hart.registers.
 [treeopen] top.pll.
@@ -17,15 +17,15 @@
 [treeopen] top.sdram.mig.
 [treeopen] top.sdram.mig.pll.
 [sst_width] 318
-[signals_width] 581
+[signals_width] 440
 [sst_expanded] 1
 [sst_vpaned_height] 327
 @28
 top.pll.clk
 top.sdram.mig.pll.rs_ref.ref_clk
 top.sdram.mig.pll.rs_sys.sys_clk
-top.sdram.mig.mem_wp.mig_clk
 top.hart.hart_clk
+top.sdram.mig.mem_wp.mig_ui_clk
 @200
 -HART
 @22
@@ -40,7 +40,6 @@ top.hart.dbus__addr[31:0]
 top.hart.dbus__rmask[3:0]
 top.hart.dbus__rdata[31:0]
 top.hart.dbus__wmask[3:0]
-@23
 top.hart.dbus__wdata[31:0]
 @200
 -SDRAM
@@ -71,28 +70,14 @@ top.sdram.fifo_r.r_rdy
 top.sdram.fifo_r.r_data[31:0]
 @200
 -MIG
-@28
-top.sdram.mig.output__app_rdy
-top.sdram.mig.output__app_rd_data_valid
-top.sdram.mig.output__app_rd_data_end
-@22
-top.sdram.mig.output__app_rd_data[127:0]
-@28
-top.sdram.mig.input__app_wdf_wren
-@22
-top.sdram.mig.input__app_addr[27:0]
-top.sdram.mig.input__app_wdf_data[127:0]
-@200
 -MEM_W
-@28
-top.sdram.mig.mem_wp.mem_w_en
-top.sdram.mig.mem_wp.mem_w_addr[1:0]
+@23
+top.sdram.mig.mem_wp.mem_w_addr[2:0]
 @22
+top.sdram.mig.mem_wp.mem_w_en[15:0]
 top.sdram.mig.mem_wp.mem_w_data[127:0]
 @200
 -MEM_R
-@28
-top.sdram.mig.mem_rp.mem_r_addr[1:0]
 @22
 top.sdram.mig.mem_rp.mem_r_data[127:0]
 @200

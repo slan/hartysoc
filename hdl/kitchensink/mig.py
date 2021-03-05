@@ -61,27 +61,23 @@ class MIG(Elaboratable):
                 ]
             )
 
-            mem = Memory(width=128, depth=4)
+            mem = Memory(width=128, depth=8)
             m.submodules.mem_rp = mem_rp = mem.read_port(domain="comb")
-            m.submodules.mem_wp = mem_wp = mem.write_port(domain=self.ui_domain, granularity=8)
+            m.submodules.mem_wp = mem_wp = mem.write_port(
+                domain=self.ui_domain, granularity=8
+            )
 
             def process():
                 yield Passive()
                 while True:
                     locked = yield self.pll_locked
-                    mig_init_calib_complete = yield self.mig_init_calib_complete
-
-                    if locked and not mig_init_calib_complete:
+                    if locked:
                         yield self.mig_init_calib_complete.eq(1)
-                        for _ in range(20):
-                            yield Tick(self.ui_domain)
                         yield self.app_rdy.eq(1)
                         yield self.app_wdf_rdy.eq(1)
                         break
 
                 while True:
-                    yield Settle()
-
                     app_en = yield self.app_en
                     if app_en:
                         app_cmd = yield self.app_cmd
@@ -93,14 +89,17 @@ class MIG(Elaboratable):
                             print(
                                 f"Write addr={app_addr:#010x} data={app_wdf_data:#034x} mask={app_wdf_mask:#018b}"
                             )
-                            yield mem_wp.addr.eq(app_addr)
-                            yield mem_wp.en.eq(-1)
-                            yield mem_wp.data.eq(app_wdf_data)
+                            yield mem_wp.addr.eq(self.app_addr[4:])
+                            yield mem_wp.en.eq((~app_wdf_mask)<<self.app_addr[0:4])
+                            yield mem_wp.data.eq(app_wdf_data<<(self.app_addr[0:4]<<3))
                         elif app_cmd == 1:
-                            yield mem_rp.addr.eq(app_addr)
+                            yield mem_rp.addr.eq(self.app_addr[4:])
                             mem_rp_data = yield mem_rp.data
-                            print(f" Read addr={app_addr:#010x} data={mem_rp_data:#034x}")
-                            yield self.app_rd_data.eq(mem_rp_data)
+                            print(
+                                f" Read addr={app_addr:#010x} data={mem_rp_data:#034x}"
+                            )
+                            yield self.app_rd_data.eq(mem_rp.data.word_select(self.app_addr[0:4],32))
+                            yield Settle()
                             yield self.app_rd_data_valid.eq(1)
                         else:
                             raise Exception(f"Unknown cmd {app_cmd}")
