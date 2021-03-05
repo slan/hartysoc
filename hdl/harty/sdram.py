@@ -15,7 +15,6 @@ class SDRAM(Elaboratable):
 
         m = Module()
 
-
         m.submodules.mig = mig = MIG()
         m.submodules.fifo_r = fifo_r = AsyncFIFO(
             width=32, depth=2, r_domain=self._domain, w_domain=mig.ui_domain
@@ -47,18 +46,18 @@ class SDRAM(Elaboratable):
                 with m.If(fifo_w.w_rdy):
                     comb += [
                         fifo_w.w_en.eq(1),
-                        fifo_w.w_data.eq(Cat(self.bus.wdata, self.bus.addr[0:26], 0)),
+                        fifo_w.w_data.eq(Cat(0, self.bus.addr[0:26], self.bus.wdata)),
                     ]
             with m.If(self.bus.rmask.any()):
                 # BUS READ -> write to fifo_w, lock the bus
                 comb += self.bus.rdy.eq(0)
                 with m.If(fifo_w.w_rdy):
-                    req_in_flight = Signal(3)
-                    cd_hart += req_in_flight.eq(Cat(self.bus.addr[2:4], 1))
-                    with m.If(~req_in_flight.any()):
+                    req_in_flight = Signal(1)
+                    cd_hart += req_in_flight.eq(1)
+                    with m.If(~req_in_flight):
                         comb += [
                             fifo_w.w_en.eq(1),
-                            fifo_w.w_data.eq(Cat(Repl(0, 32), self.bus.addr[0:26], 1)),
+                            fifo_w.w_data.eq(Cat(1, self.bus.addr[0:26])),
                         ]
             with m.If(fifo_r.r_rdy):
                 # Response from MIG -> read from fifo_r, put data on the bus, release
@@ -74,9 +73,9 @@ class SDRAM(Elaboratable):
         rsp_in_flight = Signal()
         with m.If(fifo_w.r_rdy & mig.app_rdy & mig.app_wdf_rdy):
             # Execute command -> read from fifo_w
-            is_read = fifo_w.r_data[32 + 26]
-            data = fifo_w.r_data[0:32]
-            addr = fifo_w.r_data[32 : 32 + 26]
+            is_read = fifo_w.r_data[0:1]
+            addr = fifo_w.r_data[1 : 1 + 26]
+            data = fifo_w.r_data[1 + 26 : 1 + 26 + 32]
             # Since the bus is locked when reading,
             # track the request so we send only 1 response
             cd_mig += rsp_in_flight.eq(is_read)
@@ -89,7 +88,7 @@ class SDRAM(Elaboratable):
                 mig.app_wdf_data.eq(data),
                 mig.app_addr.eq(addr),
                 mig.app_wdf_end.eq(~is_read),
-                mig.app_wdf_mask.eq(0xfff0),
+                mig.app_wdf_mask.eq(0xFFF0),
             ]
 
         with m.If(mig.app_rd_data_valid & fifo_r.w_rdy):

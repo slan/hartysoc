@@ -24,7 +24,7 @@ int main()
 
     uint32_t *sdram_mem = 0x30000000;
 
-    const int LOOPS = 4;
+    const int LOOPS = 8;
 
     uint32_t *ptr;
     ptr = sdram_mem;
