@@ -70,15 +70,17 @@ class SDRAM(Elaboratable):
 
         # MIG domain
         cd_mig = m.d[mig.ui_domain]
-        rsp_in_flight = Signal()
+        read_in_flight = Signal(3)
         with m.If(fifo_w.r_rdy & mig.app_rdy & mig.app_wdf_rdy):
             # Execute command -> read from fifo_w
-            is_read = fifo_w.r_data[0:1]
+            is_read = fifo_w.r_data[0]
             addr = fifo_w.r_data[1 : 1 + 26]
             data = fifo_w.r_data[1 + 26 : 1 + 26 + 32]
-            # Since the bus is locked when reading,
-            # track the request so we send only 1 response
-            cd_mig += rsp_in_flight.eq(is_read)
+            # Since the bus is locked when reading, we know there can
+            # be only one read request in flight.
+            # Track it so we send only 1 response
+            # ...and use this channel to pass the word_select
+            cd_mig += read_in_flight.eq(Cat(is_read, addr[2:4]))
 
             comb += [
                 fifo_w.r_en.eq(1),
@@ -86,19 +88,19 @@ class SDRAM(Elaboratable):
                 mig.app_cmd.eq(is_read),
                 mig.app_wdf_wren.eq(~is_read),
                 mig.app_wdf_data.eq(data),
-                mig.app_addr.eq(addr[1:]), # addr is in memory words (16 bits)
+                mig.app_addr.eq(Cat(0,0,0,addr[4:])), # addr is in memory words (16 bits)
                 mig.app_wdf_end.eq(~is_read),
                 mig.app_wdf_mask.eq(0xffff),
             ]
 
         with m.If(mig.app_rd_data_valid & fifo_r.w_rdy):
             # Send read data back -> write to fifo_r
-
-            with m.If(rsp_in_flight):
-                cd_mig += rsp_in_flight.eq(0)
+            # Ensure we're sending the response exactly once
+            with m.If(read_in_flight[0]):
+                cd_mig += read_in_flight.eq(0)
                 comb += [
                     fifo_r.w_en.eq(1),
-                    fifo_r.w_data.eq(mig.app_rd_data),
+                    fifo_r.w_data.eq(mig.app_rd_data.word_select(read_in_flight[1:3], 32)),
                 ]
 
         return m

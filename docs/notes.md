@@ -5,27 +5,10 @@
 
 - MIG UI  address space?
 
-```
-Write to  0x30000000: 0x5670AB38
-Write to  0x30000004: 0x559C2ACE
-Write to  0x30000008: 0x15678AB3
-Write to  0x3000000C: 0x455922AC
-Write to  0x30000010: 0x9156C8AB
-Write to  0x30000014: 0xE455722A
-Write to  0x30000018: 0x39151C8A
-Write to  0x3000001C: 0x8E454722
-Read from 0x30000000: 0x559C2ACE
-Read from 0x30000004: 0xAAAA5555
-Read from 0x30000008: 0x455922AC
-Read from 0x3000000C: 0xEEEE4444
-Read from 0x30000010: 0xE455722A
-Read from 0x30000014: 0xEEEE4444
-Read from 0x30000018: 0x8E454722
-Read from 0x3000001C: 0xEEEE4444
-```
+## Debugging memory controller
 
-
------------------------------------------------
+- Dump with C
+```
 FF FF 00 00 55 55 AA AA BB BB 11 11 44 44 EE EE
 BB BB 11 11 44 44 EE EE BB BB 11 11 44 44 EE EE
 B3 DE 88 69 42 FD 0A 14 04 C9 D6 E0 29 3C 68 FB
@@ -59,8 +42,10 @@ A4AA0596 72096DE9 202EEE8A 629A800A
 B9CFCB7A 24FE8DC8 A2990920 8A333259
 E3C1E7FB 0130AA18 F468B872 AAA8120D
 F59B7A2A EE6ADBF2 DEBEE86C 77BB47AD
-
---
+```
+- Dump with debug core
+Reading from MIG sequentially:
+```
 66669999 aaaa5555 5555aaaa 0000ffff
 55556666 9999aaaa ffff5555 aaaa0000
 aaaa5555 66669999 0000ffff 5555aaaa
@@ -78,3 +63,23 @@ ddddeeee 44448888 eeee1111 bbbb4444
 bbbb4444 eeee1111 44448888 ddddeeee
 1111bbbb 4444eeee eeee4444 8888dddd
 eeee1111 bbbb4444 ddddeeee 44448888
+```
+Looks like addressing is in memory chip words, i.e. 16 bits.
+Actual memory should be:
+```
+0000ffff 5555aaaa aaaa5555 66669999
+1111bbbb 4444eeee eeee4444 8888dddd
+```
+Note that time between `en` and `valid` is constant 23 cycles. There is a good chance that a simple 128 bits cache will help there.
+- Passing `addr[1:]` to the controller:
+```
+0000FFFF 5555AAAA AAAA5555 66669999
+1111BBBB 4444EEEE EEEE4444 8888DDDD
+```
+Bingo
+- Let's use `word_select` instead. For that we need to keep the part of the address to select the word from the mig response. Fortunately, the bus is locked when a read request is in flight so we can (ab)use this to register the selection bits in `read_in_flight`.
+```
+hart   00000 00100 01000 01100 10000
+mig    00000 00000 00000 00000 01000
+select    00    01    10    11    00
+```

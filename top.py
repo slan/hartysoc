@@ -66,9 +66,9 @@ class MIGTester(Elaboratable):
 
 
 with_sdram = True
-# top = HartySOC(with_sdram=with_sdram)
+top = HartySOC(with_sdram=with_sdram)
 # top = ks.VGA()
-top = MIGTester()
+# top = MIGTester()
 
 
 def main():
@@ -127,7 +127,7 @@ def main():
         do_build=False,
         script_after_read=""
         if not with_sdram
-        else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci;quit",
+        else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
     )
     if plan is not None:
         plan.execute_local(build_dir, run_script=True)
