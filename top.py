@@ -1,75 +1,16 @@
-from hdl.kitchensink.simplatform import SimPlatform
 import sys
 
 from nmigen import *
-from nmigen.lib.fifo import AsyncFIFO
 from nmigen.build import *
-from nmigen.sim.core import Settle
 from nmigen_boards.arty_a7 import ArtyA7Platform
 
 import hdl.kitchensink as ks
-from hdl.harty import *
-from hdl.riscv import *
-
-
-class MIGTester(Elaboratable):
-    def elaborate(self, platform):
-        m = Module()
-
-        m.submodules.mig = mig = ks.MIG()
-        m.submodules.mem = mem_wp = Memory(width=128, depth=16).write_port(
-            domain=mig.ui_domain
-        )
-
-        comb = m.d.comb
-        sync = m.d[mig.ui_domain]
-
-        addr = Signal(28)
-
-        with m.FSM(domain=mig.ui_domain):
-
-            with m.State("DO_READ"):
-                with m.If(mig.app_rdy):
-                    comb += [
-                        mig.app_en.eq(1),
-                        mig.app_cmd.eq(1),
-                        mig.app_addr.eq(addr),
-                    ]
-                    m.next = "WAIT_DATA"
-            with m.State("WAIT_DATA"):
-                with m.If(mig.app_rd_data_valid):
-                    with m.If(addr < 16):
-                        comb += [
-                            mem_wp.addr.eq(addr),
-                            mem_wp.en.eq(1),
-                            mem_wp.data.eq(mig.app_rd_data),
-                        ]
-                        sync += addr.eq(addr + 1)
-                        m.next = "DO_READ"
-                    with m.Else():
-                        m.next = "END"
-            with m.State("END"):
-                sync += platform.request("led").eq(1)
-
-        if isinstance(platform, SimPlatform):
-
-            def process():
-                yield
-                yield
-                yield
-                yield
-                yield
-
-            platform.add_sync_process(process, mig.ui_domain)
-
-        return m
+from hdl.harty import SOC
+from hdl.kitchensink.simplatform import SimPlatform
 
 
 with_sdram = True
-top = HartySOC(with_sdram=with_sdram)
-# top = ks.VGA()
-# top = MIGTester()
-
+top = SOC(with_sdram=with_sdram)
 
 def main():
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None

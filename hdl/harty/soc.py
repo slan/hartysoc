@@ -10,10 +10,10 @@ from ..riscv import *
 from .console import Console
 from .ram import RAM
 from .sdram import SDRAM
-from .info import Info
+from .soc_info import SOCInfo
 
 
-class HartySOC(Elaboratable):
+class SOC(Elaboratable):
     def __init__(self, *, with_sdram=False):
         self._with_sdram = with_sdram
 
@@ -51,8 +51,8 @@ class HartySOC(Elaboratable):
         )
         dbus_devices += [(console.bus, 0x1000_0000, 0x1000_0004)]
 
-        m.submodules.info = info = Info(version="0.1.0", freq=hart_freq)
-        dbus_devices += [(info.bus, 0x1000_0100, 0x1000_0200)]
+        m.submodules.soc_info = soc_info = SOCInfo(version="0.1.0", freq=hart_freq)
+        dbus_devices += [(soc_info.bus, 0x1000_0100, 0x1000_0200)]
 
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=hart_domain)

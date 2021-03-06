@@ -17,6 +17,7 @@ make sim
 - single-cycle, runs at 33MHz
 - verified with [riscv-formal](https://github.com/SymbioticEDA/riscv-formal)
 - serial console (output-only)
+- SDRAM
 
 ## WIP
 

@@ -4,7 +4,7 @@ from struct import *
 from ..riscv.bus import bus_layout
 
 
-class Info(Elaboratable):
+class SOCInfo(Elaboratable):
     def __init__(self, *, version, freq):
         self._version = version
         self._freq = freq
@@ -14,7 +14,7 @@ class Info(Elaboratable):
         m = Module()
 
         # write freq first
-        init = [round(self._freq)]
+        init = [round(self._freq), 0, 0, 0]
 
         # write greetings message
         message = (

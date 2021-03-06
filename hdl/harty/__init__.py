@@ -1,1 +1,1 @@
-from .hartysoc import HartySOC
+from .soc import SOC

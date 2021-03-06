@@ -9,9 +9,6 @@ SECTIONS
         *(.data*);
         *(.sdata*);
         *(.srodata*);
-        . = ALIGN(4);
-        . = . + 512;
-       _stack = .;
     }
     /DISCARD/ : { *(*) }
 }
