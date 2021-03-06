@@ -58,10 +58,7 @@ class SimPlatform(Platform):
                     sim.add_sync_process(sync_process, domain=domain)
 
             with sim.write_vcd("top.vcd"):
-                if len(self.sync_processes) > 0:
-                    sim.run()
-                else:
-                    sim.run_until(7, run_passive=True)
+                sim.run()
         finally:
             os.chdir(cwd)
 

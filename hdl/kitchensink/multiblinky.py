@@ -10,7 +10,7 @@ class MultiBlinky(Elaboratable):
 
         domains=[("cd1",8),("cd2",4),("cd3",2)]
 
-        m.submodules.pll = PLL(mult=8,domains=domains)
+        m.submodules.pll = PLL(mult=8,cd_specs=domains)
 
         cycles = int(platform.default_clk_frequency) - 1
 

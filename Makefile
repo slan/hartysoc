@@ -3,6 +3,7 @@ ROOT_PROJECT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/main.c
 SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/dhry1.c firmware/dhry2.c
+SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/sdram.c
 
 OBJS_FIRMWARE := $(SRCS_FIRMWARE:firmware/%=build/firmware/%.o)
 
@@ -58,7 +59,7 @@ prog: build/arty/top.bit platform/arty/digilent_arty.cfg
 	openocd -f platform/arty/digilent_arty.cfg -c "init;pld load 0 $<;shutdown"
 
 clean:
-	rm -rf build
+	rm -rf build/firmware.bin build/arty build/firmware build/formal build/sim
 
 mig: build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 

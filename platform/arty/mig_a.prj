@@ -54,7 +54,7 @@
     <DeepMemory>1</DeepMemory>
     <DataMask>1</DataMask>
     <ECC>Disabled</ECC>
-    <Ordering>Strict</Ordering>
+    <Ordering>Normal</Ordering>
     <BankMachineCnt>4</BankMachineCnt>
     <CustomPart>FALSE</CustomPart>
     <NewPartName/>
@@ -62,6 +62,7 @@
     <ColAddress>10</ColAddress>
     <BankAddress>3</BankAddress>
     <MemoryVoltage>1.35V</MemoryVoltage>
+    <C0_MEM_SIZE>268435456</C0_MEM_SIZE>
     <UserMemoryAddressMap>BANK_ROW_COLUMN</UserMemoryAddressMap>
     <PinSelection>
       <Pin IN_TERM="" IOSTANDARD="SSTL135" PADName="R2" SLEW="" VCCAUX_IO="" name="ddr3_addr[0]"/>
