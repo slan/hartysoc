@@ -19,7 +19,7 @@ def main():
         platform = ks.FormalPlatform()
 
     elif platform_name == "sim":
-        platform = ks.SimPlatform(100)
+        platform = ks.SimPlatform(100e6)
 
     elif platform_name == "arty":
         platform = ArtyA7Platform()

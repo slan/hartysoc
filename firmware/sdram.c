@@ -15,7 +15,7 @@ unsigned lfsr1(void)
     return lfsr;
 }
 
-void pretty_print_hex_word(uint32_t word)
+void pretty_print_hex_4(uint32_t word)
 {
     if (word < 0x10)
         printf("0");
@@ -34,7 +34,18 @@ void pretty_print_hex_word(uint32_t word)
     printf("%x", word);
 }
 
-void pretty_print_hex_byte(uint32_t byte)
+void pretty_print_hex_2(uint16_t half)
+{
+    if (half < 0x10)
+        printf("0");
+    if (half < 0x100)
+        printf("0");
+    if (half < 0x1000)
+        printf("0");
+    printf("%x", half);
+}
+
+void pretty_print_hex_1(uint8_t byte)
 {
     if (byte < 0x10)
         printf("0");
@@ -47,7 +58,7 @@ void dump_memory_words(unsigned int n, unsigned int col)
     for (unsigned int i = 0; i < n; ++i)
     {
         uint32_t *addr_r = ((uint32_t *)sdram_addr) + i;
-        pretty_print_hex_word(*addr_r);
+        pretty_print_hex_4(*addr_r);
         printf((i + 1) % col ? " " : "\n");
     }
     if ((n % col) != 0)
@@ -59,7 +70,7 @@ void dump_memory_bytes(unsigned int n, unsigned int col)
     uint32_t *sdram_addr = 0x30000000;
     for (unsigned int i = 0; i < n; ++i)
     {
-        pretty_print_hex_byte(*((uint8_t *)sdram_addr + i));
+        pretty_print_hex_1(*((uint8_t *)sdram_addr + i));
         printf((i + 1) % col ? " " : "\n");
     }
     if ((n % col) != 0)
@@ -68,7 +79,7 @@ void dump_memory_bytes(unsigned int n, unsigned int col)
 
 void dump_memory()
 {
-    dump_memory_bytes(64, 16);
+    dump_memory_bytes(96, 16);
 }
 
 int main()
@@ -83,13 +94,33 @@ int main()
 
     dump_memory();
 
-    printf("\nWriting...\n");
+    printf("\nWriting uint32_t...\n");
+
+    for (int i = 0; i < 8; ++i)
+    {
+        uint32_t value = i;
+        (*(sdram_addr + i)) = value;
+        pretty_print_hex_4(value);
+        printf((i + 1) % 4 ? " " : "\n");
+    }
+
+    printf("\nWriting uint16_t...\n");
+
+    for (int i = 0; i < 16; ++i)
+    {
+        uint16_t value = -i-1;
+        (*((uint16_t *)sdram_addr + i + 16)) = value;
+        pretty_print_hex_2(value);
+        printf((i + 1) % 8 ? " " : "\n");
+    }
+
+    printf("\nWriting uint8_t...\n");
 
     for (int i = 0; i < 32; ++i)
     {
         uint8_t value = i;
-        (*((uint8_t *)sdram_addr + i)) = value;
-        pretty_print_hex_byte(value);
+        (*((uint8_t *)sdram_addr + i + 64)) = value;
+        pretty_print_hex_1(value);
         printf((i + 1) % 16 ? " " : "\n");
     }
 

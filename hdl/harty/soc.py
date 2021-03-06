@@ -51,7 +51,7 @@ class SOC(Elaboratable):
         )
         dbus_devices += [(console.bus, 0x1000_0000, 0x1000_0004)]
 
-        m.submodules.soc_info = soc_info = SOCInfo(version="0.1.0", freq=hart_freq)
+        m.submodules.soc_info = soc_info = SOCInfo(version="0.2.0", freq=hart_freq)
         dbus_devices += [(soc_info.bus, 0x1000_0100, 0x1000_0200)]
 
         if self._with_sdram:
