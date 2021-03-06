@@ -15,17 +15,10 @@ unsigned lfsr1(void)
     return lfsr;
 }
 
-int main()
+void dump_memory()
 {
-    volatile uint32_t *info_addr = 0x10000100;
-    const uint32_t CYCLES_PER_SECOND = *info_addr;
-
-    volatile uint32_t *sdram_ctrl = 0x20000000;
     uint32_t *sdram_addr = 0x30000000;
-
-    printf("-----------------------------------\n");
-    
-    for (int j = 0; j < 16; ++j)
+    for (int j = 0; j < 32; ++j)
     {
         uint32_t *addr_r = ((uint32_t *)sdram_addr) + j;
         if (*addr_r < 0x10)
@@ -46,13 +39,26 @@ int main()
         if ((j % 4) == 3)
             printf("\n");
     }
+}
+
+int main()
+{
+    volatile uint32_t *info_addr = 0x10000100;
+    const uint32_t CYCLES_PER_SECOND = *info_addr;
+
+    volatile uint32_t *sdram_ctrl = 0x20000000;
+    uint32_t *sdram_addr = 0x30000000;
+
+    printf("-----------------------------------\n");
+    
+    dump_memory();
 
     printf("\n");
 
     for (int j = 0; j < 16; ++j)
     {
         uint32_t *addr_w = ((uint32_t *)sdram_addr) + j;
-        uint32_t value_w = (lfsr1()<<16)|lfsr1();
+        uint32_t value_w = j;//(lfsr1()<<16)|lfsr1();
         *addr_w = value_w;
         if (value_w < 0x10)
             printf("0");
@@ -75,27 +81,7 @@ int main()
 
     printf("\n");
 
-    for (int j = 0; j < 16; ++j)
-    {
-        uint32_t *addr_r = ((uint32_t *)sdram_addr) + j;
-        if (*addr_r < 0x10)
-            printf("0");
-        if (*addr_r < 0x100)
-            printf("0");
-        if (*addr_r < 0x1000)
-            printf("0");
-        if (*addr_r < 0x10000)
-            printf("0");
-        if (*addr_r < 0x100000)
-            printf("0");
-        if (*addr_r < 0x1000000)
-            printf("0");
-        if (*addr_r < 0x10000000)
-            printf("0");
-        printf("%x ", *addr_r);
-        if ((j % 4) == 3)
-            printf("\n");
-    }
+    dump_memory();
 
     printf("-----------------------------------\n");
 

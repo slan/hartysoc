@@ -85,11 +85,19 @@ class SDRAM(Elaboratable):
                 mig.app_en.eq(1),
                 mig.app_cmd.eq(is_read),
                 mig.app_wdf_wren.eq(~is_read),
-                mig.app_wdf_data.eq(data),
-                mig.app_addr.eq(addr[1:]), # addr is in memory words (16 bits)
+                mig.app_addr.eq(addr[1:]),  # addr is in memory words (16 bits)
                 mig.app_wdf_end.eq(~is_read),
-                mig.app_wdf_mask.eq(0xfff0),
+                mig.app_wdf_data.word_select(addr[2:4], 32).eq(data),
             ]
+            with m.Switch(addr[2:4]):
+                with m.Case(0b00):
+                    comb += mig.app_wdf_mask.eq(0xFFF0)
+                with m.Case(0b01):
+                    comb += mig.app_wdf_mask.eq(0xFF0F)
+                with m.Case(0b10):
+                    comb += mig.app_wdf_mask.eq(0xF0FF)
+                with m.Case(0b11):
+                    comb += mig.app_wdf_mask.eq(0x0FFF)
 
         with m.If(mig.app_rd_data_valid & fifo_r.w_rdy):
             # Send read data back -> write to fifo_r
