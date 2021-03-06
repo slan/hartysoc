@@ -23,39 +23,81 @@ int main()
     volatile uint32_t *sdram_ctrl = 0x20000000;
     uint32_t *sdram_addr = 0x30000000;
 
-    printf("-----------------------------------------------\n");
-    const int LOOPS = 256;
-    for (int j = 0; j < LOOPS; ++j)
+    printf("-----------------------------------\n");
+    
+    for (int j = 0; j < 16; ++j)
     {
-        uint8_t *addr_r = ((uint8_t*)sdram_addr)+j;
-        if(*addr_r<0x10) printf("0");
-        printf("%x ",*addr_r);
-        if((j%16)==15) printf("\n");
+        uint32_t *addr_r = ((uint32_t *)sdram_addr) + j;
+        if (*addr_r < 0x10)
+            printf("0");
+        if (*addr_r < 0x100)
+            printf("0");
+        if (*addr_r < 0x1000)
+            printf("0");
+        if (*addr_r < 0x10000)
+            printf("0");
+        if (*addr_r < 0x100000)
+            printf("0");
+        if (*addr_r < 0x1000000)
+            printf("0");
+        if (*addr_r < 0x10000000)
+            printf("0");
+        printf("%x ", *addr_r);
+        if ((j % 4) == 3)
+            printf("\n");
     }
+
     printf("\n");
-    for (int j = 0; j < LOOPS/4; ++j)
+
+    for (int j = 0; j < 16; ++j)
     {
-        uint32_t *addr_r = ((uint32_t*)sdram_addr)+j;
-        if(*addr_r<0x10) printf("0");
-        if(*addr_r<0x100) printf("0");
-        if(*addr_r<0x1000) printf("0");
-        if(*addr_r<0x10000) printf("0");
-        if(*addr_r<0x100000) printf("0");
-        if(*addr_r<0x1000000) printf("0");
-        if(*addr_r<0x10000000) printf("0");
-        printf("%x ",*addr_r);
-        if((j%4)==3) printf("\n");
+        uint32_t *addr_w = ((uint32_t *)sdram_addr) + j;
+        uint32_t value_w = (lfsr1()<<16)|lfsr1();
+        *addr_w = value_w;
+        if (value_w < 0x10)
+            printf("0");
+        if (value_w < 0x100)
+            printf("0");
+        if (value_w < 0x1000)
+            printf("0");
+        if (value_w < 0x10000)
+            printf("0");
+        if (value_w < 0x100000)
+            printf("0");
+        if (value_w < 0x1000000)
+            printf("0");
+        if (value_w < 0x10000000)
+            printf("0");
+        printf("%x ", value_w);
+        if ((j % 4) == 3)
+            printf("\n");
     }
 
+    printf("\n");
 
-}
-/*
-    for (int i = 0; i < LOOPS; ++i)
+    for (int j = 0; j < 16; ++j)
     {
-        uint32_t value_w = (lfsr1() << 16) | lfsr1();
-        uint32_t *addr_w = sdram_addr+i;
-        printf("Write to 0x%x: 0x%x\n", addr_w, value_w);
+        uint32_t *addr_r = ((uint32_t *)sdram_addr) + j;
+        if (*addr_r < 0x10)
+            printf("0");
+        if (*addr_r < 0x100)
+            printf("0");
+        if (*addr_r < 0x1000)
+            printf("0");
+        if (*addr_r < 0x10000)
+            printf("0");
+        if (*addr_r < 0x100000)
+            printf("0");
+        if (*addr_r < 0x1000000)
+            printf("0");
+        if (*addr_r < 0x10000000)
+            printf("0");
+        printf("%x ", *addr_r);
+        if ((j % 4) == 3)
+            printf("\n");
     }
+
+    printf("-----------------------------------\n");
 
     uint32_t instret = insn();
     uint32_t cycle = time();
@@ -77,4 +119,3 @@ int main()
     }
     printf("%u\n", cpi_f);
 }
-*/

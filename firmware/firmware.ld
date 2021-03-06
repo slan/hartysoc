@@ -10,7 +10,7 @@ SECTIONS
         *(.sdata*);
         *(.srodata*);
         . = ALIGN(4);
-        . = . + 256;
+        . = . + 512;
        _stack = .;
     }
     /DISCARD/ : { *(*) }

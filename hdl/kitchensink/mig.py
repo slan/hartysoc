@@ -86,9 +86,9 @@ class MIG(Elaboratable):
                             app_wdf_data = yield self.app_wdf_data
                             app_wdf_mask = yield self.app_wdf_mask
                             app_wdf_wren = yield self.app_wdf_wren
-                            print(
-                                f"Write app_addr={app_addr:#010x} data={app_wdf_data:#034x} mask={app_wdf_mask:#018b}"
-                            )
+                            # print(
+                            #     f"Write app_addr={app_addr:#010x} data={app_wdf_data:#034x} mask={app_wdf_mask:#018b}"
+                            # )
                             yield mem_wp.addr.eq(self.app_addr[4:])
                             yield mem_wp.en.eq((~app_wdf_mask)<<self.app_addr[0:4])
                             yield mem_wp.data.eq(app_wdf_data<<(self.app_addr[0:4]<<3))
@@ -96,9 +96,9 @@ class MIG(Elaboratable):
                             yield mem_rp.addr.eq(self.app_addr[4:])
                             mem_rp_data = yield mem_rp.data
                             bus_rp_data = yield mem_rp.data.word_select(self.app_addr[2:4],32)
-                            print(
-                                f" Read app_addr={app_addr:#010x} data={mem_rp_data:#034x} -> {bus_rp_data:#010x}"
-                            )
+                            # print(
+                            #     f" Read app_addr={app_addr:#010x} data={mem_rp_data:#034x} -> {bus_rp_data:#010x}"
+                            # )
 
                             yield self.app_rd_data.eq(bus_rp_data)
                             yield self.app_rd_data_valid.eq(1)

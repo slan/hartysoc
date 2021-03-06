@@ -31,7 +31,7 @@ class Console(Elaboratable):
                     if uart_tx_rdy:
                         uart_tx_data = yield self.bus.wdata
                         self.last_output = chr(uart_tx_data & 0xFF)
-                        #print(self.last_output, end="")
+                        print(self.last_output, end="")
             platform.add_sync_process(uart_sim_process, domain=self._domain)
         else:
             m.submodules.uart = uart = UART(self._domain, round(self._domain_freq / 115200))
