@@ -16,8 +16,8 @@ class Decoder(Elaboratable):
         self.rs2_addr = Signal(5)
         self.rd_addr = Signal(5)
         self.imm = Signal(32)
-        self.mem_rtype = Signal(MemAccessType, reset=MemAccessType.NONE)
-        self.mem_wtype = Signal(MemAccessType, reset=MemAccessType.NONE)
+        self.mem_rtype = Signal(range(1 + len(MemAccessType)), reset=MemAccessType.NONE)
+        self.mem_wtype = Signal(range(1 + len(MemAccessType)), reset=MemAccessType.NONE)
 
         self.alu_src1_type = Signal(AluSrc1)
         self.alu_src2_type = Signal(AluSrc2)
@@ -41,12 +41,12 @@ class Decoder(Elaboratable):
             with m.Case("11000000000000000010-----1110011"):  # RDCYCLE
                 comb += [
                     self.reg_src_type.eq(RegSrc.M_CYCLE),
-                    self.rd_addr.eq(self.insn[7:12])
+                    self.rd_addr.eq(self.insn[7:12]),
                 ]
             with m.Case("11000000001000000010-----1110011"):  # RDINSTRET
                 comb += [
                     self.reg_src_type.eq(RegSrc.M_INSTRET),
-                    self.rd_addr.eq(self.insn[7:12])
+                    self.rd_addr.eq(self.insn[7:12]),
                 ]
             with m.Case("-------------------------0110111"):  # LUI
                 comb += [
@@ -139,7 +139,7 @@ class Decoder(Elaboratable):
                     self.imm.eq(Cat(self.insn[7:12], self.insn[25:32]).as_signed()),
                     self.alu_func.eq(AluFunc.ADD_SUB),
                     self.rs2_addr.eq(self.insn[20:25]),
-                    self.mem_wtype.eq(self.insn[12:15]),
+                    self.mem_wtype.eq(Cat(self.insn[12:15], 1)),
                 ]
                 with m.Switch(self.insn[12:15]):
                     with m.Case("000", "001", "010"):

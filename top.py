@@ -9,7 +9,7 @@ from hdl.harty import SOC
 from hdl.kitchensink.simplatform import SimPlatform
 
 
-with_sdram = True
+with_sdram = False
 top = SOC(with_sdram=with_sdram)
 
 def main():

@@ -4,11 +4,14 @@ from enum import Enum, unique
 @unique
 class MemAccessType(Enum):
     NONE = 0b111
-    B = 0b000
-    H = 0b001
-    W = 0b010
-    BU = 0b100
-    HU = 0b101
+    LB = 0b0000
+    SB = 0b1000
+    LH = 0b0001
+    SH = 0b1001
+    LW = 0b0010
+    SW = 0b1010
+    LBU = 0b0100
+    LHU = 0b0101
 
 
 @unique

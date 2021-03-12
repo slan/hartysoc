@@ -11,18 +11,31 @@ class Console(Elaboratable):
         self._domain = domain
         self._domain_freq = domain_freq
         self.last_output = 0
-        self.bus = Record(bus_layout)
+        self.bus = Record(bus_layout, name="console")
 
     def elaborate(self, platform):
         m = Module()
 
         comb = m.d.comb
 
+        m.submodules.uart = uart = UART(self._domain, round(self._domain_freq / 115200))
+
+        with m.If(self.bus.rmask.any() | self.bus.wmask.any()):
+            comb += [
+                self.bus.rdy.eq(1),
+                self.bus.rdata.eq(uart.tx_ack),
+                uart.tx_rdy.eq(self.bus.wmask.any()),
+                uart.tx_data.eq(self.bus.wdata),
+            ]
+
         if isinstance(platform, SimPlatform):
             comb += [
                 self.bus.rdy.eq(1),
+                # This overrides UART readyness to speedup simulation
+                # making uart.tx_o crazy - remove to watch serial signal
                 self.bus.rdata.eq(1),
             ]
+
             def uart_sim_process():
                 yield Passive()
                 while True:
@@ -32,16 +45,9 @@ class Console(Elaboratable):
                         uart_tx_data = yield self.bus.wdata
                         self.last_output = chr(uart_tx_data & 0xFF)
                         print(self.last_output, end="")
+
             platform.add_sync_process(uart_sim_process, domain=self._domain)
         else:
-            m.submodules.uart = uart = UART(self._domain, round(self._domain_freq / 115200))
             comb += platform.request("uart").tx.eq(uart.tx_o)
-
-            comb += [
-                self.bus.rdy.eq(1),
-                self.bus.rdata.eq(uart.tx_ack),
-                uart.tx_rdy.eq(self.bus.wmask.any()),
-                uart.tx_data.eq(self.bus.wdata),
-            ]
 
         return m

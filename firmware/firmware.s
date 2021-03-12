@@ -1,21 +1,14 @@
-    rdinstret t5
-
-    la a0, 0x20000000
-_wait_sdram:
-    lw t0, 0(a0)
-    andi t0, t0, 0x2
-    beqz t0, _wait_sdram
-
-    rdinstret t6
-
-    la a0, 0x30000000
-    sub t6, t6, t5
-    sw t6, 0(a0)
-
     la a0, 0x10000000
-
-    la a1, 0x10000110 # greetings
+    li t0, '!'
+    sb t0, 0(a0)
+    ebreak
+    
+    la a0, 0x10000000
+    la a1, 0x20000010 # greetings
+    
     call _puts
+
+    ebreak
 
     #####
 

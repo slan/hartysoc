@@ -9,7 +9,7 @@ from ..kitchensink import MIG
 class SDRAM(Elaboratable):
     def __init__(self, domain):
         self._domain = domain
-        self.bus = Record(bus_layout)
+        self.bus = Record(bus_layout, name="sdram")
 
     def elaborate(self, platform):
 

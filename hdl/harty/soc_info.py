@@ -8,7 +8,7 @@ class SOCInfo(Elaboratable):
     def __init__(self, *, version, freq):
         self._version = version
         self._freq = freq
-        self.bus = Record(bus_layout)
+        self.bus = Record(bus_layout, name="soc_info")
 
     def elaborate(self, platform):
         m = Module()
@@ -31,10 +31,11 @@ class SOCInfo(Elaboratable):
         rom = Memory(width=32, depth=len(init), init=init)
         m.submodules.rom_rp = rom_rp = rom.read_port(domain="comb")
 
-        m.d.comb += [
-            self.bus.rdy.eq(1),
-            rom_rp.addr.eq(self.bus.addr[2:8]),
-            self.bus.rdata.eq(rom_rp.data),
-        ]
+        with m.If(self.bus.rmask.any()):
+            m.d.comb += [
+                self.bus.rdy.eq(1),
+                rom_rp.addr.eq(self.bus.addr[2:28]),
+                self.bus.rdata.eq(rom_rp.data),
+            ]
 
         return m
