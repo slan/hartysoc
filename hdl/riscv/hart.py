@@ -33,24 +33,24 @@ rvfi_layout = [
 
 
 class Hart(Elaboratable):
-    def __init__(self, domain, with_rvfi=False, reset_vector=0x7000_0000):
+    def __init__(self, domain, with_rvfi=False, reset_vector=0):
         self._domain = domain
         self._with_rvfi = with_rvfi
-        if with_rvfi:
+        if self._with_rvfi:
             self.rvfi = Record(rvfi_layout)
         self.registers = Registers(domain)
         self.decoder = Decoder()
+        self._reset_vector = reset_vector
+
         self.trap = Signal()
         self.mcause = Signal(32, decoder=lambda x: f"{TrapCause(x).name}/{x}")
         self.halt = Signal()
-        self._reset_vector = reset_vector
-
         self.ibus = Record(bus_layout)
         self.dbus = Record(bus_layout)
-
-    def elaborate(self, platform):
         self.mcycle = Signal(64)
         self.minstret = Signal(64)
+
+    def elaborate(self, platform):
 
         m = Module()
         comb = m.d.comb
@@ -76,15 +76,15 @@ class Hart(Elaboratable):
                 self.mcycle.eq(self.mcycle + 1),
             ]
 
+            ### IF
             comb += self.ibus.addr.eq(pc)
 
-            ### ID
-            comb += [
-                decoder.insn.eq(self.ibus.rdata),
-                decoder.pc.eq(pc),
-            ]
-
             with m.If(self.ibus.rdy):
+                ### ID
+                comb += [
+                    decoder.insn.eq(self.ibus.rdata),
+                    decoder.pc.eq(pc),
+                ]
                 ### EX
                 comb += [
                     registers.rs1_addr.eq(decoder.rs1_addr),
@@ -93,14 +93,14 @@ class Hart(Elaboratable):
                     alu.func_ex.eq(decoder.alu_func_ex),
                     alu.op1.eq(
                         Mux(
-                            decoder.alu_src1_type == AluSrc1.PC,
+                            decoder.alu_src1 == AluSrc1.PC,
                             pc,
                             registers.rs1_rdata,
                         )
                     ),
                     alu.op2.eq(
                         Mux(
-                            decoder.alu_src2_type == AluSrc2.IMM,
+                            decoder.alu_src2 == AluSrc2.IMM,
                             decoder.imm,
                             registers.rs2_rdata,
                         )
@@ -109,109 +109,95 @@ class Hart(Elaboratable):
 
                 ### MEM
 
-                # LOAD
-                load_data = Signal(32)
-                with m.Switch(decoder.mem_rtype):
-                    with m.Case(MemAccessType.LB, MemAccessType.LBU):
-                        byte = self.dbus.rdata.word_select(alu.out[0:2], 8)
-                        comb += [
-                            self.dbus.addr.eq(alu.out),
-                            self.dbus.rmask.eq(1 << alu.out[0:2]),
-                        ]
-                        with m.If(self.dbus.rdy):
-                            comb += [
-                                load_data.eq(
-                                    Mux(
-                                        decoder.mem_rtype == MemAccessType.LBU,
-                                        byte,
-                                        byte.as_signed(),
-                                    )
-                                ),
-                            ]
-                    with m.Case(MemAccessType.LH, MemAccessType.LHU):
-                        with m.If(alu.out[0]):
-                            trap(TrapCause.DADDR_L)
-                        with m.Else():
-                            half = self.dbus.rdata.word_select(alu.out[1], 16)
-                            comb += [
-                                self.dbus.addr.eq(alu.out),
-                                self.dbus.rmask.eq(Mux(alu.out[1], 0b1100, 0b0011)),
-                            ]
-                            with m.If(self.dbus.rdy):
-                                comb += [
-                                    load_data.eq(
-                                        Mux(
-                                            decoder.mem_rtype == MemAccessType.LHU,
-                                            half,
-                                            half.as_signed(),
-                                        )
-                                    ),
-                                ]
-                    with m.Case(MemAccessType.LW):
-                        with m.If(alu.out[0:2].any()):
-                            trap(TrapCause.DADDR_L)
-                        with m.Else():
-                            comb += [
-                                self.dbus.addr.eq(alu.out),
-                                self.dbus.rmask.eq(0b1111),
-                            ]
-                            with m.If(self.dbus.rdy):
-                                comb += [
-                                    load_data.eq(self.dbus.rdata),
-                                ]
+                with m.If(decoder.mem_func != MemFunc.NONE):
+                    comb += self.dbus.addr[2:].eq(alu.out[2:])
+                    with m.Switch(decoder.mem_func):
+                        # LOAD
+                        with m.Case(MemFunc.LB, MemFunc.LBU):
+                            comb += self.dbus.rmask.eq(1 << alu.out[0:2])
+                        with m.Case(MemFunc.LH, MemFunc.LHU):
+                            with m.If(alu.out[0]):
+                                trap(TrapCause.DADDR_L)
+                            with m.Else():
+                                comb += self.dbus.rmask.eq(
+                                    Mux(alu.out[1], 0b1100, 0b0011)
+                                )
+                        with m.Case(MemFunc.LW):
+                            with m.If(alu.out[0:2].any()):
+                                trap(TrapCause.DADDR_L)
+                            with m.Else():
+                                comb += self.dbus.rmask.eq(0b1111)
 
-                # STORE
-                with m.Switch(decoder.mem_wtype):
-                    with m.Case(MemAccessType.SB):
-                        comb += [
-                            self.dbus.addr.eq(alu.out),
-                            self.dbus.wmask.eq(0b1 << alu.out[0:2]),
-                            self.dbus.wdata.word_select(alu.out[0:2], 8).eq(
-                                registers.rs2_rdata
-                            ),
-                        ]
-                    with m.Case(MemAccessType.SH):
-                        with m.If(alu.out[0]):
-                            trap(TrapCause.DADDR_S)
-                        with m.Else():
+                        # STORE
+                        with m.Case(MemFunc.SB):
                             comb += [
-                                self.dbus.addr.eq(alu.out),
-                                self.dbus.wmask.eq(Mux(alu.out[1], 0b1100, 0b0011)),
-                                self.dbus.wdata.word_select(alu.out[1], 16).eq(
+                                self.dbus.wmask.eq(0b1 << alu.out[0:2]),
+                                self.dbus.wdata.word_select(alu.out[0:2], 8).eq(
                                     registers.rs2_rdata
                                 ),
                             ]
-                    with m.Case(MemAccessType.SW):
-                        with m.If(alu.out[0:2].any()):
-                            trap(TrapCause.DADDR_S)
-                        with m.Else():
-                            comb += [
-                                self.dbus.addr.eq(alu.out),
-                                self.dbus.wmask.eq(0b1111),
-                                self.dbus.wdata.eq(registers.rs2_rdata),
-                            ]
+                        with m.Case(MemFunc.SH):
+                            with m.If(alu.out[0]):
+                                trap(TrapCause.DADDR_S)
+                            with m.Else():
+                                comb += [
+                                    self.dbus.wmask.eq(Mux(alu.out[1], 0b1100, 0b0011)),
+                                    self.dbus.wdata.word_select(alu.out[1], 16).eq(
+                                        registers.rs2_rdata
+                                    ),
+                                ]
+                        with m.Case(MemFunc.SW):
+                            with m.If(alu.out[0:2].any()):
+                                trap(TrapCause.DADDR_S)
+                            with m.Else():
+                                comb += [
+                                    self.dbus.wmask.eq(0b1111),
+                                    self.dbus.wdata.eq(registers.rs2_rdata),
+                                ]
 
                 ### WB
-                with m.If(
-                    (~self.dbus.rmask.any() & ~self.dbus.wmask.any()) | self.dbus.rdy
-                ):
-                    comb += [
-                        registers.rd_addr.eq(decoder.rd_addr),
-                    ]
-                    with m.Switch(decoder.reg_src_type):
-                        with m.Case(RegSrc.ALU):
-                            comb += registers.rd_data.eq(alu.out)
-                        with m.Case(RegSrc.PC_INCR):
-                            comb += registers.rd_data.eq(pc + 4)
-                        with m.Case(RegSrc.MEM):
-                            comb += registers.rd_data.eq(load_data)
-                        with m.Case(RegSrc.M_CYCLE):
-                            comb += registers.rd_data.eq(self.mcycle)
-                        with m.Case(RegSrc.M_INSTRET):
-                            comb += registers.rd_data.eq(self.minstret)
+                # Gate: no memory access or dbus ready
+                with m.If((decoder.mem_func == MemFunc.NONE) | self.dbus.rdy):
+                    comb += registers.rd_addr.eq(decoder.rd_addr)
+
+                    with m.Switch(decoder.mem_func):
+                        with m.Case(MemFunc.LB, MemFunc.LBU):
+                            comb += registers.rd_wdata.eq(
+                                Mux(
+                                    decoder.mem_func == MemFunc.LBU,
+                                    self.dbus.rdata.word_select(alu.out[0:2], 8),
+                                    self.dbus.rdata.word_select(
+                                        alu.out[0:2], 8
+                                    ).as_signed(),
+                                )
+                            )
+                        with m.Case(MemFunc.LH, MemFunc.LHU):
+                            comb += registers.rd_wdata.eq(
+                                Mux(
+                                    decoder.mem_func == MemFunc.LHU,
+                                    self.dbus.rdata.word_select(alu.out[1], 16),
+                                    self.dbus.rdata.word_select(
+                                        alu.out[1], 16
+                                    ).as_signed(),
+                                )
+                            )
+                        with m.Case(MemFunc.LW):
+                            comb += registers.rd_wdata.eq(self.dbus.rdata)
+
+                        with m.Default():
+                            with m.Switch(decoder.reg_src):
+                                with m.Case(RegSrc.ALU):
+                                    comb += registers.rd_wdata.eq(alu.out)
+                                with m.Case(RegSrc.PC_INCR):
+                                    comb += registers.rd_wdata.eq(pc + 4)
+                                with m.Case(RegSrc.M_CYCLE):
+                                    comb += registers.rd_wdata.eq(self.mcycle)
+                                with m.Case(RegSrc.M_INSTRET):
+                                    comb += registers.rd_wdata.eq(self.minstret)
+
                     with m.If(decoder.rd_addr == 0):
                         comb += [
-                            registers.rd_data.eq(0),
+                            registers.rd_wdata.eq(0),
                         ]
 
                     bc_ne = registers.rs1_rdata != registers.rs2_rdata
@@ -243,25 +229,19 @@ class Hart(Elaboratable):
                         alu.out,
                         pc + 4,
                     )
+
                     sync += [
                         pc.eq(pc_next),
                         self.minstret.eq(self.minstret + 1),
                     ]
+                    if self._with_rvfi:
+                        comb += [self.rvfi.valid.eq(~self.trap)]
 
         if self._with_rvfi:
             comb += [
-                self.rvfi.valid.eq(
-                    ~self.trap
-                    & ~self.halt
-                    & self.ibus.rdy
-                    & (
-                        (~self.dbus.rmask.any() & ~self.dbus.wmask.any())
-                        | self.dbus.rdy
-                    )
-                ),
                 self.rvfi.pc_wdata.eq(pc_next),
                 self.rvfi.pc_rdata.eq(self.ibus.addr),
-                self.rvfi.rd_wdata.eq(registers.rd_data),
+                self.rvfi.rd_wdata.eq(registers.rd_wdata),
                 self.rvfi.order.eq(self.minstret),
                 self.rvfi.insn.eq(self.ibus.rdata),
                 self.rvfi.trap.eq(self.trap),
@@ -274,7 +254,7 @@ class Hart(Elaboratable):
                 self.rvfi.rs1_rdata.eq(registers.rs1_rdata),
                 self.rvfi.rs2_rdata.eq(registers.rs2_rdata),
                 self.rvfi.rd_addr.eq(registers.rd_addr),
-                self.rvfi.rd_wdata.eq(registers.rd_data),
+                self.rvfi.rd_wdata.eq(registers.rd_wdata),
                 self.rvfi.mem_addr.eq(self.dbus.addr),
                 self.rvfi.mem_rmask.eq(self.dbus.rmask),
                 self.rvfi.mem_wmask.eq(self.dbus.wmask),

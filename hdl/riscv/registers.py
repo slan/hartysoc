@@ -13,7 +13,7 @@ class Registers(Elaboratable):
         self.rs2_addr = self._rp2.addr
         self.rs2_rdata = Mux(self.rs2_addr.any(), self._rp2.data, 0)
         self.rd_addr = self._wp.addr
-        self.rd_data = self._wp.data
+        self.rd_wdata = self._wp.data
 
     def elaborate(self, platform):
         m = Module()

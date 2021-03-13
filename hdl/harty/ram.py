@@ -1,51 +1,38 @@
-from array import array
-from os import stat
-
+from hdl.kitchensink.simplatform import SimPlatform
 from nmigen import *
-from nmigen.sim.core import *
+from nmigen.sim.core import Passive, Settle
 
 from ..riscv.bus import bus_layout
-from ..kitchensink.simplatform import SimPlatform
+
 
 class RAM(Elaboratable):
     def __init__(self, *, domain, init):
         self._domain = domain
         self._init = init
-        self.ibus = Record(bus_layout)
-        self.dbus = Record(bus_layout)
+        self.bus = Record(bus_layout, name="ram")
 
     def elaborate(self, platform):
-
         m = Module()
 
         comb = m.d.comb
 
-        # This starts to fail if firmware is too big... 11804 is the largest
-        # sys.setrecursionlimit(10**6) fixes it
-        # However simulation becomes very slow (2m49s for dhrystone)
-        # so let's fake the memory for simulation (now 1m19s)
-
         if isinstance(platform, SimPlatform):
-            iram_rp = Record([("addr", 32), ("data", 32)])
-            dram_rp = Record([("addr", 32), ("data", 32)])
-            dram_wp = Record([("addr", 32), ("data", 32), ("en", 4)])
+            rp = Record([("addr", 32), ("data", 32)])
+            wp = Record([("addr", 32), ("data", 32), ("en", 4)])
 
             def ram_sim_process():
                 yield Passive()
                 while True:
                     yield Settle()
-                    i_addr = yield iram_rp.addr
-                    i_data = self._init[i_addr]
-                    # print(f"iram  read addr: {addr:#010x}")
-                    yield iram_rp.data.eq(i_data)
-                    yield Settle()
-                    addr = yield dram_rp.addr
-                    wmask = yield dram_wp.en
-                    if wmask == 0:
+                    rmask = yield self.bus.rmask
+                    if rmask != 0:
+                        addr = yield rp.addr
                         # print(f"dram  read addr: {addr:#010x}")
-                        yield dram_rp.data.eq(self._init[addr])
-                    else:
-                        wdata = yield dram_wp.data
+                        yield rp.data.eq(self._init[addr])
+                    wmask = yield wp.en
+                    if wmask != 0:
+                        addr = yield wp.addr
+                        wdata = yield wp.data
                         en_to_mask = {
                             0b0001: 0x0000_00FF,
                             0b0010: 0x0000_FF00,
@@ -57,35 +44,37 @@ class RAM(Elaboratable):
                         }
                         mask = en_to_mask[wmask]
                         try:
-                            self._init[addr] = (self._init[addr] & ~mask) | (wdata & mask)
+                            self._init[addr] = (self._init[addr] & ~mask) | (
+                                wdata & mask
+                            )
                         except:
-                            print(f"dram write addr: {addr:#010x} wdata: {wdata:#010x} wmask: {wmask:#06b}")
+                            print(
+                                f"dram write addr: {addr:#010x} wdata: {wdata:#010x} wmask: {wmask:#06b}"
+                            )
                             raise
 
                     yield
 
             platform.add_sync_process(ram_sim_process, domain=self._domain)
+
         else:
-            ram = Memory(width=32, depth=len(self._init), init=self._init)
-            m.submodules.iram_rp = iram_rp = ram.read_port(domain="comb")
-            m.submodules.dram_rp = dram_rp = ram.read_port(domain="comb")
-            m.submodules.dram_wp = dram_wp = ram.write_port(
-                domain=self._domain, granularity=8
-            )
+            mem = Memory(width=32, depth=len(self._init), init=self._init)
+            m.submodules.rp = rp = mem.read_port(domain="comb")
+            m.submodules.wp = wp = mem.write_port(domain=self._domain, granularity=8)
 
-        comb += [
-            self.ibus.rdy.eq(1),
-            iram_rp.addr.eq(self.ibus.addr[2:28]),
-            self.ibus.rdata.eq(iram_rp.data),
-        ]
+        with m.If(self.bus.rmask.any()):
+            comb += [
+                rp.addr.eq(self.bus.addr[2:28]),
+                self.bus.rdata.eq(rp.data),
+                self.bus.rdy.eq(1),
+            ]
 
-        comb += [
-            self.dbus.rdy.eq(1),
-            dram_rp.addr.eq(self.dbus.addr[2:28]),
-            self.dbus.rdata.eq(dram_rp.data),
-            dram_wp.addr.eq(self.dbus.addr[2:28]),
-            dram_wp.en.eq(self.dbus.wmask),
-            dram_wp.data.eq(self.dbus.wdata),
-        ]
+        with m.If(self.bus.wmask.any()):
+            comb += [
+                wp.addr.eq(self.bus.addr[2:28]),
+                wp.en.eq(self.bus.wmask),
+                wp.data.eq(self.bus.wdata),
+                self.bus.rdy.eq(1),
+            ]
 
         return m

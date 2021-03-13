@@ -1,4 +1,4 @@
-# Notes
+# Notes - SDRAM
 
 - with bufg: 4m41s -3.235
 - without: 5m13s -1.897

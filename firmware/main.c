@@ -1,28 +1,26 @@
 #include <stdio.h>
+#include <inttypes.h>
 
 int main(int argc, char* argv[])
 {
-    printf("sizeof(char)      %d\n", sizeof(char));
-    printf("sizeof(short)     %d\n", sizeof(short));
-    printf("sizeof(int)       %d\n", sizeof(int));
-    printf("sizeof(long)      %d\n", sizeof(long));
-    printf("sizeof(long long) %d\n", sizeof(long long));
+    uint32_t instret = insn();
+    uint32_t cycle = time();
 
-    int l;
-    l = printf("x: %x", -123);
-    for(int i=0; i<18-l; ++i) printf(" ");
-    printf("printf returned %d\n", l);
-    l = printf("d: %d", -123);
-    for(int i=0; i<18-l; ++i) printf(" ");
-    printf("printf returned %d\n", l);
-    l = printf("u: %u", -123);
-    for(int i=0; i<18-l; ++i) printf(" ");
-    printf("printf returned %d\n", l);
-    l = printf("s: %s", "123");
-    for(int i=0; i<18-l; ++i) printf(" ");
-    printf("printf returned %d\n", l);
-    l = printf("c: %c", '1');
-    for(int i=0; i<18-l; ++i) printf(" ");
-    printf("printf returned %d\n", l);
+    printf("cycle=%u insn=%u\n", cycle, instret);
+
+    float cpi = (float)cycle / instret;
+
+    uint32_t digits = 1e9;
+    uint32_t cpi_i = (uint32_t)cpi;
+    uint32_t cpi_f = (uint32_t)(cpi * digits - cpi_i * digits);
+
+    printf("cpi=%u.", cpi_i);
+    while (cpi_f < digits)
+    {
+        printf("0");
+        digits /= 10;
+    }
+    printf("%u\n", cpi_f);
+
     return 0;
 }

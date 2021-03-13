@@ -3,13 +3,17 @@ from nmigen import *
 from nmigen.build import *
 from nmigen.sim import *
 from nmigen.back import rtlil, verilog
+from nmigen_boards.resources import *
 
 
 class FormalPlatform(Platform):
-    def __init__(self, default_frequency=100):
+    def __init__(self, default_frequency=100e6):
         super().__init__()
         self.add_resources(
-            [Resource("sync", 0, Pins("", dir="i"), Clock(default_frequency))]
+            [
+                Resource("sync", 0, Pins("clk", dir="i"), Clock(default_frequency)),
+                UARTResource(0, rx="rx", tx="tx"),
+            ]
         )
 
     # Abstract
@@ -23,8 +27,9 @@ class FormalPlatform(Platform):
 
     default_clk = "sync"
 
-
     def build(self, elaboratable, *, build_dir, **kwargs):
+
+        print("Here")
 
         os.makedirs(build_dir, exist_ok=True)
         cwd = os.getcwd()

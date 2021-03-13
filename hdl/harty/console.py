@@ -20,19 +20,26 @@ class Console(Elaboratable):
 
         m.submodules.uart = uart = UART(self._domain, round(self._domain_freq / 115200))
 
-        with m.If(self.bus.rmask.any() | self.bus.wmask.any()):
+        with m.If(self.bus.rmask.any()):
             comb += [
                 self.bus.rdy.eq(1),
                 self.bus.rdata.eq(uart.tx_ack),
-                uart.tx_rdy.eq(self.bus.wmask.any()),
-                uart.tx_data.eq(self.bus.wdata),
             ]
+        with m.If(self.bus.wmask.any()):
+            comb += [
+                self.bus.rdy.eq(uart.tx_ack),
+            ]
+            with m.If(self.bus.rdy):
+                comb += [
+                    uart.tx_rdy.eq(1),
+                    uart.tx_data.eq(self.bus.wdata),
+                ]
 
         if isinstance(platform, SimPlatform):
             comb += [
                 self.bus.rdy.eq(1),
                 # This overrides UART readyness to speedup simulation
-                # making uart.tx_o crazy - remove to watch serial signal
+                # making uart.tx_o crazy - remove to watch serial
                 self.bus.rdata.eq(1),
             ]
 

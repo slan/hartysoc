@@ -6,7 +6,6 @@ from nmigen_boards.arty_a7 import ArtyA7Platform
 
 import hdl.kitchensink as ks
 from hdl.harty import SOC
-from hdl.kitchensink.simplatform import SimPlatform
 
 
 with_sdram = False

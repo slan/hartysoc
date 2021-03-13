@@ -1,31 +1,29 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Sat Mar 13 10:26:58 2021
+[*] Sat Mar 13 20:12:28 2021
 [*]
-[dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Sat Mar 13 10:25:28 2021"
-[dumpfile_size] 119439
+[dumpfile] "(null)"
 [savefile] "/home/slan/src/hartysoc/platform/sim/arbiter.gtkw"
 [timestart] 0
-[size] 1710 894
+[size] 1617 779
 [pos] -1 -1
-*-15.948375 118500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-16.121397 273000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.arbiter.
+[treeopen] top.console.
 [treeopen] top.rom.
 [sst_width] 214
-[signals_width] 296
+[signals_width] 327
 [sst_expanded] 1
-[sst_vpaned_height] 256
+[sst_vpaned_height] 224
 @200
 -HART
 @28
 top.hart.hart_clk
 top.hart.halt
 top.hart.ibus__rdy
-@23
-top.hart.pc[31:0]
 @22
+top.hart.pc[31:0]
 top.hart.insn[31:0]
 @28
 top.hart.dbus__rdy
@@ -33,17 +31,20 @@ top.hart.dbus__rdy
 top.hart.dbus__wmask[3:0]
 @200
 -ARBITER
+@28
+top.arbiter.icache_hit
 @22
 top.arbiter.ibus__addr[31:0]
 top.arbiter.ibus__rdata[31:0]
-@28
-top.arbiter.encoder_ibus.n
-@22
 top.arbiter.dbus__addr[31:0]
 top.arbiter.dbus__wmask[3:0]
 top.arbiter.dbus__wdata[31:0]
 @28
-top.arbiter.encoder_dbus.n
++{encoder_ibus error} top.arbiter.encoder_ibus.n
++{encoder_dbus error} top.arbiter.encoder_dbus.n
+@24
++{device_ibus} top.arbiter.encoder_ibus.o[1:0]
++{device dbus} top.arbiter.encoder_dbus.o[1:0]
 @200
 -ROM
 @22
@@ -53,15 +54,17 @@ top.rom.rom__rdata[31:0]
 @28
 top.rom.rom__rdy
 @22
-top.rom.rp._mem_r_addr[10:0]
 top.rom.rp._mem_r_data[31:0]
 @200
 -CONSOLE
 @28
 top.console.console__rdy
 @22
+top.console.console__rmask[3:0]
 top.console.console__wmask[3:0]
 top.console.console__wdata[31:0]
 top.console.console__wdata[31:0]
+@28
+top.console.uart.tx_o
 [pattern_trace] 1
 [pattern_trace] 0

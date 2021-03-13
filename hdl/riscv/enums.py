@@ -2,8 +2,8 @@ from enum import Enum, unique
 
 
 @unique
-class MemAccessType(Enum):
-    NONE = 0b111
+class MemFunc(Enum):
+    NONE = 0b1111
     LB = 0b0000
     SB = 0b1000
     LH = 0b0001
@@ -29,12 +29,10 @@ class AluSrc2(Enum):
 @unique
 class RegSrc(Enum):
     NONE = 0
-    COND = 1
     ALU = 2
     PC_INCR = 3
-    MEM = 4
-    M_CYCLE = 5
-    M_INSTRET = 6
+    M_CYCLE = 4
+    M_INSTRET = 5
 
 
 @unique

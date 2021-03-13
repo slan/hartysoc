@@ -30,7 +30,7 @@ python3 -m venv ~/virtualenvs/hartysoc
 . ~/virtualenvs/hartysoc/bin/activate
 ```
 
-4. Install nmigen and yosys from source (pypi is lagging behind)
+4. Install Install nmigen and yosys from source (pypi is lagging behind)
 
 ```
 git clone https://github.com/nmigen/nmigen.git
@@ -57,9 +57,10 @@ mkdir -p ~/tools&&wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools
 ```
 > STOP! you can now `make sim` to run Dhrystone
 
-7. Install [riscv-formal](https://github.com/slan/riscv-formal.git) from my fork to get out-of-tree verification:
+7. Install Verilog-VCD, install [riscv-formal](https://github.com/slan/riscv-formal.git) from my fork so you can run the verification out-of-tree:
 
 ```
+pip install Verilog_VCD
 git clone https://github.com/slan/riscv-formal.git
 ```
 

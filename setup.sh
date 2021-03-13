@@ -13,6 +13,8 @@ sudo apt-get install -y python3 python3-pip python3-venv \
 python3 -m venv ~/virtualenvs/hartysoc
 . ~/virtualenvs/hartysoc/bin/activate
 
+pip install Verilog_VCD
+
 git clone https://github.com/nmigen/nmigen.git
 pip install -e nmigen
 git clone https://github.com/nmigen/nmigen-boards.git

@@ -1,14 +1,17 @@
-    la a0, 0x10000000
+    la a0, 0x00000000
+    la a1, 0x10000000
+    la a2, 0x20000000
+    la a7, 0x70000000
+
     li t0, '!'
-    sb t0, 0(a0)
+    sb t0, 0(a1)
+
     ebreak
     
     la a0, 0x10000000
     la a1, 0x20000010 # greetings
     
     call _puts
-
-    ebreak
 
     #####
 
@@ -24,11 +27,8 @@
     # IN: a0 uart addr
     # IN: a1 message addr
 _puts:
-    lb t0, 0(a1)
+    lbu t0, 0(a1)
     beqz t0, _end_puts
-_putc:
-    lb t1,0(a0)
-    beqz t1, _putc
     sb t0,0(a0)
     addi a1, a1, 1
     j _puts

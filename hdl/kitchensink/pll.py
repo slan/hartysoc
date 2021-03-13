@@ -1,9 +1,7 @@
 from nmigen import *
 from nmigen.build import *
 from nmigen.lib.cdc import *
-
-from .simplatform import SimPlatform
-
+from nmigen_boards.arty_a7 import ArtyA7Platform
 
 class PLL(Elaboratable):
     class cd_spec:
@@ -30,23 +28,7 @@ class PLL(Elaboratable):
                 ~self.locked | ResetSignal(), domain=cd_name
             )
 
-        if isinstance(platform, SimPlatform):
-            m.d.sync += self.locked.eq(1)
-            platform.add_resources(
-                [
-                    Resource(
-                        cd_name,
-                        0,
-                        Pins(cd_name, dir="i"),
-                        Clock(
-                            platform.default_clk_frequency
-                            * self.get_frequency_ratio(cd_name)
-                        ),
-                    )
-                    for cd_name in self._cd_specs.keys()
-                ]
-            )
-        else:
+        if isinstance(platform, ArtyA7Platform):
             p_clkout_divide = {}
             o_clkout = {}
             for i, (cd_name, cd_spec) in enumerate(self._cd_specs.items()):
@@ -86,6 +68,22 @@ class PLL(Elaboratable):
                 i_RST=ResetSignal(),  # 1-bit input: Reset
                 # Feedback Clocks: 1-bit (each) input: Clock feedback ports
                 i_CLKFBIN=fb,  # 1-bit input: Feedback clock
+            )
+        else:
+            m.d.sync += self.locked.eq(1)
+            platform.add_resources(
+                [
+                    Resource(
+                        cd_name,
+                        0,
+                        Pins(cd_name, dir="i"),
+                        Clock(
+                            platform.default_clk_frequency
+                            * self.get_frequency_ratio(cd_name)
+                        ),
+                    )
+                    for cd_name in self._cd_specs.keys()
+                ]
             )
 
         return m

@@ -1,9 +1,9 @@
 ROOT_RISCV_FORMAL := ~/src/riscv-formal
 ROOT_PROJECT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
+SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/sdram.c
 SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/main.c
 SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/dhry1.c firmware/dhry2.c
-SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/sdram.c
 
 OBJS_FIRMWARE := $(SRCS_FIRMWARE:firmware/%=build/firmware/%.o)
 
@@ -13,6 +13,7 @@ SRCS_FORMAL := $(wildcard platform/formal/*)
 TESTS_INSN := lui auipc jal jalr beq bne blt bge bltu bgeu lb lh lw lbu lhu sb sh sw addi slti sltiu xori ori andi slli srli srai add sub sll slt sltu xor srl sra or and
 TESTS_XTRA := reg causal pc_fwd pc_bwd
 TESTS_ALL := $(foreach test,${TESTS_XTRA},$(test)_ch0) $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
+#TESTS_ALL := $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
 
 CC=riscv64-unknown-elf-gcc
 CFLAGS=-Wall -save-temps=obj -ffreestanding -fdata-sections -ffunction-sections -O3 $(CFLAGS-$@)
@@ -96,7 +97,7 @@ build/formal/checks: ${SRCS_HDL} ${SRCS_FORMAL} | build/formal
 build/formal:
 	mkdir -p build/formal
 
-build/arty/top.bit: ${HDL_SRCS} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
+build/arty/top.bit: ${SRCS_HDL} #build/vivado/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci
 	python top.py arty
 
 build/mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci: platform/arty/mig.tcl platform/arty/mig_a.prj | build/mig

@@ -1,0 +1,18 @@
+[*]
+[*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
+[*] Sun Mar 14 07:37:01 2021
+[*]
+[dumpfile] "/home/slan/src/hartysoc/build/formal/checks/insn_jalr_ch0/engine_0/trace.vcd"
+[dumpfile_mtime] "Sun Mar 14 07:31:06 2021"
+[dumpfile_size] 169781
+[savefile] "/home/slan/src/hartysoc/platform/formal/insn.gtkw"
+[timestart] 0
+[size] 1000 600
+[pos] -1 -1
+*-6.007403 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 214
+[signals_width] 78
+[sst_expanded] 1
+[sst_vpaned_height] 152
+[pattern_trace] 1
+[pattern_trace] 0

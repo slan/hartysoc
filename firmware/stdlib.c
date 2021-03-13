@@ -53,7 +53,6 @@ char *malloc(int size)
 static int printf_c(int c)
 {
     volatile char* uart = (char*)0x10000000;
-    while(!*uart);
     *uart = c;
 	return 1;
 }
