@@ -47,14 +47,14 @@ class TrapCause(Enum):
 
 @unique
 class BranchCond(Enum):
-    EQ = 0b000
-    NE = 0b001
-    ALWAYS = 0b010
-    NEVER = 0b011
-    LT = 0b100
-    GE = 0b101
-    LTU = 0b110
-    GEU = 0b111
+    EQ = 0b000      # 0
+    NE = 0b001      # 1
+    ALWAYS = 0b010  # 2
+    NEVER = 0b011   # 3
+    LT = 0b100      # 4
+    GE = 0b101      # 5
+    LTU = 0b110     # 6
+    GEU = 0b111     # 7
 
 
 @unique

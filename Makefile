@@ -13,7 +13,6 @@ SRCS_FORMAL := $(wildcard platform/formal/*)
 TESTS_INSN := lui auipc jal jalr beq bne blt bge bltu bgeu lb lh lw lbu lhu sb sh sw addi slti sltiu xori ori andi slli srli srai add sub sll slt sltu xor srl sra or and
 TESTS_XTRA := reg causal pc_fwd pc_bwd
 TESTS_ALL := $(foreach test,${TESTS_XTRA},$(test)_ch0) $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
-#TESTS_ALL := $(foreach test,${TESTS_INSN},insn_$(test)_ch0)
 
 CC=riscv64-unknown-elf-gcc
 CFLAGS=-Wall -save-temps=obj -ffreestanding -fdata-sections -ffunction-sections -O3 $(CFLAGS-$@)

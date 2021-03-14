@@ -8,3 +8,6 @@ The bus has memory-mapped devices, the role of the arbiter is to direct reads an
  `0002`   | SOCInfo | ROM  | hw info (freq...) | N/A
  `0007`   | RAM     | RAM  | value at `addr`   | stores bytes selected by `wmask` from `wdata` at `addr`
 
+
+Combinatorial loop:
+`set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets arbiter/icache_data[8]]`

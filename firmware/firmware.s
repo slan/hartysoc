@@ -1,13 +1,3 @@
-    la a0, 0x00000000
-    la a1, 0x10000000
-    la a2, 0x20000000
-    la a7, 0x70000000
-
-    li t0, '!'
-    sb t0, 0(a1)
-
-    ebreak
-    
     la a0, 0x10000000
     la a1, 0x20000010 # greetings
     
@@ -34,6 +24,6 @@ _puts:
     j _puts
 _end_puts:
     ret
-
+    
     .zero 1024
 _stack:

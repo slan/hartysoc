@@ -11,6 +11,7 @@ from hdl.harty import SOC
 with_sdram = False
 top = SOC(with_sdram=with_sdram)
 
+
 def main():
     platform_name = sys.argv[1] if len(sys.argv) > 1 else None
 
@@ -65,10 +66,12 @@ def main():
         fragment,
         build_dir=build_dir,
         do_build=False,
+        script_after_synth="",#set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets arbiter/]",
         script_after_read=""
         if not with_sdram
         else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
     )
+    
     if plan is not None:
         plan.execute_local(build_dir, run_script=True)
 

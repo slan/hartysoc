@@ -10,78 +10,84 @@ class Arbiter(Elaboratable):
         self._domain = domain
         self.ibus = Record(bus_layout)
         self.dbus = Record(bus_layout)
-        self._devices = []
+        self._devices = {}
 
     def plug(self, bus, top_bits):
-        self._devices += [(bus, top_bits)]
+        self._devices[top_bits] = bus
 
     def elaborate(self, platform):
         m = Module()
 
+        m.submodules.encoder = encoder = Encoder(len(self._devices))
+
         comb = m.d.comb
         sync = m.d[self._domain]
 
-        icache_hit = Signal()
+        icache_valid = Signal()
         icache_data = Signal(32)
         icache_addr = Signal(32, reset=-1)
+        dcache_addr = Signal(32)
+        dcache_rmask = Signal(4)
+        dcache_wmask = Signal(32)
+        dcache_wdata = Signal(32)
 
-        # ibus - active iff cache miss
-        m.submodules.encoder_ibus = encoder_ibus = Encoder(len(self._devices))
-        for i, (_, top_bits) in enumerate(self._devices):
-            comb += [
-                encoder_ibus.i[i].eq((self.ibus.addr[28:] == top_bits) & ~icache_hit)
-            ]
-        device_ibus = Array([bus for bus, _ in self._devices])[encoder_ibus.o]
+        console_bus = self._devices[1]
+        rom_bus = self._devices[2]
+        ram_bus = self._devices[7]
 
-        # dbus - active iff rmask!=0 or wmask!=0
-        m.submodules.encoder_dbus = encoder_dbus = Encoder(len(self._devices))
-        for i, (_, top_bits) in enumerate(self._devices):
+        with m.If(icache_valid & (self.ibus.addr == icache_addr)):
             comb += [
-                encoder_dbus.i[i].eq(
-                    (self.dbus.addr[28:] == top_bits)
-                    & (self.dbus.rmask.any() | self.dbus.wmask.any())
-                )
-            ]
-        device_dbus = Array([bus for bus, _ in self._devices])[encoder_dbus.o]
-
-        # Connect dbus only if there's a request and either
-        # 1. ibus is idle (i.e. icache hit)
-        # or
-        # 2. ibus and dbus target a different device
-        with m.If(
-            ~encoder_dbus.n & (encoder_ibus.n | (encoder_ibus.o != encoder_dbus.o))
-        ):
-            comb += [
-                device_dbus.addr.eq(self.dbus.addr),
-                device_dbus.wmask.eq(self.dbus.wmask),
-                device_dbus.wdata.eq(self.dbus.wdata),
-                device_dbus.rmask.eq(self.dbus.rmask),
-            ]
-            with m.If(device_dbus.rdy):
-                comb += [
-                    self.dbus.rdata.eq(device_dbus.rdata),
-                    self.dbus.rdy.eq(device_dbus.rdy),
-                ]
-
-        with m.If(self.ibus.addr == icache_addr):
-            comb += [
-                icache_hit.eq(1),
                 self.ibus.rdata.eq(icache_data),
-                self.ibus.rdy.eq(1),
+            ]
+            comb += [
+                ram_bus.addr.eq(dcache_addr),
+                ram_bus.rmask.eq(dcache_rmask),
+                ram_bus.wmask.eq(dcache_wmask),
+                ram_bus.wdata.eq(dcache_wdata),
+                self.dbus.rdata.eq(ram_bus.rdata),
+                self.dbus.rdy.eq(ram_bus.rdy),
+            ]
+            sync += [
+                icache_valid.eq(0),
             ]
         with m.Else():
+
             comb += [
-                device_ibus.addr.eq(self.ibus.addr),
-                device_ibus.rmask.eq(0b1111),
+                ram_bus.addr.eq(self.ibus.addr),
+                ram_bus.rmask.eq(0b1111),
+                self.ibus.rdata.eq(ram_bus.rdata),
             ]
-            with m.If(device_ibus.rdy):
-                comb += [
-                    self.ibus.rdata.eq(device_ibus.rdata),
-                    self.ibus.rdy.eq(device_ibus.rdy),
-                ]
-                sync += [
-                    icache_addr.eq(device_ibus.addr),
-                    icache_data.eq(device_ibus.rdata),
-                ]
+
+            with m.Switch(self.dbus.addr[28:]):
+                with m.Case(1):
+                    comb += [
+                        console_bus.addr.eq(self.dbus.addr),
+                        console_bus.rmask.eq(self.dbus.rmask),
+                        console_bus.wmask.eq(self.dbus.wmask),
+                        console_bus.wdata.eq(self.dbus.wdata),
+                        self.dbus.rdata.eq(console_bus.rdata),
+                        self.dbus.rdy.eq(console_bus.rdy),
+                    ]
+                with m.Case(2):
+                    comb += [
+                        rom_bus.addr.eq(self.dbus.addr),
+                        rom_bus.rmask.eq(self.dbus.rmask),
+                        rom_bus.wmask.eq(self.dbus.wmask),
+                        rom_bus.wdata.eq(self.dbus.wdata),
+                        self.dbus.rdata.eq(rom_bus.rdata),
+                        self.dbus.rdy.eq(rom_bus.rdy),
+                    ]
+                with m.Case(7):
+                    sync += [
+                        dcache_addr.eq(self.dbus.addr),
+                        dcache_rmask.eq(self.dbus.rmask),
+                        dcache_wmask.eq(self.dbus.wmask),
+                        dcache_wdata.eq(self.dbus.wdata),
+                    ]
+                    sync += [
+                        icache_valid.eq(1),
+                        icache_addr.eq(self.ibus.addr),
+                        icache_data.eq(self.ibus.rdata),
+                    ]
 
         return m

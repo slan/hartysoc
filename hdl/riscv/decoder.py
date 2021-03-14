@@ -24,6 +24,7 @@ class Decoder(Elaboratable):
         self.alu_func = Signal(AluFunc)
         self.alu_func_ex = Signal()
         self.branch_cond = Signal(BranchCond, reset=BranchCond.NEVER)
+        self.branch_target = Signal(32)
 
     def elaborate(self, platform):
         m = Module()
@@ -97,8 +98,9 @@ class Decoder(Elaboratable):
             with m.Case("-------------------------1100011"):  # Bxx
                 comb += [
                     # src
-                    self.imm.eq(
-                        Cat(
+                    self.branch_target.eq(
+                        self.pc
+                        + Cat(
                             0,
                             self.insn[8:12],
                             self.insn[25:31],
@@ -106,14 +108,18 @@ class Decoder(Elaboratable):
                             self.insn[31],
                         ).as_signed()
                     ),
-                    self.alu_src1.eq(AluSrc1.PC),
-                    self.alu_src2.eq(AluSrc2.IMM),
-                    self.alu_func.eq(AluFunc.ADD_SUB),
+                    self.alu_src1.eq(AluSrc1.REG),
                     self.rs1_addr.eq(self.insn[15:20]),
+                    self.alu_src2.eq(AluSrc2.REG),
                     self.rs2_addr.eq(self.insn[20:25]),
+                    self.alu_func.eq(Mux(self.insn[13], AluFunc.SLTU, AluFunc.SLT)),
+                    self.alu_func_ex.eq(1),
                     self.branch_cond.eq(self.insn[12:15]),
                 ]
-                with m.If(self.insn[13] & ~self.insn[14]):
+                with m.If(
+                    (self.branch_cond == BranchCond.ALWAYS)
+                    | (self.branch_cond == BranchCond.NEVER)
+                ):
                     trap(TrapCause.INSN)
             with m.Case("-------------------------0000011"):  # LOAD
                 comb += [

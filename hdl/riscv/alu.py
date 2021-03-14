@@ -8,12 +8,15 @@ class ALU(Elaboratable):
         self.op1 = Signal(32)
         self.op2 = Signal(32)
         self.out = Signal(32)
+        self.eq = Signal()
         self.func = Signal(AluFunc)
         self.func_ex = Signal()
 
     def elaborate(self, platform):
         m = Module()
         comb = m.d.comb
+
+        comb += self.eq.eq(self.op1==self.op2)
 
         with m.Switch(self.func):
             with m.Case(AluFunc.ADD_SUB):

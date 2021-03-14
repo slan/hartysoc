@@ -27,7 +27,7 @@ class RAM(Elaboratable):
                     rmask = yield self.bus.rmask
                     if rmask != 0:
                         addr = yield rp.addr
-                        # print(f"dram  read addr: {addr:#010x}")
+                        # print(f"RAM  read addr: {addr:#010x}")
                         yield rp.data.eq(self._init[addr])
                     wmask = yield wp.en
                     if wmask != 0:
@@ -44,12 +44,13 @@ class RAM(Elaboratable):
                         }
                         mask = en_to_mask[wmask]
                         try:
+                            # print(f"RAM write addr: {addr:#010x}")
                             self._init[addr] = (self._init[addr] & ~mask) | (
                                 wdata & mask
                             )
                         except:
                             print(
-                                f"dram write addr: {addr:#010x} wdata: {wdata:#010x} wmask: {wmask:#06b}"
+                                f"RAM write addr: {addr:#010x} wdata: {wdata:#010x} wmask: {wmask:#06b}"
                             )
                             raise
 
@@ -62,18 +63,17 @@ class RAM(Elaboratable):
             m.submodules.rp = rp = mem.read_port(domain="comb")
             m.submodules.wp = wp = mem.write_port(domain=self._domain, granularity=8)
 
-        with m.If(self.bus.rmask.any()):
-            comb += [
-                rp.addr.eq(self.bus.addr[2:28]),
-                self.bus.rdata.eq(rp.data),
-                self.bus.rdy.eq(1),
-            ]
-
         with m.If(self.bus.wmask.any()):
             comb += [
                 wp.addr.eq(self.bus.addr[2:28]),
                 wp.en.eq(self.bus.wmask),
                 wp.data.eq(self.bus.wdata),
+                self.bus.rdy.eq(1),
+            ]
+        with m.Elif(self.bus.rmask.any()):
+            comb += [
+                rp.addr.eq(self.bus.addr[2:28]),
+                self.bus.rdata.eq(rp.data),
                 self.bus.rdy.eq(1),
             ]
 

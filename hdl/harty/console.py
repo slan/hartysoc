@@ -28,12 +28,9 @@ class Console(Elaboratable):
         with m.If(self.bus.wmask.any()):
             comb += [
                 self.bus.rdy.eq(uart.tx_ack),
+                uart.tx_rdy.eq(1),
+                uart.tx_data.eq(self.bus.wdata),
             ]
-            with m.If(self.bus.rdy):
-                comb += [
-                    uart.tx_rdy.eq(1),
-                    uart.tx_data.eq(self.bus.wdata),
-                ]
 
         if isinstance(platform, SimPlatform):
             comb += [
