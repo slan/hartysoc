@@ -58,10 +58,10 @@ class SOC(Elaboratable):
         ]
 
         if self._with_sdram:
-            arbiter.plug(sdram.bus, 0)
-        arbiter.plug(console.bus, 1)
-        arbiter.plug(soc_info.bus, 2)
-        arbiter.plug(ram.bus, 7)
+            comb += arbiter.get_bus(0).connect(sdram.bus)
+        comb += arbiter.get_bus(1).connect(console.bus)
+        comb += arbiter.get_bus(2).connect(soc_info.bus)
+        comb += arbiter.get_bus(7).connect(ram.bus)
 
         if isinstance(platform, SimPlatform):
 

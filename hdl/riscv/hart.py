@@ -48,7 +48,7 @@ class Hart(Elaboratable):
 
         self.registers = Registers(domain)
         self.decoder = Decoder()
-        
+
         if self._with_rvfi:
             self.rvfi = Record(rvfi_layout)
 
@@ -170,7 +170,10 @@ class Hart(Elaboratable):
                 ### WB
                 # Gate: no memory access or dbus ready
 
-                with m.If(((decoder.mem_func == MemFunc.NONE) | self.dbus.rdy)):
+                with m.If(
+                    self.ibus.rdy
+                    & ((decoder.mem_func == MemFunc.NONE) | self.dbus.rdy)
+                ):
 
                     with m.If(decoder.rd_addr == 0):
                         comb += registers.rd_wdata.eq(0)
