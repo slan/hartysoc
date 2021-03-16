@@ -11,7 +11,8 @@ from .console import Console
 from .ram import RAM
 from .sdram import SDRAM
 from .soc_info import SOCInfo
-from .arbiter import Arbiter
+from .interconnect import InterConnect
+from .interconnect_simple import InterConnectSimple
 
 
 class SOC(Elaboratable):
@@ -50,18 +51,18 @@ class SOC(Elaboratable):
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=hart_domain)
 
-        m.submodules.arbiter = arbiter = Arbiter(domain=hart_domain)
+        m.submodules.interconnect = interconnect = InterConnectSimple(domain=hart_domain)
 
         comb += [
-            hart.ibus.connect(arbiter.ibus),
-            hart.dbus.connect(arbiter.dbus),
+            hart.ibus.connect(interconnect.ibus),
+            hart.dbus.connect(interconnect.dbus),
         ]
 
         if self._with_sdram:
-            comb += arbiter.get_bus(0).connect(sdram.bus)
-        comb += arbiter.get_bus(1).connect(console.bus)
-        comb += arbiter.get_bus(2).connect(soc_info.bus)
-        comb += arbiter.get_bus(7).connect(ram.bus)
+            comb += interconnect.get_bus(0).connect(sdram.bus)
+        comb += interconnect.get_bus(1).connect(console.bus)
+        comb += interconnect.get_bus(2).connect(soc_info.bus)
+        comb += interconnect.get_bus(7).connect(ram.bus)
 
         if isinstance(platform, SimPlatform):
 

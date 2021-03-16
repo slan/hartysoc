@@ -12,5 +12,5 @@ multiclock off
 smtbmc boolector
 
 [script]
-connect_rpc -exec nmigen-rpc yosys harty.Arbiter
-prep -top harty.Arbiter
+connect_rpc -exec nmigen-rpc yosys harty.InterConnect
+prep -top harty.InterConnect

@@ -1,17 +1,16 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Mon Mar 15 07:48:30 2021
+[*] Tue Mar 16 17:28:39 2021
 [*]
 [dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Mon Mar 15 07:44:32 2021"
-[dumpfile_size] 4585649
+[dumpfile_mtime] "Tue Mar 16 17:27:39 2021"
+[dumpfile_size] 17951
 [savefile] "/home/slan/src/hartysoc/platform/sim/arbiter.gtkw"
-[timestart] 1474000
+[timestart] 0
 [size] 1617 779
 [pos] -1 -1
-*-17.838461 2359000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-17.838461 598000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
-[treeopen] top.arbiter.
 [treeopen] top.console.
 [treeopen] top.hart.
 [sst_width] 214
@@ -30,19 +29,9 @@ top.hart.insn[31:0]
 top.hart.dbus__rdy
 @22
 top.hart.dbus__wmask[3:0]
-@201
+@200
 -ALU
-@200
--ARBITER
-@22
-top.arbiter.ibus__addr[31:0]
-top.arbiter.ibus__rdata[31:0]
-top.arbiter.dbus__addr[31:0]
-top.arbiter.dbus__rmask[3:0]
-top.arbiter.dbus__rdata[31:0]
-top.arbiter.dbus__wmask[3:0]
-top.arbiter.dbus__wdata[31:0]
-@200
+-INTERCONNECT
 -RAM
 @22
 top.ram.ram__addr[31:0]

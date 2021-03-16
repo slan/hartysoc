@@ -66,7 +66,7 @@ def main():
         fragment,
         build_dir=build_dir,
         do_build=False,
-        script_after_synth="",#set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets arbiter/]",
+        script_after_synth="",
         script_after_read=""
         if not with_sdram
         else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
