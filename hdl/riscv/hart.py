@@ -80,183 +80,187 @@ class Hart(Elaboratable):
             ]
 
             ### IF
+
             comb += [
                 self.ibus.addr.eq(pc),
                 pc_incr.eq(pc + 4),
             ]
 
-            ### ID
-            comb += [
-                decoder.insn.eq(self.ibus.rdata),
-                decoder.pc.eq(pc),
-            ]
+            with m.If(self.ibus.rdy):
 
-            with m.If(decoder.trap):
-                trap(decoder.mcause)
+                ### ID
+                
+                comb += [
+                    decoder.insn.eq(self.ibus.rdata),
+                    decoder.pc.eq(pc),
+                ]
 
-            ### EX
+                with m.If(decoder.trap):
+                    trap(decoder.mcause)
 
-            comb += [
-                registers.rs1_addr.eq(decoder.rs1_addr),
-                registers.rs2_addr.eq(decoder.rs2_addr),
-                alu.func.eq(decoder.alu_func),
-                alu.func_ex.eq(decoder.alu_func_ex),
-                alu.op1.eq(
-                    Mux(
-                        decoder.alu_src1 == AluSrc1.PC,
-                        pc,
-                        registers.rs1_rdata,
-                    )
-                ),
-                alu.op2.eq(
-                    Mux(
-                        decoder.alu_src2 == AluSrc2.IMM,
-                        decoder.imm,
-                        registers.rs2_rdata,
-                    )
-                ),
-            ]
+                ### EX
 
-            ### MEM
+                comb += [
+                    registers.rs1_addr.eq(decoder.rs1_addr),
+                    registers.rs2_addr.eq(decoder.rs2_addr),
+                    alu.func.eq(decoder.alu_func),
+                    alu.func_ex.eq(decoder.alu_func_ex),
+                    alu.op1.eq(
+                        Mux(
+                            decoder.alu_src1 == AluSrc1.PC,
+                            pc,
+                            registers.rs1_rdata,
+                        )
+                    ),
+                    alu.op2.eq(
+                        Mux(
+                            decoder.alu_src2 == AluSrc2.IMM,
+                            decoder.imm,
+                            registers.rs2_rdata,
+                        )
+                    ),
+                ]
 
-            with m.If(decoder.mem_func != MemFunc.NONE):
-                comb += self.dbus.addr[2:].eq(alu.out[2:])
-                with m.Switch(decoder.mem_func):
-                    # LOAD
-                    with m.Case(MemFunc.LB, MemFunc.LBU):
-                        comb += self.dbus.rmask.eq(1 << alu.out[0:2])
-                    with m.Case(MemFunc.LH, MemFunc.LHU):
-                        with m.If(alu.out[0]):
-                            trap(TrapCause.DADDR_L)
-                        with m.Else():
-                            comb += self.dbus.rmask.eq(
-                                Mux(alu.out[1], 0b1100, 0b0011)
-                            )
-                    with m.Case(MemFunc.LW):
-                        with m.If(alu.out[0:2].any()):
-                            trap(TrapCause.DADDR_L)
-                        with m.Else():
-                            comb += self.dbus.rmask.eq(0b1111)
+                ### MEM
 
-                    # STORE
-                    with m.Case(MemFunc.SB):
-                        comb += [
-                            self.dbus.wmask.eq(0b1 << alu.out[0:2]),
-                            self.dbus.wdata.word_select(alu.out[0:2], 8).eq(
-                                registers.rs2_rdata
-                            ),
-                        ]
-                    with m.Case(MemFunc.SH):
-                        with m.If(alu.out[0]):
-                            trap(TrapCause.DADDR_S)
-                        with m.Else():
+                with m.If(decoder.mem_func != MemFunc.NONE):
+                    comb += self.dbus.addr[2:].eq(alu.out[2:])
+                    with m.Switch(decoder.mem_func):
+                        
+                        # LOAD
+                        with m.Case(MemFunc.LB, MemFunc.LBU):
+                            comb += self.dbus.rmask.eq(1 << alu.out[0:2])
+                        with m.Case(MemFunc.LH, MemFunc.LHU):
+                            with m.If(alu.out[0]):
+                                trap(TrapCause.DADDR_L)
+                            with m.Else():
+                                comb += self.dbus.rmask.eq(
+                                    Mux(alu.out[1], 0b1100, 0b0011)
+                                )
+                        with m.Case(MemFunc.LW):
+                            with m.If(alu.out[0:2].any()):
+                                trap(TrapCause.DADDR_L)
+                            with m.Else():
+                                comb += self.dbus.rmask.eq(0b1111)
+
+                        # STORE
+                        with m.Case(MemFunc.SB):
                             comb += [
-                                self.dbus.wmask.eq(Mux(alu.out[1], 0b1100, 0b0011)),
-                                self.dbus.wdata.word_select(alu.out[1], 16).eq(
+                                self.dbus.wmask.eq(0b1 << alu.out[0:2]),
+                                self.dbus.wdata.word_select(alu.out[0:2], 8).eq(
                                     registers.rs2_rdata
                                 ),
                             ]
-                    with m.Case(MemFunc.SW):
-                        with m.If(alu.out[0:2].any()):
-                            trap(TrapCause.DADDR_S)
-                        with m.Else():
+                        with m.Case(MemFunc.SH):
+                            with m.If(alu.out[0]):
+                                trap(TrapCause.DADDR_S)
+                            with m.Else():
+                                comb += [
+                                    self.dbus.wmask.eq(Mux(alu.out[1], 0b1100, 0b0011)),
+                                    self.dbus.wdata.word_select(alu.out[1], 16).eq(
+                                        registers.rs2_rdata
+                                    ),
+                                ]
+                        with m.Case(MemFunc.SW):
+                            with m.If(alu.out[0:2].any()):
+                                trap(TrapCause.DADDR_S)
+                            with m.Else():
+                                comb += [
+                                    self.dbus.wmask.eq(0b1111),
+                                    self.dbus.wdata.eq(registers.rs2_rdata),
+                                ]
+
+                ### WB
+                # Gate: no memory access or dbus ready
+
+                with m.If(
+                    (~self.dbus.rmask.any() & ~self.dbus.wmask.any()) | self.dbus.rdy
+                ):
+
+                    with m.If(decoder.rd_addr == 0):
+                        comb += registers.rd_wdata.eq(0)
+
+                    with m.Else():
+                        comb += registers.rd_addr.eq(decoder.rd_addr)
+
+                        with m.Switch(decoder.mem_func):
+                            with m.Case(MemFunc.LB, MemFunc.LBU):
+                                comb += registers.rd_wdata.eq(
+                                    Mux(
+                                        decoder.mem_func == MemFunc.LBU,
+                                        self.dbus.rdata.word_select(alu.out[0:2], 8),
+                                        self.dbus.rdata.word_select(
+                                            alu.out[0:2], 8
+                                        ).as_signed(),
+                                    )
+                                )
+                            with m.Case(MemFunc.LH, MemFunc.LHU):
+                                comb += registers.rd_wdata.eq(
+                                    Mux(
+                                        decoder.mem_func == MemFunc.LHU,
+                                        self.dbus.rdata.word_select(alu.out[1], 16),
+                                        self.dbus.rdata.word_select(
+                                            alu.out[1], 16
+                                        ).as_signed(),
+                                    )
+                                )
+                            with m.Case(MemFunc.LW):
+                                comb += registers.rd_wdata.eq(self.dbus.rdata)
+
+                            with m.Default():
+                                with m.Switch(decoder.reg_src):
+                                    with m.Case(RegSrc.ALU):
+                                        comb += registers.rd_wdata.eq(alu.out)
+                                    with m.Case(RegSrc.PC_INCR):
+                                        comb += registers.rd_wdata.eq(pc_incr)
+                                    with m.Case(RegSrc.M_CYCLE):
+                                        comb += registers.rd_wdata.eq(self.mcycle)
+                                    with m.Case(RegSrc.M_INSTRET):
+                                        comb += registers.rd_wdata.eq(self.minstret)
+
+                    pc_wdata = Signal.like(pc)
+                    branch_target = Signal.like(pc)
+                    branch_taken = Signal()
+                    with m.Switch(decoder.branch_cond):
+                        with m.Case(BranchCond.ALWAYS):
                             comb += [
-                                self.dbus.wmask.eq(0b1111),
-                                self.dbus.wdata.eq(registers.rs2_rdata),
+                                branch_taken.eq(1),
+                                branch_target.eq(alu.out),
+                            ]
+                        with m.Case(BranchCond.NEVER):
+                            pass
+                        with m.Case(BranchCond.EQ):
+                            comb += [
+                                branch_taken.eq(alu.eq),
+                                branch_target.eq(decoder.branch_target),
+                            ]
+                        with m.Case(BranchCond.NE):
+                            comb += [
+                                branch_taken.eq(~alu.eq),
+                                branch_target.eq(decoder.branch_target),
+                            ]
+                        with m.Case(BranchCond.LT, BranchCond.LTU):
+                            comb += [
+                                branch_taken.eq(alu.out.any()),
+                                branch_target.eq(decoder.branch_target),
+                            ]
+                        with m.Case(BranchCond.GE, BranchCond.GEU):
+                            comb += [
+                                branch_taken.eq(~alu.out.any()),
+                                branch_target.eq(decoder.branch_target),
                             ]
 
-            ### WB
-            # Gate: no memory access or dbus ready
+                    comb += pc_wdata.eq(Mux(branch_taken, branch_target, pc_incr))
 
-            with m.If(
-                self.ibus.rdy
-                & ((decoder.mem_func == MemFunc.NONE) | self.dbus.rdy)
-            ):
+                    with m.If(pc_wdata[0:2].any()):
+                        trap(TrapCause.IADDR)
 
-                with m.If(decoder.rd_addr == 0):
-                    comb += registers.rd_wdata.eq(0)
-
-                with m.Else():
-                    comb += registers.rd_addr.eq(decoder.rd_addr)
-
-                    with m.Switch(decoder.mem_func):
-                        with m.Case(MemFunc.LB, MemFunc.LBU):
-                            comb += registers.rd_wdata.eq(
-                                Mux(
-                                    decoder.mem_func == MemFunc.LBU,
-                                    self.dbus.rdata.word_select(alu.out[0:2], 8),
-                                    self.dbus.rdata.word_select(
-                                        alu.out[0:2], 8
-                                    ).as_signed(),
-                                )
-                            )
-                        with m.Case(MemFunc.LH, MemFunc.LHU):
-                            comb += registers.rd_wdata.eq(
-                                Mux(
-                                    decoder.mem_func == MemFunc.LHU,
-                                    self.dbus.rdata.word_select(alu.out[1], 16),
-                                    self.dbus.rdata.word_select(
-                                        alu.out[1], 16
-                                    ).as_signed(),
-                                )
-                            )
-                        with m.Case(MemFunc.LW):
-                            comb += registers.rd_wdata.eq(self.dbus.rdata)
-
-                        with m.Default():
-                            with m.Switch(decoder.reg_src):
-                                with m.Case(RegSrc.ALU):
-                                    comb += registers.rd_wdata.eq(alu.out)
-                                with m.Case(RegSrc.PC_INCR):
-                                    comb += registers.rd_wdata.eq(pc_incr)
-                                with m.Case(RegSrc.M_CYCLE):
-                                    comb += registers.rd_wdata.eq(self.mcycle)
-                                with m.Case(RegSrc.M_INSTRET):
-                                    comb += registers.rd_wdata.eq(self.minstret)
-
-                pc_wdata = Signal.like(pc)
-                branch_target = Signal.like(pc)
-                branch_taken = Signal()
-                with m.Switch(decoder.branch_cond):
-                    with m.Case(BranchCond.ALWAYS):
-                        comb += [
-                            branch_taken.eq(1),
-                            branch_target.eq(alu.out),
-                        ]
-                    with m.Case(BranchCond.NEVER):
-                        pass
-                    with m.Case(BranchCond.EQ):
-                        comb += [
-                            branch_taken.eq(alu.eq),
-                            branch_target.eq(decoder.branch_target),
-                        ]
-                    with m.Case(BranchCond.NE):
-                        comb += [
-                            branch_taken.eq(~alu.eq),
-                            branch_target.eq(decoder.branch_target),
-                        ]
-                    with m.Case(BranchCond.LT, BranchCond.LTU):
-                        comb += [
-                            branch_taken.eq(alu.out.any()),
-                            branch_target.eq(decoder.branch_target),
-                        ]
-                    with m.Case(BranchCond.GE, BranchCond.GEU):
-                        comb += [
-                            branch_taken.eq(~alu.out.any()),
-                            branch_target.eq(decoder.branch_target),
-                        ]
-
-                comb += pc_wdata.eq(Mux(branch_taken, branch_target, pc_incr))
-
-                with m.If(pc_wdata[0:2].any()):
-                    trap(TrapCause.IADDR)
-
-                sync += [
-                    pc.eq(pc_wdata),
-                    self.minstret.eq(self.minstret + 1),
-                ]
-                if self._with_rvfi:
-                    comb += self.rvfi.valid.eq(~self.trap)
+                    sync += [
+                        pc.eq(pc_wdata),
+                        self.minstret.eq(self.minstret + 1),
+                    ]
+                    if self._with_rvfi:
+                        comb += self.rvfi.valid.eq(~self.trap)
 
         if self._with_rvfi:
             comb += [

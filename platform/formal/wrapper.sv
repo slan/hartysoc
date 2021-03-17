@@ -5,13 +5,13 @@ module rvfi_wrapper(
 );
 
 
-(* keep *) `rvformal_rand_reg          ibus_rdy;
+(* keep *) wire                        ibus_rnd_rdy;
 (* keep *) wire                 [31:0] ibus_addr;
-(* keep *) `rvformal_rand_reg   [31:0] ibus_rnd_data;
+(* keep *) wire                 [31:0] ibus_rnd_data;
 
-(* keep *) `rvformal_rand_reg          dbus_stall;
+(* keep *) wire                        dbus_rnd_rdy;
 (* keep *) wire                 [31:0] dbus_addr;
-(* keep *) `rvformal_rand_reg   [31:0] dbus_rnd_data;
+(* keep *) wire                 [31:0] dbus_rnd_data;
 (* keep *) wire                 [ 3:0] dbus_wmask;
 (* keep *) wire                 [31:0] dbus_wdata;
 
@@ -19,11 +19,11 @@ module rvfi_wrapper(
     .clk(clock),
     .rst(reset),
 
-    .ibus__rdy(ibus_rdy),
+    .ibus__rdy(ibus_rnd_rdy),
     .ibus__addr(ibus_addr),
     .ibus__rdata(ibus_rnd_data),
 
-    .dbus__rdy(dbus_stall),
+    .dbus__rdy(dbus_rnd_rdy),
     .dbus__addr(dbus_addr),
     .dbus__rdata(dbus_rnd_data),
     .dbus__wmask(dbus_wmask),
