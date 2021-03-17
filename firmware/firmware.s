@@ -1,6 +1,8 @@
-    la a0, 0x10000000
-    li t0, '!'
-    sb t0, 0(a0)
+    la a0, 0x60000000
+    li t0, 0x00aaaaaa
+_loop:
+    sw t0, 0(a0)
+    #j _loop
     ebreak
     
     la a0, 0x10000000

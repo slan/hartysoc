@@ -11,6 +11,8 @@ from .console import Console
 from .ram import RAM
 from .sdram import SDRAM
 from .soc_info import SOCInfo
+from .vga import VGA
+from .leds import LEDs
 from .interconnect import InterConnect
 from .interconnect_simple import InterConnectSimple
 
@@ -47,11 +49,13 @@ class SOC(Elaboratable):
         m.submodules.console = console = Console(
             domain=hart_domain, domain_freq=hart_freq
         )
+        m.submodules.vga = vga = VGA()
+        m.submodules.leds = leds = LEDs(domain=hart_domain)
         m.submodules.soc_info = soc_info = SOCInfo(version="0.2.0", freq=hart_freq)
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=hart_domain)
 
-        m.submodules.interconnect = interconnect = InterConnect(domain=hart_domain)
+        m.submodules.interconnect = interconnect = InterConnectSimple(domain=hart_domain)
 
         comb += [
             hart.ibus.connect(interconnect.ibus),
@@ -62,7 +66,9 @@ class SOC(Elaboratable):
             comb += interconnect.get_bus(0).connect(sdram.bus)
         comb += interconnect.get_bus(1).connect(console.bus)
         comb += interconnect.get_bus(2).connect(soc_info.bus)
+        comb += interconnect.get_bus(6).connect(leds.bus)
         comb += interconnect.get_bus(7).connect(ram.bus)
+        comb += interconnect.get_bus(8).connect(vga.bus)
 
         if isinstance(platform, SimPlatform):
 
