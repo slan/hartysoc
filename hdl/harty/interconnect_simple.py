@@ -19,6 +19,7 @@ class InterConnectSimple(Elaboratable):
     def elaborate(self, platform):
         m = Module()
 
+        m.submodules.encoder_ibus = encoder_ibus = Encoder(len(self._devices))
         m.submodules.encoder_dbus = encoder_dbus = Encoder(len(self._devices))
 
         comb = m.d.comb
@@ -46,6 +47,9 @@ class InterConnectSimple(Elaboratable):
             sync += cache_valid.eq(~self.dbus.rdy)
 
         with m.Else():
+
+            for i, top_bits in enumerate(self._devices.keys()):
+                comb += encoder_ibus.i[i].eq(self.ibus.addr[28:]==top_bits)
 
             with m.If(self.ibus.addr[28:] == 7):
 
