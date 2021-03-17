@@ -52,8 +52,8 @@ class SOC(Elaboratable):
         m.submodules.console = console = Console(
             domain=hart_domain, domain_freq=hart_freq
         )
-        m.submodules.vga = vga = VGA()
-        m.submodules.leds = leds = LEDs(domain=hart_domain)
+        # m.submodules.vga = vga = VGA()
+        # m.submodules.leds = leds = LEDs(domain=hart_domain)
         m.submodules.soc_info = soc_info = SOCInfo(version="0.2.0", freq=hart_freq)
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=hart_domain)

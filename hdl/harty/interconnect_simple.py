@@ -28,71 +28,85 @@ class InterConnectSimple(Elaboratable):
         cache_valid = Signal()
         cache_insn = Signal(32)
         cache_dbus = Record(bus_layout)
+        cache_busid = Signal.like(encoder_dbus.o)
 
         ram_bus = self._devices[7]
-        buses = Array([b for b in self._devices.values()])
+        buses = Array(self._devices.values())
 
         with m.If(cache_valid):
+            bus = buses[cache_busid]
             comb += [
                 self.ibus.rdata.eq(cache_insn),
                 self.ibus.rdy.eq(1),
                 #
-                ram_bus.addr.eq(cache_dbus.addr),
-                ram_bus.rmask.eq(cache_dbus.rmask),
-                ram_bus.wmask.eq(cache_dbus.wmask),
-                ram_bus.wdata.eq(cache_dbus.wdata),
-                self.dbus.rdata.eq(ram_bus.rdata),
-                self.dbus.rdy.eq(ram_bus.rdy),
+                bus.addr.eq(cache_dbus.addr),
+                bus.rmask.eq(cache_dbus.rmask),
+                bus.wmask.eq(cache_dbus.wmask),
+                bus.wdata.eq(cache_dbus.wdata),
             ]
-            sync += cache_valid.eq(~self.dbus.rdy)
+            with m.If(bus.rdy):
+                comb += [
+                    self.dbus.rdata.eq(bus.rdata),
+                    self.dbus.rdy.eq(bus.rdy),
+                ]
+                sync += cache_valid.eq(0)
 
         with m.Else():
 
-            for i, top_bits in enumerate(self._devices.keys()):
-                comb += encoder_ibus.i[i].eq(self.ibus.addr[28:]==top_bits)
+            with m.Switch(self.ibus.addr[28:]):
 
-            with m.If(self.ibus.addr[28:] == 7):
+                for tbi in [7]:
+                    with m.Case(tbi):
 
-                comb += [
-                    ram_bus.addr.eq(self.ibus.addr),
-                    ram_bus.rmask.eq(0b1111),
-                ]
+                        ibus = self._devices[tbi]
+                        comb += [
+                            ibus.addr.eq(self.ibus.addr),
+                            ibus.rmask.eq(0b1111),
+                        ]
 
-                with m.If(ram_bus.rdy):
-                    comb += [
-                        self.ibus.rdata.eq(ram_bus.rdata),
-                        self.ibus.rdy.eq(1),
-                    ]
+                        with m.If(ibus.rdy):
 
-                    for i, top_bits in enumerate(self._devices.keys()):
-                        comb += encoder_dbus.i[i].eq(
-                            (self.dbus.addr[28:] == top_bits)
-                            & (self.dbus.rmask.any() | self.dbus.wmask.any())
-                        )
-
-                    with m.If(~encoder_dbus.n):
-                        with m.If(
-                            encoder_dbus.o == [k for k in self._devices.keys()].index(7)
-                        ):  # RAM
-                            sync += [
-                                cache_valid.eq(1),
-                                #
-                                cache_insn.eq(self.ibus.rdata),
-                                #
-                                cache_dbus.addr.eq(self.dbus.addr),
-                                cache_dbus.rmask.eq(self.dbus.rmask),
-                                cache_dbus.wmask.eq(self.dbus.wmask),
-                                cache_dbus.wdata.eq(self.dbus.wdata),
-                            ]
-                        with m.Else():
-                            dbus = buses[encoder_dbus.o]
                             comb += [
-                                dbus.addr.eq(self.dbus.addr),
-                                dbus.rmask.eq(self.dbus.rmask),
-                                dbus.wmask.eq(self.dbus.wmask),
-                                dbus.wdata.eq(self.dbus.wdata),
-                                self.dbus.rdata.eq(dbus.rdata),
-                                self.dbus.rdy.eq(dbus.rdy),
+                                self.ibus.rdata.eq(ibus.rdata),
+                                self.ibus.rdy.eq(1),
                             ]
+
+                            with m.If(self.dbus.rmask.any() | self.dbus.wmask.any()):
+
+                                for d, tbd in enumerate(self._devices.keys()):
+                                    comb += encoder_dbus.i[d].eq(
+                                        self.dbus.addr[28:] == tbd
+                                    )
+
+                                with m.If(~encoder_dbus.n):
+                                    dbus = buses[encoder_dbus.o]
+
+                                    with m.If(self.dbus.addr[28:] == tbi):
+                                        sync += [
+                                            cache_valid.eq(1),
+                                            #
+                                            cache_insn.eq(self.ibus.rdata),
+                                            #
+                                            cache_dbus.addr.eq(self.dbus.addr),
+                                            cache_dbus.rmask.eq(self.dbus.rmask),
+                                            cache_dbus.wmask.eq(self.dbus.wmask),
+                                            cache_dbus.wdata.eq(self.dbus.wdata),
+                                            #
+                                            cache_busid.eq(encoder_dbus.o),
+                                        ]
+
+                                    with m.Else():
+
+                                        comb += [
+                                            dbus.addr.eq(self.dbus.addr),
+                                            dbus.rmask.eq(self.dbus.rmask),
+                                            dbus.wmask.eq(self.dbus.wmask),
+                                            dbus.wdata.eq(self.dbus.wdata),
+                                        ]
+                                        with m.If(dbus.rdy):
+                                            comb += [
+                                                self.dbus.rdata.eq(dbus.rdata),
+                                                self.dbus.rdy.eq(dbus.rdy),
+                                            ]
 
         return m

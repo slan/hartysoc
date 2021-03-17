@@ -2,8 +2,8 @@ ROOT_RISCV_FORMAL := ~/src/riscv-formal
 ROOT_PROJECT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/sdram.c
-SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/main.c
 SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/dhry1.c firmware/dhry2.c
+SRCS_FIRMWARE := firmware/firmware.s firmware/stdlib.c firmware/main.c
 
 OBJS_FIRMWARE := $(SRCS_FIRMWARE:firmware/%=build/firmware/%.o)
 

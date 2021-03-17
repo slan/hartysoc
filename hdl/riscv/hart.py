@@ -83,16 +83,16 @@ class Hart(Elaboratable):
 
             comb += [
                 self.ibus.addr.eq(pc),
-                pc_incr.eq(pc + 4),
             ]
 
             with m.If(self.ibus.rdy):
 
                 ### ID
-                
+
                 comb += [
                     decoder.insn.eq(self.ibus.rdata),
                     decoder.pc.eq(pc),
+                    pc_incr.eq(pc + 4),
                 ]
 
                 with m.If(decoder.trap):
@@ -126,7 +126,7 @@ class Hart(Elaboratable):
                 with m.If(decoder.mem_func != MemFunc.NONE):
                     comb += self.dbus.addr[2:].eq(alu.out[2:])
                     with m.Switch(decoder.mem_func):
-                        
+
                         # LOAD
                         with m.Case(MemFunc.LB, MemFunc.LBU):
                             comb += self.dbus.rmask.eq(1 << alu.out[0:2])
@@ -173,9 +173,7 @@ class Hart(Elaboratable):
                 ### WB
                 # Gate: no memory access or dbus ready
 
-                with m.If(
-                    (~self.dbus.rmask.any() & ~self.dbus.wmask.any()) | self.dbus.rdy
-                ):
+                with m.If((decoder.mem_func == MemFunc.NONE) | self.dbus.rdy):
 
                     with m.If(decoder.rd_addr == 0):
                         comb += registers.rd_wdata.eq(0)
