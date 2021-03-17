@@ -45,46 +45,50 @@ class InterConnectSimple(Elaboratable):
             ]
             sync += cache_valid.eq(~self.dbus.rdy)
 
-        with m.Elif(1):
+        with m.Else():
 
-            comb += [
-                ram_bus.addr.eq(self.ibus.addr),
-                ram_bus.rmask.eq(0b1111),
-            ]
+            with m.If(self.ibus.addr[28:] == 7):
 
-            with m.If(ram_bus.rdy):
                 comb += [
-                    self.ibus.rdata.eq(ram_bus.rdata),
-                    self.ibus.rdy.eq(1),
+                    ram_bus.addr.eq(self.ibus.addr),
+                    ram_bus.rmask.eq(0b1111),
                 ]
 
-                for i, top_bits in enumerate(self._devices.keys()):
-                    comb += encoder_dbus.i[i].eq(
-                        (self.dbus.addr[28:] == top_bits)
-                        & (self.dbus.rmask.any() | self.dbus.wmask.any())
-                    )
+                with m.If(ram_bus.rdy):
+                    comb += [
+                        self.ibus.rdata.eq(ram_bus.rdata),
+                        self.ibus.rdy.eq(1),
+                    ]
 
-                with m.If(~encoder_dbus.n):
-                    with m.If(encoder_dbus.o == [k for k in self._devices.keys()].index(7)):  # RAM
-                        sync += [
-                            cache_valid.eq(1),
-                            #
-                            cache_insn.eq(self.ibus.rdata),
-                            #
-                            cache_dbus.addr.eq(self.dbus.addr),
-                            cache_dbus.rmask.eq(self.dbus.rmask),
-                            cache_dbus.wmask.eq(self.dbus.wmask),
-                            cache_dbus.wdata.eq(self.dbus.wdata),
-                        ]
-                    with m.Else():
-                        dbus = buses[encoder_dbus.o]
-                        comb += [
-                            dbus.addr.eq(self.dbus.addr),
-                            dbus.rmask.eq(self.dbus.rmask),
-                            dbus.wmask.eq(self.dbus.wmask),
-                            dbus.wdata.eq(self.dbus.wdata),
-                            self.dbus.rdata.eq(dbus.rdata),
-                            self.dbus.rdy.eq(dbus.rdy),
-                        ]
+                    for i, top_bits in enumerate(self._devices.keys()):
+                        comb += encoder_dbus.i[i].eq(
+                            (self.dbus.addr[28:] == top_bits)
+                            & (self.dbus.rmask.any() | self.dbus.wmask.any())
+                        )
+
+                    with m.If(~encoder_dbus.n):
+                        with m.If(
+                            encoder_dbus.o == [k for k in self._devices.keys()].index(7)
+                        ):  # RAM
+                            sync += [
+                                cache_valid.eq(1),
+                                #
+                                cache_insn.eq(self.ibus.rdata),
+                                #
+                                cache_dbus.addr.eq(self.dbus.addr),
+                                cache_dbus.rmask.eq(self.dbus.rmask),
+                                cache_dbus.wmask.eq(self.dbus.wmask),
+                                cache_dbus.wdata.eq(self.dbus.wdata),
+                            ]
+                        with m.Else():
+                            dbus = buses[encoder_dbus.o]
+                            comb += [
+                                dbus.addr.eq(self.dbus.addr),
+                                dbus.rmask.eq(self.dbus.rmask),
+                                dbus.wmask.eq(self.dbus.wmask),
+                                dbus.wdata.eq(self.dbus.wdata),
+                                self.dbus.rdata.eq(dbus.rdata),
+                                self.dbus.rdy.eq(dbus.rdy),
+                            ]
 
         return m
