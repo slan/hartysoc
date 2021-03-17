@@ -51,7 +51,7 @@ class SOC(Elaboratable):
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=hart_domain)
 
-        m.submodules.interconnect = interconnect = InterConnectSimple(domain=hart_domain)
+        m.submodules.interconnect = interconnect = InterConnect(domain=hart_domain)
 
         comb += [
             hart.ibus.connect(interconnect.ibus),
