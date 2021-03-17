@@ -18,7 +18,7 @@
     # IN: a1 message addr
 _puts:
     lb t0, 0(a0)
-    bnez t0, _puts  # Active wait for UART to get accurate CPI
+    beqz t0, _puts  # Active wait for UART to get accurate CPI
     lbu t0, 0(a1)
     beqz t0, _end_puts
     sb t0,0(a0)
