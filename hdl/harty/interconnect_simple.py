@@ -28,10 +28,8 @@ class InterConnectSimple(Elaboratable):
         cache_insn = Signal(32)
         cache_dbus = Record(bus_layout)
 
-        console_bus = self._devices[1]
-        rom_bus = self._devices[2]
         ram_bus = self._devices[7]
-        buses = Array(self._devices.values())
+        buses = Array([b for b in self._devices.values()])
 
         with m.If(cache_valid):
             comb += [
@@ -67,7 +65,7 @@ class InterConnectSimple(Elaboratable):
                     )
 
                 with m.If(~encoder_dbus.n):
-                    with m.If(encoder_dbus.o == 3):  # RAM
+                    with m.If(encoder_dbus.o == [k for k in self._devices.keys()].index(7)):  # RAM
                         sync += [
                             cache_valid.eq(1),
                             #
@@ -88,36 +86,5 @@ class InterConnectSimple(Elaboratable):
                             self.dbus.rdata.eq(dbus.rdata),
                             self.dbus.rdy.eq(dbus.rdy),
                         ]
-
-                # with m.Switch(self.dbus.addr[28:]):
-                #     with m.Case(1):
-                #         comb += [
-                #             console_bus.addr.eq(self.dbus.addr),
-                #             console_bus.rmask.eq(self.dbus.rmask),
-                #             console_bus.wmask.eq(self.dbus.wmask),
-                #             console_bus.wdata.eq(self.dbus.wdata),
-                #             self.dbus.rdata.eq(console_bus.rdata),
-                #             self.dbus.rdy.eq(console_bus.rdy),
-                #         ]
-                #     with m.Case(2):
-                #         comb += [
-                #             rom_bus.addr.eq(self.dbus.addr),
-                #             rom_bus.rmask.eq(self.dbus.rmask),
-                #             rom_bus.wmask.eq(self.dbus.wmask),
-                #             rom_bus.wdata.eq(self.dbus.wdata),
-                #             self.dbus.rdata.eq(rom_bus.rdata),
-                #             self.dbus.rdy.eq(rom_bus.rdy),
-                #         ]
-                #     with m.Case(7):
-                #         sync += [
-                #             cache_valid.eq(1),
-                #             #
-                #             cache_insn.eq(self.ibus.rdata),
-                #             #
-                #             cache_dbus.addr.eq(self.dbus.addr),
-                #             cache_dbus.rmask.eq(self.dbus.rmask),
-                #             cache_dbus.wmask.eq(self.dbus.wmask),
-                #             cache_dbus.wdata.eq(self.dbus.wdata),
-                #         ]
 
         return m

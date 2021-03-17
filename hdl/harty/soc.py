@@ -46,6 +46,9 @@ class SOC(Elaboratable):
         m.submodules.ram = ram = RAM(
             domain=hart_domain, init=firmware
         )
+        m.submodules.scratchpad = scratchpad = RAM(
+            domain=hart_domain, init=[0]*32
+        )
         m.submodules.console = console = Console(
             domain=hart_domain, domain_freq=hart_freq
         )
@@ -66,9 +69,10 @@ class SOC(Elaboratable):
             comb += interconnect.get_bus(0).connect(sdram.bus)
         comb += interconnect.get_bus(1).connect(console.bus)
         comb += interconnect.get_bus(2).connect(soc_info.bus)
-        comb += interconnect.get_bus(6).connect(leds.bus)
+        # comb += interconnect.get_bus(6).connect(leds.bus)
         comb += interconnect.get_bus(7).connect(ram.bus)
-        comb += interconnect.get_bus(8).connect(vga.bus)
+        comb += interconnect.get_bus(8).connect(scratchpad.bus)
+        # comb += interconnect.get_bus(9).connect(vga.bus)
 
         if isinstance(platform, SimPlatform):
 

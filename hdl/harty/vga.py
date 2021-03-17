@@ -55,6 +55,7 @@ class VGA(Elaboratable):
         m = Module()
 
         m.d.comb += self.bus.rdy.eq(1)
+        color = Signal(24)
 
         if isinstance(platform, ArtyA7Platform):
 
@@ -112,21 +113,28 @@ class VGA(Elaboratable):
             vgapmod = platform.request("vgapmod")
 
             with m.If((y < 1080) & (x < 1920)):
-                lfsr = Signal(21, reset=688348)  # xnor taps at 21,19
-                m.d.pxl += [
-                    lfsr.eq(Cat((lfsr >> 1)[:20], (lfsr[0] == lfsr[2]))),
-                ]
-                rnd = lfsr[:4]
-                with m.If(x < 640 - 8 + rnd):
-                    m.d.comb += [vgapmod.r.eq(0), vgapmod.g.eq(0), vgapmod.b.eq(rnd)]
-                with m.Elif(x < 640 + 640 - 8 + rnd):
+                with m.If(self.bus.wmask.any()):
                     m.d.comb += [
-                        vgapmod.r.eq(rnd),
-                        vgapmod.g.eq(rnd),
-                        vgapmod.b.eq(rnd),
+                        vgapmod.r.eq(self.bus.wdata.word_select(2, 8)),
+                        vgapmod.g.eq(self.bus.wdata.word_select(1, 8)),
+                        vgapmod.b.eq(self.bus.wdata.word_select(0, 8)),                        
                     ]
-                with m.Elif(x < 640 + 640 + 640):
-                    m.d.comb += [vgapmod.r.eq(rnd), vgapmod.g.eq(0), vgapmod.b.eq(0)]
+
+                # lfsr = Signal(21, reset=688348)  # xnor taps at 21,19
+                # m.d.pxl += [
+                #     lfsr.eq(Cat((lfsr >> 1)[:20], (lfsr[0] == lfsr[2]))),
+                # ]
+                # rnd = lfsr[:4]
+                # with m.If(x < 640 - 8 + rnd):
+                #     m.d.comb += [vgapmod.r.eq(0), vgapmod.g.eq(0), vgapmod.b.eq(rnd)]
+                # with m.Elif(x < 640 + 640 - 8 + rnd):
+                #     m.d.comb += [
+                #         vgapmod.r.eq(rnd),
+                #         vgapmod.g.eq(rnd),
+                #         vgapmod.b.eq(rnd),
+                #     ]
+                # with m.Elif(x < 640 + 640 + 640):
+                #     m.d.comb += [vgapmod.r.eq(rnd), vgapmod.g.eq(0), vgapmod.b.eq(0)]
 
             m.d.pxl += [
                 vgapmod.hsync.eq((x >= 1920 + 88) & (x < 1920 + 88 + 44)),
