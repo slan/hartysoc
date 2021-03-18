@@ -52,7 +52,7 @@ class Decoder(Elaboratable):
                 comb += [
                     self.rs1_addr.eq(0),
                     self.alu_src2.eq(AluSrc2.IMM),
-                    self.imm.eq(Cat(Repl(0, 12), self.insn[12:32])),
+                    self.imm[12:].eq(self.insn[12:32]),
                     self.reg_src.eq(RegSrc.ALU),
                     self.rd_addr.eq(self.insn[7:12]),
                     self.alu_func.eq(AluFunc.ADD_SUB),
@@ -61,7 +61,7 @@ class Decoder(Elaboratable):
                 comb += [
                     self.alu_src1.eq(AluSrc1.PC),
                     self.alu_src2.eq(AluSrc2.IMM),
-                    self.imm.eq(Cat(Repl(0, 12), self.insn[12:32])),
+                    self.imm[12:].eq(self.insn[12:32]),
                     self.reg_src.eq(RegSrc.ALU),
                     self.rd_addr.eq(self.insn[7:12]),
                     self.alu_func.eq(AluFunc.ADD_SUB),
