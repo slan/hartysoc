@@ -1,4 +1,10 @@
     la a0, 0x10000000
+    li t0, '!'
+    sb t0, 0(a0)
+
+    ebreak
+
+    la a0, 0x10000000
     la a1, 0x20000010  # Greetings (SOCInfo)
     
     call _puts

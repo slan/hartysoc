@@ -15,6 +15,7 @@ from .vga import VGA
 from .leds import LEDs
 from .interconnect import InterConnect
 from .interconnect_simple import InterConnectSimple
+from .interconnect_modwizcode import InterConnectModwizcode
 
 
 class SOC(Elaboratable):
@@ -32,7 +33,7 @@ class SOC(Elaboratable):
             pll.get_frequency_ratio(hart_domain) * platform.default_clk_frequency
         )
 
-        m.submodules.hart = hart = Hart(domain=hart_domain, reset_vector=0x7000_0000)
+        m.submodules.hart = hart = Hart(domain=hart_domain, reset_vector=0x8000_0000)
 
         comb = m.d.comb
 
@@ -46,32 +47,32 @@ class SOC(Elaboratable):
         m.submodules.ram = ram = RAM(
             domain=hart_domain, init=firmware
         )
-        m.submodules.scratchpad = scratchpad = RAM(
-            domain=hart_domain, init=[0]*32
-        )
+        # m.submodules.scratchpad = scratchpad = RAM(
+        #     domain=hart_domain, init=[0]*32
+        # )
         m.submodules.console = console = Console(
             domain=hart_domain, domain_freq=hart_freq
         )
         # m.submodules.vga = vga = VGA()
         # m.submodules.leds = leds = LEDs(domain=hart_domain)
-        m.submodules.soc_info = soc_info = SOCInfo(version="0.2.0", freq=hart_freq)
+        # m.submodules.soc_info = soc_info = SOCInfo(version="0.2.0", freq=hart_freq)
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=hart_domain)
 
-        m.submodules.interconnect = interconnect = InterConnectSimple(domain=hart_domain)
+        m.submodules.interconnect = interconnect = InterConnectModwizcode(domain=hart_domain, bus0=console.bus, bus1=ram.bus)
 
         comb += [
-            hart.ibus.connect(interconnect.ibus),
-            hart.dbus.connect(interconnect.dbus),
+            hart.ibus.connect(interconnect.instruction_bus),
+            hart.dbus.connect(interconnect.data_bus),
         ]
 
-        if self._with_sdram:
-            comb += interconnect.get_bus(0).connect(sdram.bus)
-        comb += interconnect.get_bus(1).connect(console.bus)
-        comb += interconnect.get_bus(2).connect(soc_info.bus)
+        # if self._with_sdram:
+        #     comb += interconnect.get_bus(0).connect(sdram.bus)
+        # comb += interconnect.get_bus(1).connect(console.bus)
+        # comb += interconnect.get_bus(2).connect(soc_info.bus)
         # comb += interconnect.get_bus(6).connect(leds.bus)
-        comb += interconnect.get_bus(7).connect(ram.bus)
-        comb += interconnect.get_bus(8).connect(scratchpad.bus)
+        # comb += interconnect.get_bus(7).connect(ram.bus)
+        # comb += interconnect.get_bus(8).connect(scratchpad.bus)
         # comb += interconnect.get_bus(9).connect(vga.bus)
 
         if isinstance(platform, SimPlatform):
@@ -81,7 +82,6 @@ class SOC(Elaboratable):
                 print("~" * 148)
                 while True:
                     yield
-
                     trap = yield hart.trap
                     if trap:
                         mcause = yield hart.mcause
