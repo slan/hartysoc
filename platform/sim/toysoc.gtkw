@@ -1,0 +1,71 @@
+[*]
+[*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
+[*] Thu Mar 18 19:33:59 2021
+[*]
+[dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
+[dumpfile_mtime] "Thu Mar 18 19:33:16 2021"
+[dumpfile_size] 4400
+[savefile] "/home/slan/src/hartysoc/platform/sim/toysoc.gtkw"
+[timestart] 0
+[size] 1192 906
+[pos] -1 -1
+*-14.739566 18400 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] top.
+[treeopen] top.cpu.
+[treeopen] top.ram.
+[treeopen] top.rom.
+[sst_width] 214
+[signals_width] 268
+[sst_expanded] 1
+[sst_vpaned_height] 258
+@200
+-CPU
+@28
+top.cpu.clk
+top.cpu.halt
+top.cpu.pc[2:0]
+top.cpu.ibus__addr[3:0]
+top.interconnect.ibus__rmask
+top.cpu.ibus__rdy
+top.cpu.ibus__rdata[7:0]
+top.cpu.dbus__rdy
+top.cpu.dbus__rmask
+top.cpu.dbus__rmask
+@200
+-REGISTERS
+@22
+top.cpu.reg[7:0]
+@200
+-INTERCONNECT
+-ibus
+@28
+top.interconnect.ibus__addr[3:0]
+@22
+top.interconnect.ibus__rdata[7:0]
+@28
+top.interconnect.ibus__rmask
+@200
+-dbus
+@28
+top.interconnect.dbus__addr[3:0]
+@29
+top.interconnect.dbus__rmask
+@200
+-ROM
+@28
+top.rom.rom_bus__rmask
+top.rom.rom_bus__rdy
+@22
+top.rom.rp.mem_r_data[7:0]
+@200
+-RAM
+@28
+top.ram.rp.mem_r_addr[1:0]
+@22
+top.ram.rp.mem_r_data[7:0]
+@28
+top.ram.wp.mem_w_en
+@22
+top.ram.wp.mem_w_data[7:0]
+[pattern_trace] 1
+[pattern_trace] 0

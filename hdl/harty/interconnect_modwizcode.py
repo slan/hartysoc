@@ -1,5 +1,5 @@
 from nmigen import *
-from ..riscv.bus import bus_layout
+from local_bus import bus_layout
 
 # Stupid function to simplify connecting the busses
 def connect_bus(upstream, downstream):
@@ -12,9 +12,8 @@ def connect_bus(upstream, downstream):
     stmts.append(downstream.addr.eq(upstream.addr))
     return stmts
 
-class InterConnectModwizcode(Elaboratable):
-    def __init__(self, *, domain, bus0, bus1):
-        self._domain = domain
+class Interconnect(Elaboratable):
+    def __init__(self, rom_bus, mem_bus):
         # Connection for the upstream instruction bus
         self.instruction_bus = Record(bus_layout)
         # Connection for the upstream data bus
@@ -22,7 +21,7 @@ class InterConnectModwizcode(Elaboratable):
         # "Devices"
         # This sort of makes sense because you might want to load from rom if you're executing from it
         # likewise with memory and they might be on an internal and external bus respectively
-        self._devices = Array([bus0, bus1])
+        self._devices = Array([rom_bus, mem_bus])
     def elaborate(self, platform):
         # If instruction_bus and data_bus request the same target we need to delay one of the transactions
         # since we only have one path to downstream devices
@@ -35,11 +34,10 @@ class InterConnectModwizcode(Elaboratable):
 
         data_device = self._devices[data_bus_id]
         instruction_device = self._devices[instruction_bus_id]
+
         # If this is the same device the transaction must be split between two cycles because
         # the bus isn't clocked
-        # Devices are not identical (access is not stalled) if both rmask and wmask for device are unset
-        # (no access is being performed. i.e. op not memory)
-        same_device = (data_bus_id == instruction_bus_id) & (self.data_bus.wmask.any() | self.data_bus.rmask.any())
+        same_device = data_bus_id == instruction_bus_id
 
         # Cache the ibus request so that we can do a dbus request if there's a conflict (only happens
         # when you write to current pc's addr on the same device which is actually pretty unlikely
@@ -67,7 +65,7 @@ class InterConnectModwizcode(Elaboratable):
             # This is only safe to do here because we know that the uncached_state always means the
             # instruction_device is being driven by the instruction_bus's address and rmask
             with m.If(instruction_device.rdy):
-                m.d[self._domain] += [
+                m.d.sync += [
                     # We keep track of address to match until ibus changes it
                     cached_ibus.addr.eq(self.instruction_bus.addr),
                     # The data from the device because duh

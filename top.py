@@ -5,7 +5,7 @@ from nmigen.build import *
 from nmigen_boards.arty_a7 import ArtyA7Platform
 
 import hdl.kitchensink as ks
-from hdl.harty import SOC
+from toysoc import SOC
 
 
 with_sdram = False
@@ -67,7 +67,7 @@ def main():
         build_dir=build_dir,
         do_build=False,
         script_after_synth="",
-        script_after_read=""
+        script_after_read="quit"
         if not with_sdram
         else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
     )

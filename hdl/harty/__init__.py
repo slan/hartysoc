@@ -1,1 +1,1 @@
-from .soc import SOC
+#from .soc import SOC
