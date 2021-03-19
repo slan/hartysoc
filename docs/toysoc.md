@@ -29,7 +29,7 @@ Code:
                 0b00000110,  # STORE reg to RAM             (1 cycle)
                 0b01110100,  # LOAD reg from ROM adress 6   (2 cycles)
                 0b00000100,  # LOAD reg from RAM            (1 cycle)
-                0b11111111,  # HALT
+                0b00000000,  # NOP
 ```
 
 As expected:

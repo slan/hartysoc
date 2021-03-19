@@ -2,7 +2,7 @@
 
 ## Quickstart
 
-If you feel brave, a setup script can be found [here](setup.sh). It takes around 10 minutes to download everything and build yosys from source.
+If you feel brave, a setup script can be found [here](setup.sh). Run it from an empty folder (you can move it afterwards). It takes around 10 minutes to download everything and build yosys from source.
 
 ## Step-by-step
 
@@ -76,11 +76,17 @@ git clone https://github.com/slan/riscv-formal.git
 wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv-openocd-0.10.0-2020.08.1-x86_64-linux-ubuntu14.tar.gz|sudo tar -C /usr/local --strip-components=1 -xzf -
 ```
 
+Add udev rules for non-root access to serial:
+
+```
+sudo cp platform/arty/99-openocd.rules /etc/udev/rules.d/
+```
+
 Configure serial (or use `minicom`), your device might be different...
 
 ```
-sudo stty -F /dev/ttyUSB1 ispeed 115200 raw
-sudo cat /dev/ttyUSB1
+stty -F /dev/ttyUSB1 ospeed 115200
+cat /dev/ttyUSB1
 ```
 
 > STOP! you can now `make prog` to run Dhrystone on the FPGA

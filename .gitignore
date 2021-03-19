@@ -2,6 +2,4 @@
 .Xil/
 __pycache__/
 build/
-# temp
-top_bmc/
-top_cover/
+virtualenv/
