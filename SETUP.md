@@ -2,7 +2,15 @@
 
 ## Quickstart
 
-If you feel brave, a setup script can be found [here](setup.sh). Run it from an empty folder (you can move it afterwards). It takes around 10 minutes to download everything and build yosys from source.
+If you feel brave, a setup script can be found [here](setup.sh). Run it from an empty folder (you can move it afterwards):
+
+```
+wget https://raw.githubusercontent.com/slan/hartysoc/master/setup.sh
+. ./setup.sh
+```
+
+This uses `sudo` to update `udev` rules and install yosys, openocd and the riscv toolchain in `/usr/local`
+It takes around 4 minutes to download everything and build yosys from source.
 
 ## Step-by-step
 
@@ -23,11 +31,11 @@ sudo apt-get update
 sudo apt-get install -y python3-pip python3-venv
 ```
 
-3. Create and activate python virtual environment in `~/virtualenvs/hartysoc`
+3. Create and activate python virtual environment in `virtualenvs/hartysoc`
 
 ```
-python3 -m venv ~/virtualenvs/hartysoc
-. ~/virtualenvs/hartysoc/bin/activate
+python3 -m venv virtualenvs/hartysoc
+. virtualenvs/hartysoc/bin/activate
 ```
 
 4. Install Install nmigen and yosys from source (pypi is lagging behind)

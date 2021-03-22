@@ -28,4 +28,4 @@ wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv64-
 git clone https://github.com/slan/riscv-formal.git
 
 wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv-openocd-0.10.0-2020.08.1-x86_64-linux-ubuntu14.tar.gz|sudo tar -C /usr/local --strip-components=1 -xzf -
-sudo cp platform/arty/99-openocd.rules /etc/udev/rules.d/
+sudo cp hartysoc/platform/arty/99-openocd.rules /etc/udev/rules.d/
