@@ -44,11 +44,11 @@ class ROM(Elaboratable):
 
 
 class Interconnect(Elaboratable):
-    def __init__(self, *, domain):
+    def __init__(self, *, domain, bus0, bus1):
         self._domain = domain
         self.ibus = Record(bus_layout)
         self.dbus = Record(bus_layout)
-        self.devices = []
+        self.buses = [bus0, bus1]
 
     def elaborate(self, platform):
         m = Module()
@@ -56,52 +56,48 @@ class Interconnect(Elaboratable):
         comb = m.d.comb
         sync = m.d[self._domain]
 
-        buses = Array(self.devices)
-        ibus_id = self.ibus.addr[-device_bits:]
-        ibus = buses[ibus_id]
+        cache_data = Signal.like(self.ibus.rdata)
+        cache_bus_id = Signal(device_bits)
+
+        buses = Array(self.buses)
         dbus_id = self.dbus.addr[-device_bits:]
-        dbus = buses[dbus_id]
+        ibus_id = 1
 
-        collision = Signal()
-        comb += collision.eq(ibus_id == dbus_id)
-        same_device = dbus_id == ibus_id
-
-        cached_ibus = Record(bus_layout)
-        cache_present = Signal()
-        cache_valid = (
-            cache_present
-            & (cached_ibus.addr == self.ibus.addr)
-            & (cached_ibus.req == self.ibus.req)
-        )
-
-        with m.If(~cache_valid):
-            comb += [
-                ibus.addr.eq(self.ibus.addr[:-device_bits]),
-                ibus.req.eq(1),
-                self.ibus.rdata.eq(ibus.rdata),
-            ]
-            with m.If(ibus.ack):
-                sync += [
-                    cached_ibus.addr.eq(self.ibus.addr),
-                    cached_ibus.rdata.eq(ibus.rdata),
-                    cached_ibus.req.eq(self.ibus.req),
-                    cache_present.eq(1),
+        with m.FSM(domain=self._domain):
+            with m.State("IBUS"):
+                comb += [
+                    buses[ibus_id].addr.eq(self.ibus.addr[:-device_bits]),
+                    buses[ibus_id].req.eq(1),
+                    self.ibus.rdata.eq(buses[ibus_id].rdata),
+                    self.ibus.ack.eq(1),
                 ]
-        with m.Else():
-            comb += [
-                self.ibus.rdata.eq(cached_ibus.rdata),
-                self.ibus.ack.eq(1),
-            ]
+                with m.If(self.dbus.req):
+                    with m.If(dbus_id != ibus_id):
+                        comb += [
+                            buses[dbus_id].addr.eq(self.dbus.addr[:-device_bits]),
+                            buses[dbus_id].req.eq(1),
+                            self.dbus.rdata.eq(buses[dbus_id].rdata),
+                            self.dbus.ack.eq(1),
+                        ]
+                    with m.Else():
+                        sync += [
+                            cache_data.eq(self.ibus.rdata),
+                            cache_bus_id.eq(self.ibus.addr[-device_bits:]),
+                        ]
+                        m.next = "COLLISION"
 
-        with m.If(self.dbus.req & (~same_device | cache_valid)):
-            comb += [
-                dbus.addr.eq(self.dbus[:-device_bits]),
-                dbus.req.eq(1),
-                self.dbus.rdata.eq(dbus.rdata),
-                self.dbus.ack.eq(dbus.ack),
-            ]
-        with m.Else():
-            comb += self.dbus.ack.eq(0)
+            with m.State("COLLISION"):
+                comb += [
+                    self.ibus.rdata.eq(cache_data),
+                    self.ibus.ack.eq(1),
+                ]
+                comb += [
+                    buses[cache_bus_id].addr.eq(self.dbus.addr[:-device_bits]),
+                    buses[cache_bus_id].req.eq(1),
+                    self.dbus.rdata.eq(buses[cache_bus_id].rdata),
+                    self.dbus.ack.eq(1),
+                ]
+                m.next = "IBUS"
 
         return m
 
@@ -127,30 +123,28 @@ class CPU(Elaboratable):
             platform.request("led", i).o.eq(reg[i]) for i in range(min(reg.width, 4))
         ]
 
-        comb += [
-            self.ibus.addr.eq(pc),
-            self.ibus.req.eq(1),
-        ]
+        comb += self.ibus.addr.eq(pc)
 
-        insn = self.ibus.rdata
+        with m.If(self.ibus.ack):
 
-        with m.Switch(insn):
-            with m.Case("----0010"):
-                sync += reg[:4].eq(insn[-4:])
+            insn = self.ibus.rdata
+            with m.Switch(insn):
+                with m.Case("----0010"):
+                    sync += reg[:4].eq(insn[-4:])
 
-            with m.Case("----0011"):
-                sync += reg[-4:].eq(insn[-4:])
+                with m.Case("----0011"):
+                    sync += reg[-4:].eq(insn[-4:])
 
-            with m.Case("-----100"):
-                comb += [
-                    self.dbus.addr.eq(insn[-self.dbus.addr.width :]),
-                    self.dbus.req.eq(1),
-                ]
-                with m.If(self.dbus.ack):
-                    sync += reg.eq(self.dbus.rdata)
+                with m.Case("-----100"):
+                    comb += [
+                        self.dbus.addr.eq(insn[-self.dbus.addr.width :]),
+                        self.dbus.req.eq(1),
+                    ]
+                    with m.If(self.dbus.ack):
+                        sync += reg.eq(self.dbus.rdata)
 
-        with m.If(~self.dbus.req | self.dbus.ack):
-            sync += pc.eq(pc + 1)
+            with m.If(~self.dbus.req | self.dbus.ack):
+                sync += pc.eq(pc + 1)
 
         return m
 
@@ -168,12 +162,6 @@ class SOC(Elaboratable):
             reset_vector=1 << (Record(bus_layout).addr.width - device_bits),
             domain=domain,
         )
-        m.submodules.interconnect = interconnect = Interconnect(domain=domain)
-
-        comb += [
-            cpu.ibus.connect(interconnect.ibus),
-            cpu.dbus.connect(interconnect.dbus),
-        ]
 
         m.submodules.rom0 = rom0 = ROM(
             name="rom0",
@@ -183,16 +171,25 @@ class SOC(Elaboratable):
             name="rom1",
             init=[
                 0b00000000,  # NOP
-                #0b00000100,  # LB from ROM0   (1 cycle)
-                #0b10000100,  # LB from ROM1   (2 cycles)
+                0b00000100,  # LB from ROM0   (1 cycle)
+                0b10000100,  # LB from ROM1   (2 cycles)
                 0b00010010,  # LILO 1
                 0b00100010,  # LILO 2
                 0b01000010,  # LILO 4
                 0b10000010,  # LILO 8
+                0b00000010,  # LILO 0
                 0b00000000,  # NOP
             ],
         )
-        interconnect.devices += [rom0.bus, rom1.bus]
+
+        m.submodules.interconnect = interconnect = Interconnect(
+            domain=domain, bus0=rom0.bus, bus1=rom1.bus
+        )
+
+        comb += [
+            cpu.ibus.connect(interconnect.ibus),
+            cpu.dbus.connect(interconnect.dbus),
+        ]
 
         if isinstance(platform, SimPlatform):
 
