@@ -7,9 +7,9 @@ from ..riscv import bus_layout
 
 
 class Console(Elaboratable):
-    def __init__(self, *, domain, domain_freq):
+    def __init__(self, *, domain, freq):
         self._domain = domain
-        self._domain_freq = domain_freq
+        self._freq = freq
         self.last_output = 0
         self.bus = Record(bus_layout, name="console")
 
@@ -18,23 +18,23 @@ class Console(Elaboratable):
 
         comb = m.d.comb
 
-        m.submodules.uart = uart = UART(self._domain, round(self._domain_freq / 115200))
+        m.submodules.uart = uart = UART(self._domain, round(self._freq / 115200))
 
         with m.If(self.bus.rmask.any()):
             comb += [
-                self.bus.rdy.eq(1),
+                self.bus.ack.eq(1),
                 self.bus.rdata.eq(uart.tx_ack),
             ]
         with m.If(self.bus.wmask.any()):
             comb += [
-                self.bus.rdy.eq(uart.tx_ack),
+                self.bus.ack.eq(uart.tx_ack),
                 uart.tx_rdy.eq(1),
                 uart.tx_data.eq(self.bus.wdata),
             ]
 
         if isinstance(platform, SimPlatform):
             comb += [
-                self.bus.rdy.eq(1),
+                self.bus.ack.eq(1),
                 # This overrides UART readyness to speedup simulation
                 # making uart.tx_o crazy - remove to watch serial
                 self.bus.rdata.eq(1),

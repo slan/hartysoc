@@ -27,7 +27,7 @@ class SDRAM(Elaboratable):
 
         with m.If(self.bus.addr < 0x3000_0000):
             comb += [
-                self.bus.rdy.eq(1),
+                self.bus.ack.eq(1),
                 self.bus.rdata.eq(
                     Cat(
                         mig.pll_locked,
@@ -42,7 +42,7 @@ class SDRAM(Elaboratable):
             cd_hart = m.d[self._domain]
             with m.If(self.bus.wmask.any()):
                 # BUS WRITE -> write to fifo_w, fire & forget
-                comb += self.bus.rdy.eq(fifo_w.w_rdy)
+                comb += self.bus.ack.eq(fifo_w.w_rdy)
                 with m.If(fifo_w.w_rdy):
                     comb += [
                         fifo_w.w_en.eq(1),
@@ -52,7 +52,7 @@ class SDRAM(Elaboratable):
                     ]
             with m.If(self.bus.rmask.any()):
                 # BUS READ -> write to fifo_w, lock the bus
-                comb += self.bus.rdy.eq(0)
+                comb += self.bus.ack.eq(0)
                 with m.If(fifo_w.w_rdy):
                     req_in_flight = Signal(1)
                     cd_hart += req_in_flight.eq(1)
@@ -63,7 +63,7 @@ class SDRAM(Elaboratable):
                         ]
             with m.If(fifo_r.r_rdy):
                 # Response from MIG -> read from fifo_r, put data on the bus, release
-                comb += self.bus.rdy.eq(1)
+                comb += self.bus.ack.eq(1)
                 cd_hart += req_in_flight.eq(0)
                 comb += [
                     fifo_r.r_en.eq(1),

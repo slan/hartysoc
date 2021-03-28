@@ -14,7 +14,7 @@ class LEDs(Elaboratable):
         comb = m.d.comb
         sync = m.d[self._domain]
 
-        comb += self.bus.rdy.eq(1)
+        comb += self.bus.ack.eq(1)
 
         leds = Signal(4)
 

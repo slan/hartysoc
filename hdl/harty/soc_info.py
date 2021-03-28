@@ -33,7 +33,7 @@ class SOCInfo(Elaboratable):
 
         with m.If(self.bus.rmask.any()):
             m.d.comb += [
-                self.bus.rdy.eq(1),
+                self.bus.ack.eq(1),
                 rom_rp.addr.eq(self.bus.addr[2:28]),
                 self.bus.rdata.eq(rom_rp.data),
             ]

@@ -81,7 +81,7 @@ class Hart(Elaboratable):
                 self.ibus.addr.eq(pc),
             ]
 
-            with m.If(self.ibus.rdy):
+            with m.If(self.ibus.ack):
 
                ### ID
 
@@ -154,7 +154,7 @@ class Hart(Elaboratable):
                 ### WB
                 # Gate: no memory access or dbus ready
 
-                with m.If((decoder.mem_func == MemFunc.NONE) | self.dbus.rdy):
+                with m.If((decoder.mem_func == MemFunc.NONE) | self.dbus.ack):
 
                     with m.If(decoder.rd_addr == 0):
                         comb += registers.rd_wdata.eq(0)

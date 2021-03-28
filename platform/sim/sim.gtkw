@@ -1,17 +1,18 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Fri Mar  5 00:30:05 2021
+[*] Sun Mar 28 14:03:43 2021
 [*]
 [dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Fri Mar  5 00:29:55 2021"
-[dumpfile_size] 2789319
+[dumpfile_mtime] "Sun Mar 28 14:01:59 2021"
+[dumpfile_size] 12737
 [savefile] "/home/slan/src/hartysoc/platform/sim/sim.gtkw"
 [timestart] 0
 [size] 1800 1000
 [pos] -1 -1
-*-18.740326 335000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-17.945995 213000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.hart.
+[treeopen] top.hart.registers.
 [sst_width] 214
 [signals_width] 300
 [sst_expanded] 1
@@ -23,7 +24,6 @@ top.hart.hart_rst
 top.hart.hart_clk
 top.hart.trap
 top.hart.halt
-top.hart.mcause
 @c00022
 top.hart.pc[31:0]
 @28
@@ -63,19 +63,49 @@ top.hart.pc[31:0]
 -group_end
 @22
 top.hart.insn[31:0]
-@29
-top.hart.ibus__rdy
-@28
-top.hart.dbus__rdy
 @200
 -IF
-@22
+@c00022
 top.hart.insn[31:0]
+@28
+(0)top.hart.insn[31:0]
+(1)top.hart.insn[31:0]
+(2)top.hart.insn[31:0]
+(3)top.hart.insn[31:0]
+(4)top.hart.insn[31:0]
+(5)top.hart.insn[31:0]
+(6)top.hart.insn[31:0]
+(7)top.hart.insn[31:0]
+(8)top.hart.insn[31:0]
+(9)top.hart.insn[31:0]
+(10)top.hart.insn[31:0]
+(11)top.hart.insn[31:0]
+(12)top.hart.insn[31:0]
+(13)top.hart.insn[31:0]
+(14)top.hart.insn[31:0]
+(15)top.hart.insn[31:0]
+(16)top.hart.insn[31:0]
+(17)top.hart.insn[31:0]
+(18)top.hart.insn[31:0]
+(19)top.hart.insn[31:0]
+(20)top.hart.insn[31:0]
+(21)top.hart.insn[31:0]
+(22)top.hart.insn[31:0]
+(23)top.hart.insn[31:0]
+(24)top.hart.insn[31:0]
+(25)top.hart.insn[31:0]
+(26)top.hart.insn[31:0]
+(27)top.hart.insn[31:0]
+(28)top.hart.insn[31:0]
+(29)top.hart.insn[31:0]
+(30)top.hart.insn[31:0]
+(31)top.hart.insn[31:0]
+@1401200
+-group_end
 @200
 -ID
 @28
 top.hart.decoder.alu_func
-top.hart.decoder.alu_src2_type
 @22
 top.hart.decoder.imm[31:0]
 @28
@@ -83,15 +113,29 @@ top.hart.decoder.branch_cond
 @22
 top.hart.decoder.rs1_addr[4:0]
 top.hart.decoder.rs2_addr[4:0]
+@c00022
 top.hart.decoder.rd_addr[4:0]
 @28
-top.hart.decoder.reg_src_type
+(0)top.hart.decoder.rd_addr[4:0]
+(1)top.hart.decoder.rd_addr[4:0]
+(2)top.hart.decoder.rd_addr[4:0]
+(3)top.hart.decoder.rd_addr[4:0]
+(4)top.hart.decoder.rd_addr[4:0]
+@1401200
+-group_end
 @200
 -EX
 @28
 top.hart.alu.func
 @200
 -MEM
+@22
+top.ram.iram__addr[31:0]
+top.ram.iram__rdata[31:0]
+top.ram.iram__rmask[3:0]
+@28
+top.ram.iram__ack
+@200
 -WB
 @22
 top.hart.registers.rp1.mem_r_addr[4:0]
@@ -103,7 +147,11 @@ top.hart.registers.wp.mem_w_en
 @22
 top.hart.registers.wp.mem_w_addr[4:0]
 top.hart.registers.wp.mem_w_data[31:0]
+@23
+top.hart.registers.wp.memory(10)[31:0]
 @200
 -UART
+@22
+top.console.console__rmask[3:0]
 [pattern_trace] 1
 [pattern_trace] 0

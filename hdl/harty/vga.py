@@ -54,7 +54,7 @@ class VGA(Elaboratable):
     def elaborate(self, platform):
         m = Module()
 
-        m.d.comb += self.bus.rdy.eq(1)
+        m.d.comb += self.bus.ack.eq(1)
         color = Signal(24)
 
         if isinstance(platform, ArtyA7Platform):
