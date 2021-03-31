@@ -37,6 +37,11 @@ class SOC(Elaboratable):
 
         comb = m.d.comb
 
+        m.submodules.i_interconnect = i_interconnect = Interconnect(name="ibus")
+        m.submodules.d_interconnect = d_interconnect = Interconnect(name="dbus")
+
+        m.submodules.icache = icache = Cache(domain=domain)
+
         with open("build/firmware.bin", mode="rb") as f:
             firmware = array("I")
             assert firmware.itemsize == 4
@@ -45,38 +50,41 @@ class SOC(Elaboratable):
             firmware.fromfile(f, file_size // 4)
 
         m.submodules.ram = ram = RAM(domain=domain, init=firmware)
+        
         m.submodules.console = console = Console(domain=domain, freq=hart_freq)
-        # m.submodules.vga = vga = VGA()
-        # m.submodules.leds = leds = LEDs(domain=hart_domain)
-        m.submodules.soc_info = soc_info = SOCInfo(version="0.2.1", freq=hart_freq)
+        comb += d_interconnect.get_bus(1, "console").connect(console.bus)
+
+        m.submodules.soc_info = soc_info = SOCInfo(version="0.3.0", freq=hart_freq)
+        comb += d_interconnect.get_bus(2, "soc_info").connect(soc_info.bus)
+
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=domain)
-
-        m.submodules.i_interconnect = i_interconnect = Interconnect(name="ibus")
-        m.submodules.d_interconnect = d_interconnect = Interconnect(name="dbus")
-
-        m.submodules.icache = icache = Cache(domain=domain)
-
-        if self._with_sdram:
             comb += d_interconnect.get_bus(0, "sdram").connect(sdram.bus)
 
-        # comb += interconnect.get_bus(6, "leds").connect(leds.bus)
-        # comb += interconnect.get_bus(9, "vga").connect(vga.bus)
+        # m.submodules.leds = leds = LEDs(domain=domain)
+        # comb += d_interconnect.get_bus(6, "leds").connect(leds.bus)
 
-        m.submodules.bram = bram = BlockRAM(domain=domain)
+        # m.submodules.vga = vga = VGA()
+        # comb += d_interconnect.get_bus(9, "vga").connect(vga.bus)
+
+        m.submodules.bram = bram = BlockRAM(domain=domain, size=32 * 1024)
 
         comb += [
             hart.ibus.connect(icache.bus_up),
             icache.bus_down.connect(i_interconnect.bus),
-            # i_interconnect.get_bus(0, "bram").connect(bram.bus),
             i_interconnect.get_bus(8, "ram").connect(ram.ibus),
             #
             hart.dbus.connect(d_interconnect.bus),
-            # d_interconnect.get_bus(0, "bram").connect(bram.bus),
-            d_interconnect.get_bus(1, "console").connect(console.bus),
-            d_interconnect.get_bus(2, "soc_info").connect(soc_info.bus),
             d_interconnect.get_bus(8, "ram").connect(ram.dbus),
         ]
+
+        ibus0 = i_interconnect.get_bus(0, "bram")
+        dbus0 = d_interconnect.get_bus(0, "bram")
+        with m.If(ibus0.rmask.any()):
+            comb += ibus0.connect(bram.bus)
+        with m.Else():
+            comb += dbus0.connect(bram.bus)
+
         if isinstance(platform, SimPlatform):
 
             def trap_process():
@@ -84,8 +92,8 @@ class SOC(Elaboratable):
                 print("~" * 148)
                 while True:
                     yield
-                    if (yield hart.trap):
 
+                    if (yield hart.trap):
                         if console.last_output != "\n":
                             print()
 

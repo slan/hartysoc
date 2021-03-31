@@ -25,9 +25,9 @@ class RAM(Elaboratable):
             def ram_sim_process():
                 yield Passive()
                 while True:
-                    yield Settle()  
+                    yield Settle()
                     yield irp.data.eq(self._init[(yield irp.addr)])
-                    yield Settle()  
+                    yield Settle()
                     rmask = yield self.dbus.rmask
                     if rmask != 0:
                         addr = yield drp.addr
@@ -70,21 +70,21 @@ class RAM(Elaboratable):
 
         with m.If(self.ibus.rmask.any()):
             comb += [
-                irp.addr.eq(self.ibus.addr[2:28]),
+                irp.addr.eq(self.ibus.addr[2:-4]),
                 self.ibus.rdata.eq(irp.data),
-                self.ibus.ack.eq(1)
+                self.ibus.ack.eq(1),
             ]
 
         with m.If(self.dbus.wmask.any()):
             comb += [
-                dwp.addr.eq(self.dbus.addr[2:28]),
+                dwp.addr.eq(self.dbus.addr[2:-4]),
                 dwp.en.eq(self.dbus.wmask),
                 dwp.data.eq(self.dbus.wdata),
                 self.dbus.ack.eq(1),
             ]
         with m.Elif(self.dbus.rmask.any()):
             comb += [
-                drp.addr.eq(self.dbus.addr[2:28]),
+                drp.addr.eq(self.dbus.addr[2:-4]),
                 self.dbus.rdata.eq(drp.data),
                 self.dbus.ack.eq(1),
             ]

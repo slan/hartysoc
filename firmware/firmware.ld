@@ -19,8 +19,9 @@ SECTIONS
         *(.bss*);
         *(.sbss*);
         . = ALIGN(4);
-   } > rom AT> rom
+   } > ram AT> rom
 
+    _addr_main = LOADADDR(.main);
     _size_main = SIZEOF(.main);
 
     /DISCARD/ : { *(*) }

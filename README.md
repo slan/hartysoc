@@ -59,6 +59,8 @@ cpi=1.0000762944
 ## Benchmark
 
 Dhrystone `-O3`:
+
+From distributed RAM:
 ```
 Number_Of_Runs: 100
 User_Time: 39131 cycles, 39129 insn
@@ -66,13 +68,13 @@ Cycles_Per_Instruction: 1.000
 Dhrystones_Per_Second_Per_MHz: 2555
 DMIPS_Per_MHz: 1.454
 ```
-Dhrystone `-O3 --no-inline`:
+From block RAM:
 ```
 Number_Of_Runs: 100
-User_Time: 47628 cycles, 47627 insn
-Cycles_Per_Instruction: 1.000
-Dhrystones_Per_Second_Per_MHz: 2099
-DMIPS_Per_MHz: 1.194
+User_Time: 85866 cycles, 36129 insn
+Cycles_Per_Instruction: 2.376
+Dhrystones_Per_Second_Per_MHz: 1164
+DMIPS_Per_MHz: 0.662
 ```
 
 ## References

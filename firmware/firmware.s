@@ -1,3 +1,13 @@
+    la a0, _addr_main
+    la a2, _size_main
+_copy:
+    lw t0, 0(a0)
+    sw t0, 0(a1)
+    addi a0, a0, 4
+    addi a1, a1, 4
+    addi a2, a2, -4
+    bnez a2, _copy
+
     la a0, 0x10000000
     la a1, 0x20000010  # Greetings (SOCInfo)
     

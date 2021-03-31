@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Tue Mar 30 23:20:48 2021
+[*] Wed Mar 31 08:30:02 2021
 [*]
 [dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Tue Mar 30 23:20:07 2021"
-[dumpfile_size] 512337
+[dumpfile_mtime] "Wed Mar 31 08:26:48 2021"
+[dumpfile_size] 1232272
 [savefile] "/home/slan/src/hartysoc/platform/sim/sim.gtkw"
 [timestart] 0
 [size] 1800 1263
-[pos] -1 -56
-*-17.945995 1430000 1430000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -1
+*-17.749907 1105000 1105000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.console.
 [treeopen] top.d_interconnect.
@@ -136,6 +136,10 @@ top.hart.decoder.rd_addr[4:0]
 top.hart.alu.func
 @200
 -MEM
+@22
+top.ram.dbus__rmask[3:0]
+top.ram.dbus__addr[31:0]
+@200
 -WB
 @22
 top.hart.registers.rp1.mem_r_addr[4:0]
@@ -152,6 +156,7 @@ top.hart.registers.wp.memory(10)[31:0]
 -BRAM
 @22
 top.bram.bram__addr[31:0]
+@23
 top.bram.bram__rmask[3:0]
 @28
 top.bram.fsm_state
@@ -159,6 +164,7 @@ top.bram.fsm_state
 top.bram.bram__rmask[3:0]
 top.bram.bram__wmask[3:0]
 top.bram.wp__addr[31:0]
+top.bram.bram__wdata[31:0]
 @200
 -UART
 @22
@@ -169,9 +175,9 @@ top.console.console__rmask[3:0]
 top.i_interconnect.ibus__addr[31:0]
 top.i_interconnect.ibus__rmask[3:0]
 @28
-top.i_interconnect.encoder.i[1:0]
 top.i_interconnect.encoder.n
 top.i_interconnect.encoder.o
+top.i_interconnect.ibus__ack
 @200
 -D_INTERCONNECT
 @22
@@ -181,12 +187,20 @@ top.d_interconnect.encoder.n
 top.d_interconnect.encoder.o[1:0]
 @22
 top.d_interconnect.dbus__addr[31:0]
-@23
 top.d_interconnect.dbus__wmask[3:0]
-@22
 top.d_interconnect.dbus__rmask[3:0]
+@28
+top.d_interconnect.dbus__ack
 @200
 -ICACHE
+@22
+top.icache.addr[31:0]
+top.icache.data[31:0]
+@28
+top.icache.icache_up__ack
+top.icache.icache_down__ack
+@22
+top.icache.icache_up__rmask[3:0]
 @28
 top.icache.valid
 top.icache.icache_down__ack

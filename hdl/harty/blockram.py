@@ -6,9 +6,10 @@ from ..riscv.bus import bus_layout
 
 
 class BlockRAM(Elaboratable):
-    def __init__(self, *, domain):
+    def __init__(self, *, domain, size):
         self._domain = domain
-        self._init = [0] * 4096
+        assert size % 4 == 0
+        self._init = [0] * (size // 4)
         self.bus = Record(bus_layout, name="bram")
 
     def elaborate(self, platform):
@@ -21,14 +22,13 @@ class BlockRAM(Elaboratable):
             rp = Record([("addr", 32), ("data", 32)])
             wp = Record([("addr", 32), ("data", 32), ("en", 4)])
 
-            def ram_sim_process():
+            def bram_sim_process():
                 yield Passive()
                 while True:
-                    yield Settle()
                     rmask = yield self.bus.rmask
                     if rmask != 0:
                         addr = yield rp.addr
-                        print(f"BRAM  read addr: {addr:#010x}")
+                        # print(f"BRAM  read addr: {addr:#010x} mask: {rmask:#06b} -> {self._init[addr]:#010x}")
                         yield rp.data.eq(self._init[addr])
                     wmask = yield wp.en
                     if wmask != 0:
@@ -45,22 +45,22 @@ class BlockRAM(Elaboratable):
                         }
                         mask = en_to_mask[wmask]
                         try:
-                            print(f"BRAM write addr: {addr:#010x}")
+                            # print(f"BRAM write addr: {addr:#010x}")
                             self._init[addr] = (self._init[addr] & ~mask) | (
                                 wdata & mask
                             )
                         except:
                             print(
-                                f"RAM write addr: {addr:#010x} wdata: {wdata:#010x} wmask: {wmask:#06b}"
+                                f"BRAM write addr: {addr:#010x} wdata: {wdata:#010x} wmask: {wmask:#06b}"
                             )
                             raise
 
                     yield
 
-            platform.add_sync_process(ram_sim_process, domain=self._domain)
+            platform.add_sync_process(bram_sim_process, domain=self._domain)
 
         else:
-            mem = Memory(width=32, depth=4096)
+            mem = Memory(width=32, depth=len(self._init))
             m.submodules.rp = rp = mem.read_port(domain=self._domain)
             m.submodules.wp = wp = mem.write_port(domain=self._domain)
 
@@ -68,12 +68,12 @@ class BlockRAM(Elaboratable):
             with m.State("WAIT"):
                 with m.If(self.bus.rmask.any()):
                     comb += [
-                        rp.addr.eq(self.bus.addr),
+                        rp.addr.eq(self.bus.addr[2:-4]),
                     ]
                     m.next = "READ"
                 with m.Elif(self.bus.wmask.any()):
                     comb += [
-                        wp.addr.eq(self.bus.addr),
+                        wp.addr.eq(self.bus.addr[2:-4]),
                         wp.en.eq(self.bus.wmask),
                         wp.data.eq(self.bus.wdata),
                     ]
@@ -89,7 +89,5 @@ class BlockRAM(Elaboratable):
                     self.bus.ack.eq(1),
                 ]
                 m.next = "WAIT"
-
-        # m.submodules.bram = bram = Instance()
 
         return m

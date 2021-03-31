@@ -76,9 +76,6 @@ class Hart(Elaboratable):
             sync += self.halt.eq(1)
 
         with m.If(~self.halt):
-            with m.If(decoder.trap):
-                trap(decoder.mcause)
-
             with m.If(pc_wdata[:2].any()):
                 trap(TrapCause.IADDR)
 
@@ -94,6 +91,8 @@ class Hart(Elaboratable):
             ]
 
             with m.If(self.ibus.ack):
+                with m.If(decoder.trap):
+                    trap(decoder.mcause)
 
                 ### ID
 
