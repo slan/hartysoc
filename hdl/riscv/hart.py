@@ -64,12 +64,24 @@ class Hart(Elaboratable):
 
         pc = Signal(32, reset=self._reset_vector)
         pc_incr = Signal.like(pc)
+        pc_wdata = Signal.like(pc)
+        branch_target = Signal.like(pc)
+        branch_taken = Signal()
 
-        with m.If(decoder.trap):
-            comb += self.trap.eq(1)
+        def trap(mcause, comb=comb, sync=sync):
+            comb += [
+                self.trap.eq(1),
+                self.mcause.eq(mcause),
+            ]
             sync += self.halt.eq(1)
 
         with m.If(~self.halt):
+            with m.If(decoder.trap):
+                trap(decoder.mcause)
+
+            with m.If(pc_wdata[:2].any()):
+                trap(TrapCause.IADDR)
+
             sync += [
                 self.mcycle.eq(self.mcycle + 1),
             ]
@@ -83,7 +95,7 @@ class Hart(Elaboratable):
 
             with m.If(self.ibus.ack):
 
-               ### ID
+                ### ID
 
                 comb += [
                     decoder.insn.eq(self.ibus.rdata),
@@ -124,10 +136,12 @@ class Hart(Elaboratable):
                         with m.Case(MemFunc.LB, MemFunc.LBU):
                             comb += self.dbus.rmask.eq(1 << alu.out[0:2])
                         with m.Case(MemFunc.LH, MemFunc.LHU):
-                            comb += self.dbus.rmask.eq(
-                                Mux(alu.out[1], 0b1100, 0b0011)
-                            )
+                            with m.If(alu.out[:1].any()):
+                                trap(TrapCause.DADDR_L)
+                            comb += self.dbus.rmask.eq(Mux(alu.out[1], 0b1100, 0b0011))
                         with m.Case(MemFunc.LW):
+                            with m.If(alu.out[:2].any()):
+                                trap(TrapCause.DADDR_L)
                             comb += self.dbus.rmask.eq(0b1111)
 
                         # STORE
@@ -139,6 +153,8 @@ class Hart(Elaboratable):
                                 ),
                             ]
                         with m.Case(MemFunc.SH):
+                            with m.If(alu.out[:1].any()):
+                                trap(TrapCause.DADDR_L)
                             comb += [
                                 self.dbus.wmask.eq(Mux(alu.out[1], 0b1100, 0b0011)),
                                 self.dbus.wdata.word_select(alu.out[1], 16).eq(
@@ -146,6 +162,8 @@ class Hart(Elaboratable):
                                 ),
                             ]
                         with m.Case(MemFunc.SW):
+                            with m.If(alu.out[:2].any()):
+                                trap(TrapCause.DADDR_L)
                             comb += [
                                 self.dbus.wmask.eq(0b1111),
                                 self.dbus.wdata.eq(registers.rs2_rdata),
@@ -197,9 +215,6 @@ class Hart(Elaboratable):
                                     with m.Case(RegSrc.M_INSTRET):
                                         comb += registers.rd_wdata.eq(self.minstret)
 
-                    pc_wdata = Signal.like(pc)
-                    branch_target = Signal.like(pc)
-                    branch_taken = Signal()
                     with m.Switch(decoder.branch_cond):
                         with m.Case(BranchCond.ALWAYS):
                             comb += [

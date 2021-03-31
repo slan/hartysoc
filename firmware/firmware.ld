@@ -1,12 +1,16 @@
 MEMORY
 {
-    ram (rx) : ORIGIN = 0x80000000, LENGTH = 0x10000
+    rom (rx ) : ORIGIN = 0x80000000, LENGTH = 32K
+    ram (rwx) : ORIGIN = 0x00000000, LENGTH = 32K
 }
 
 SECTIONS
 {
-    .text : {
-        KEEP(build/firmware/firmware.s.o(.text));
+    .firmware : {
+        KEEP(build/firmware/firmware.s.o(*));
+        . = ALIGN(4);
+    } > rom
+    .main : {
         *(.text*);
         *(.rodata*);
         *(.data*);
@@ -15,6 +19,9 @@ SECTIONS
         *(.bss*);
         *(.sbss*);
         . = ALIGN(4);
-    } > ram
+   } > rom AT> rom
+
+    _size_main = SIZEOF(.main);
+
     /DISCARD/ : { *(*) }
 }

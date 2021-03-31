@@ -68,17 +68,41 @@ mkdir -p ~/tools&&wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools
 7. Install Verilog-VCD, install [riscv-formal](https://github.com/slan/riscv-formal.git) from my fork so you can run the verification out-of-tree:
 
 ```
-pip install Verilog_VCD
-git clone https://github.com/slan/riscv-formal.git
+pip install --no-binary :all: Verilog_VCD
+git clone -b develop https://github.com/slan/riscv-formal.git
+```
+
+8. Install symbiyosys to `/usr/local`:
+
+```
+git clone https://github.com/YosysHQ/SymbiYosys.git SymbiYosys
+cd SymbiYosys
+sudo make install
+cd ..
+```
+
+9. Install  boolector to `/usr/local`:
+
+```
+sudo apt-get install -y cmake
+git clone https://github.com/boolector/boolector
+cd boolector
+./contrib/setup-btor2tools.sh
+./contrib/setup-lingeling.sh
+./configure.sh
+make -C build -j$(nproc)
+sudo cp build/bin/{boolector,btor*} /usr/local/bin/
+sudo cp deps/btor2tools/bin/btorsim /usr/local/bin/
+cd ..
 ```
 
 > STOP! you can now `make formal -j$(nproc)` to verify the core
 
-8. Install vivado (manually) and make sure it's in your `${PATH}`
+10. Install vivado (manually) and make sure it's in your `${PATH}`
 
 > STOP! you can now `make arty` to generate a bitstream
 
-9. Install openocd in `/usr/local`:
+11. Install openocd in `/usr/local`:
 
 ```
 wget -O- https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv-openocd-0.10.0-2020.08.1-x86_64-linux-ubuntu14.tar.gz|sudo tar -C /usr/local --strip-components=1 -xzf -

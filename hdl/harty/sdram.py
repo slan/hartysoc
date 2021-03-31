@@ -25,52 +25,39 @@ class SDRAM(Elaboratable):
 
         comb = m.d.comb
 
-        with m.If(self.bus.addr < 0x3000_0000):
-            comb += [
-                self.bus.ack.eq(1),
-                self.bus.rdata.eq(
-                    Cat(
-                        mig.pll_locked,
-                        mig.mig_init_calib_complete,
-                        mig.app_rdy,
-                        mig.app_wdf_rdy,
-                    )
-                ),
-            ]
-        with m.Else():
-            # HART domain: write to fifo_w, read from fifo_r
-            cd_hart = m.d[self._domain]
-            with m.If(self.bus.wmask.any()):
-                # BUS WRITE -> write to fifo_w, fire & forget
-                comb += self.bus.ack.eq(fifo_w.w_rdy)
-                with m.If(fifo_w.w_rdy):
+        # HART domain: write to fifo_w, read from fifo_r
+        cd_hart = m.d[self._domain]
+        with m.If(self.bus.wmask.any()):
+            # BUS WRITE -> write to fifo_w, fire & forget
+            comb += self.bus.ack.eq(fifo_w.w_rdy)
+            with m.If(fifo_w.w_rdy):
+                comb += [
+                    fifo_w.w_en.eq(1),
+                    fifo_w.w_data.eq(
+                        Cat(self.bus.wmask, self.bus.addr[0:26], self.bus.wdata)
+                    ),
+                ]
+        with m.If(self.bus.rmask.any()):
+            # BUS READ -> write to fifo_w, lock the bus
+            comb += self.bus.ack.eq(0)
+            with m.If(fifo_w.w_rdy):
+                req_in_flight = Signal(1)
+                cd_hart += req_in_flight.eq(1)
+                with m.If(~req_in_flight):
                     comb += [
                         fifo_w.w_en.eq(1),
-                        fifo_w.w_data.eq(
-                            Cat(self.bus.wmask, self.bus.addr[0:26], self.bus.wdata)
-                        ),
+                        fifo_w.w_data.eq(Cat(0, 0, 0, 0, self.bus.addr[0:26])),
                     ]
-            with m.If(self.bus.rmask.any()):
-                # BUS READ -> write to fifo_w, lock the bus
-                comb += self.bus.ack.eq(0)
-                with m.If(fifo_w.w_rdy):
-                    req_in_flight = Signal(1)
-                    cd_hart += req_in_flight.eq(1)
-                    with m.If(~req_in_flight):
-                        comb += [
-                            fifo_w.w_en.eq(1),
-                            fifo_w.w_data.eq(Cat(0, 0, 0, 0, self.bus.addr[0:26])),
-                        ]
-            with m.If(fifo_r.r_rdy):
-                # Response from MIG -> read from fifo_r, put data on the bus, release
-                comb += self.bus.ack.eq(1)
-                cd_hart += req_in_flight.eq(0)
-                comb += [
-                    fifo_r.r_en.eq(1),
-                    self.bus.rdata.eq(fifo_r.r_data),
+        with m.If(fifo_r.r_rdy):
+            # Response from MIG -> read from fifo_r, put data on the bus, release
+            comb += self.bus.ack.eq(1)
+            cd_hart += req_in_flight.eq(0)
+            comb += [
+                fifo_r.r_en.eq(1),
+                self.bus.rdata.eq(fifo_r.r_data),
                 ]
 
-        # MIG domain
+        # MIG domain: write to fifo_r, read from fifo_w
         cd_mig = m.d[mig.ui_domain]
         read_in_flight = Signal()
         with m.If(fifo_w.r_rdy & mig.app_rdy & mig.app_wdf_rdy):

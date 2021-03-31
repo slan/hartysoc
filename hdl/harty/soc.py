@@ -14,6 +14,8 @@ from .soc_info import SOCInfo
 from .vga import VGA
 from .leds import LEDs
 from .interconnect import Interconnect
+from .cache import Cache
+from .blockram import BlockRAM
 
 
 class SOC(Elaboratable):
@@ -23,17 +25,15 @@ class SOC(Elaboratable):
     def elaborate(self, platform):
         m = Module()
 
-        hart_domain = "hart"
+        domain = "hart"
         m.submodules.pll = pll = PLL(
             mult=8,
             div=1,
-            cd_specs={hart_domain: PLL.cd_spec(div=128, local=False)},
+            cd_specs={domain: PLL.cd_spec(div=128, local=False)},
         )
-        hart_freq = (
-            pll.get_frequency_ratio(hart_domain) * platform.default_clk_frequency
-        )
+        hart_freq = pll.get_frequency_ratio(domain) * platform.default_clk_frequency
 
-        m.submodules.hart = hart = Hart(domain=hart_domain, reset_vector=0x8000_0000)
+        m.submodules.hart = hart = Hart(domain=domain, reset_vector=0x8000_0000)
 
         comb = m.d.comb
 
@@ -44,26 +44,39 @@ class SOC(Elaboratable):
             assert file_size % 4 == 0
             firmware.fromfile(f, file_size // 4)
 
-        m.submodules.ram = ram = RAM(domain=hart_domain, init=firmware)
-        m.submodules.console = console = Console(domain=hart_domain, freq=hart_freq)
+        m.submodules.ram = ram = RAM(domain=domain, init=firmware)
+        m.submodules.console = console = Console(domain=domain, freq=hart_freq)
         # m.submodules.vga = vga = VGA()
         # m.submodules.leds = leds = LEDs(domain=hart_domain)
         m.submodules.soc_info = soc_info = SOCInfo(version="0.2.1", freq=hart_freq)
         if self._with_sdram:
-            m.submodules.sdram = sdram = SDRAM(domain=hart_domain)
+            m.submodules.sdram = sdram = SDRAM(domain=domain)
 
-        m.submodules.interconnect = interconnect = Interconnect()
+        m.submodules.i_interconnect = i_interconnect = Interconnect(name="ibus")
+        m.submodules.d_interconnect = d_interconnect = Interconnect(name="dbus")
 
-        comb += hart.ibus.connect(ram.ibus)
-        comb += hart.dbus.connect(interconnect.bus)
-        # if self._with_sdram:
-        #     comb += interconnect.get_bus(0).connect(sdram.bus)
-        comb += interconnect.get_bus(1).connect(console.bus)
-        comb += interconnect.get_bus(2).connect(soc_info.bus)
-        # comb += interconnect.get_bus(6).connect(leds.bus)
-        comb += interconnect.get_bus(8).connect(ram.bus)
-        # comb += interconnect.get_bus(9).connect(vga.bus)
+        m.submodules.icache = icache = Cache(domain=domain)
 
+        if self._with_sdram:
+            comb += d_interconnect.get_bus(0, "sdram").connect(sdram.bus)
+
+        # comb += interconnect.get_bus(6, "leds").connect(leds.bus)
+        # comb += interconnect.get_bus(9, "vga").connect(vga.bus)
+
+        m.submodules.bram = bram = BlockRAM(domain=domain)
+
+        comb += [
+            hart.ibus.connect(icache.bus_up),
+            icache.bus_down.connect(i_interconnect.bus),
+            # i_interconnect.get_bus(0, "bram").connect(bram.bus),
+            i_interconnect.get_bus(8, "ram").connect(ram.ibus),
+            #
+            hart.dbus.connect(d_interconnect.bus),
+            # d_interconnect.get_bus(0, "bram").connect(bram.bus),
+            d_interconnect.get_bus(1, "console").connect(console.bus),
+            d_interconnect.get_bus(2, "soc_info").connect(soc_info.bus),
+            d_interconnect.get_bus(8, "ram").connect(ram.dbus),
+        ]
         if isinstance(platform, SimPlatform):
 
             def trap_process():
@@ -71,7 +84,7 @@ class SOC(Elaboratable):
                 print("~" * 148)
                 while True:
                     yield
-                    if (yield hart.trap) and not (yield hart.halt):
+                    if (yield hart.trap):
 
                         if console.last_output != "\n":
                             print()
@@ -96,7 +109,7 @@ class SOC(Elaboratable):
                             if i % 8 == 7:
                                 print()
 
-            platform.add_sync_process(trap_process, domain=hart_domain)
+            platform.add_sync_process(trap_process, domain=domain)
 
             def watchdog_process():
                 while True:
@@ -109,6 +122,6 @@ class SOC(Elaboratable):
                 cpi = mcycle / minstret if minstret != 0 else "N/A"
                 print(f"*** HALT *** mcycle={mcycle} minstret={minstret} (cpi: {cpi})")
 
-            platform.add_sync_process(watchdog_process, domain=hart_domain)
+            platform.add_sync_process(watchdog_process, domain=domain)
 
         return m
