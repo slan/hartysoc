@@ -6,10 +6,9 @@ from ..riscv.bus import bus_layout
 
 
 class BlockRAM(Elaboratable):
-    def __init__(self, *, domain, size):
+    def __init__(self, *, domain, init):
         self._domain = domain
-        assert size % 4 == 0
-        self._init = [0] * (size // 4)
+        self._init = init
         self.bus = Record(bus_layout, name="bram")
 
     def elaborate(self, platform):
@@ -60,32 +59,23 @@ class BlockRAM(Elaboratable):
             platform.add_sync_process(bram_sim_process, domain=self._domain)
 
         else:
-            mem = Memory(width=32, depth=len(self._init))
+            mem = Memory(width=32, depth=len(self._init), init=self._init)
             m.submodules.rp = rp = mem.read_port(domain=self._domain)
             m.submodules.wp = wp = mem.write_port(domain=self._domain)
 
         with m.FSM(domain=self._domain):
             with m.State("WAIT"):
-                with m.If(self.bus.rmask.any()):
+                with m.If(self.bus.rmask.any()|self.bus.wmask.any()):
                     comb += [
                         rp.addr.eq(self.bus.addr[2:-4]),
-                    ]
-                    m.next = "READ"
-                with m.Elif(self.bus.wmask.any()):
-                    comb += [
                         wp.addr.eq(self.bus.addr[2:-4]),
                         wp.en.eq(self.bus.wmask),
                         wp.data.eq(self.bus.wdata),
                     ]
-                    m.next = "WRITE"
-            with m.State("READ"):
+                    m.next = "ACK"
+            with m.State("ACK"):
                 comb += [
                     self.bus.rdata.eq(rp.data),
-                    self.bus.ack.eq(1),
-                ]
-                m.next = "WAIT"
-            with m.State("WRITE"):
-                comb += [
                     self.bus.ack.eq(1),
                 ]
                 m.next = "WAIT"

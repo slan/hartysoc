@@ -1,25 +1,25 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Wed Mar 31 08:30:02 2021
+[*] Thu Apr  1 18:16:43 2021
 [*]
 [dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Wed Mar 31 08:26:48 2021"
-[dumpfile_size] 1232272
+[dumpfile_mtime] "Thu Apr  1 18:15:32 2021"
+[dumpfile_size] 568419
 [savefile] "/home/slan/src/hartysoc/platform/sim/sim.gtkw"
-[timestart] 0
-[size] 1800 1263
+[timestart] 80319000
+[size] 2560 1377
 [pos] -1 -1
-*-17.749907 1105000 1105000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.014513 80726000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.console.
-[treeopen] top.d_interconnect.
 [treeopen] top.hart.
 [treeopen] top.hart.registers.
-[treeopen] top.i_interconnect.
+[treeopen] top.mmu.
+[treeopen] top.mmu.dic.
 [sst_width] 214
 [signals_width] 300
 [sst_expanded] 1
-[sst_vpaned_height] 565
+[sst_vpaned_height] 624
 @200
 -HART
 @28
@@ -27,44 +27,8 @@ top.hart.hart_rst
 top.hart.hart_clk
 top.hart.trap
 top.hart.halt
-@c00022
-top.hart.pc[31:0]
-@28
-(0)top.hart.pc[31:0]
-(1)top.hart.pc[31:0]
-(2)top.hart.pc[31:0]
-(3)top.hart.pc[31:0]
-(4)top.hart.pc[31:0]
-(5)top.hart.pc[31:0]
-(6)top.hart.pc[31:0]
-(7)top.hart.pc[31:0]
-(8)top.hart.pc[31:0]
-(9)top.hart.pc[31:0]
-(10)top.hart.pc[31:0]
-(11)top.hart.pc[31:0]
-(12)top.hart.pc[31:0]
-(13)top.hart.pc[31:0]
-(14)top.hart.pc[31:0]
-(15)top.hart.pc[31:0]
-(16)top.hart.pc[31:0]
-(17)top.hart.pc[31:0]
-(18)top.hart.pc[31:0]
-(19)top.hart.pc[31:0]
-(20)top.hart.pc[31:0]
-(21)top.hart.pc[31:0]
-(22)top.hart.pc[31:0]
-(23)top.hart.pc[31:0]
-(24)top.hart.pc[31:0]
-(25)top.hart.pc[31:0]
-(26)top.hart.pc[31:0]
-(27)top.hart.pc[31:0]
-(28)top.hart.pc[31:0]
-(29)top.hart.pc[31:0]
-(30)top.hart.pc[31:0]
-(31)top.hart.pc[31:0]
-@1401200
--group_end
 @22
+top.hart.pc$1[31:0]
 top.hart.insn[31:0]
 top.hart.dbus__addr[31:0]
 top.hart.dbus__rmask[3:0]
@@ -136,10 +100,6 @@ top.hart.decoder.rd_addr[4:0]
 top.hart.alu.func
 @200
 -MEM
-@22
-top.ram.dbus__rmask[3:0]
-top.ram.dbus__addr[31:0]
-@200
 -WB
 @22
 top.hart.registers.rp1.mem_r_addr[4:0]
@@ -154,56 +114,13 @@ top.hart.registers.wp.mem_w_data[31:0]
 top.hart.registers.wp.memory(10)[31:0]
 @200
 -BRAM
-@22
-top.bram.bram__addr[31:0]
-@23
-top.bram.bram__rmask[3:0]
-@28
-top.bram.fsm_state
-@22
-top.bram.bram__rmask[3:0]
-top.bram.bram__wmask[3:0]
-top.bram.wp__addr[31:0]
-top.bram.bram__wdata[31:0]
-@200
 -UART
 @22
 top.console.console__rmask[3:0]
 @200
--I_INTERCONNECT
-@22
-top.i_interconnect.ibus__addr[31:0]
-top.i_interconnect.ibus__rmask[3:0]
+-INTERCONNECT
 @28
-top.i_interconnect.encoder.n
-top.i_interconnect.encoder.o
-top.i_interconnect.ibus__ack
-@200
--D_INTERCONNECT
-@22
-top.d_interconnect.encoder.i[3:0]
-@28
-top.d_interconnect.encoder.n
-top.d_interconnect.encoder.o[1:0]
-@22
-top.d_interconnect.dbus__addr[31:0]
-top.d_interconnect.dbus__wmask[3:0]
-top.d_interconnect.dbus__rmask[3:0]
-@28
-top.d_interconnect.dbus__ack
-@200
--ICACHE
-@22
-top.icache.addr[31:0]
-top.icache.data[31:0]
-@28
-top.icache.icache_up__ack
-top.icache.icache_down__ack
-@22
-top.icache.icache_up__rmask[3:0]
-@28
-top.icache.valid
-top.icache.icache_down__ack
-top.icache.icache_up__ack
+top.mmu.dic.console__ack
+top.mmu.dic.dic__ack
 [pattern_trace] 1
 [pattern_trace] 0

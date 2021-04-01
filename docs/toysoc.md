@@ -32,17 +32,14 @@ Code:
                 0b00000000,  # NOP
 ```
 
-As expected:
+![schematics](toysoc.png)
 
-![Trace](toysoc-vcd.png)
+![trace](toysoc-vcd.png)
 
-## High level
+Proof of concept implementation using [Logisim evolution](https://github.com/reds-heig/logisim-evolution): [toysoc.circ](toysoc.circ)
 
-![Diagram](toysoc.png)
+## Conclusion
 
-## Combinatorial loop
-
-![Overview](toysoc-loop-overview.png)
-
-![Overview](toysoc-loop-full.png)
-
+- distributed RAM (single port) does not work: combinatorial loop
+- distributed RAM (simple dual port): works with 0 latency
+- hart implementation does account for any memory latency (incl. 0)

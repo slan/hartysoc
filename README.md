@@ -8,53 +8,21 @@ Setup instructions are [here](SETUP.md)
 
 Check `SRCS_FIRMWARE` in the [Makefile](Makefile), default should run an SDRAM test. Use `sim` or `arty`/`prog` targets.
 
-Running on device (code/data in cache, just testing SDRAM R/W):
-```
-hartysoc 0.2.0 @33.333MHz - Bonjour
------------------------------------------------
-FE 05 01 00 AA AA 55 55 55 55 AA AA 99 99 66 66
-BB BB 11 11 EE EE 44 44 44 44 EE EE DD DD 88 88
-BB BB 11 11 EE EE 44 44 44 44 EE EE DD DD 88 88
-BB BB 11 11 EE EE 44 44 44 44 EE EE DD DD 88 88
-00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
-10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F
-
-Writing uint32_t...
-00000000 00000001 00000002 00000003
-00000004 00000005 00000006 00000007
-
-Writing uint16_t...
-0000 0001 0002 0003 0004 0005 0006 0007
-0008 0009 000A 000B 000C 000D 000E 000F
-
-Writing uint8_t...
-00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
-10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F
-
-Reading...
-00 00 00 00 01 00 00 00 02 00 00 00 03 00 00 00
-04 00 00 00 05 00 00 00 06 00 00 00 07 00 00 00
-00 00 01 00 02 00 03 00 04 00 05 00 06 00 07 00
-08 00 09 00 0A 00 0B 00 0C 00 0D 00 0E 00 0F 00
-00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
-10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F
------------------------------------------------
-cycle=3045943 insn=3043621
-cpi=1.0000762944
-```
-
 ## Features
 
 - single-cycle, runs at 33MHz
 - verified with [riscv-formal](https://github.com/SymbioticEDA/riscv-formal)
 - serial console (output-only)
-- SDRAM
+- runs from distributed RAM, block RAM, SDRAM
 
 ## WIP
 
-- an easy way to plug memory-mapped devices on the buses
+- cache
 - GPU: basic VGA is in with a "racing the beam" 1920x1080@60Hz demo screen if you have a [Pmod VGA](https://store.digilentinc.com/pmod-vga-video-graphics-array/).
 
+## Notes
+
+- exploring interconnect and limitations about memory ports vs latency: [toysoc](docs/toysoc.md)
 
 ## Benchmark
 
@@ -76,7 +44,22 @@ Cycles_Per_Instruction: 2.376
 Dhrystones_Per_Second_Per_MHz: 1164
 DMIPS_Per_MHz: 0.662
 ```
-
+From SDRAM (hart clocked @6.25MHz):
+```
+Number_Of_Runs: 100
+User_Time: 238795 cycles, 39129 insn
+Cycles_Per_Instruction: 6.102
+Dhrystones_Per_Second_Per_MHz: 418
+DMIPS_Per_MHz: 0.237
+```
+From SDRAM (hart clocked @33.33MHz):
+```
+Number_Of_Runs: 100
+User_Time: 613987 cycles, 39129 insn
+Cycles_Per_Instruction: 15.691
+Dhrystones_Per_Second_Per_MHz: 162
+DMIPS_Per_MHz: 0.092
+```
 ## References
 
 ### Core

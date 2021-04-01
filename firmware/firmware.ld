@@ -19,10 +19,13 @@ SECTIONS
         *(.bss*);
         *(.sbss*);
         . = ALIGN(4);
-   } > ram AT> rom
-
-    _addr_main = LOADADDR(.main);
+   } > ram AT> rom                          /* Run in RAM, include in ROM */
+    
+    _addr_main = LOADADDR(.main);           /* LOADADDR gives the LMA, i.e the offset from rom start */
     _size_main = SIZEOF(.main);
+
+    _stack = ADDR(.main);                   /* ADDR gives the VMA, i.e the start address of the section */
+    _stack = _stack + _size_main + 1024;
 
     /DISCARD/ : { *(*) }
 }

@@ -1,3 +1,8 @@
+    la a0, _puts_ret
+    lw t0, 0(a0)
+    sw t0, 0(x0)
+    jalr ra, 0(x0)
+
     la a0, _addr_main
     la a2, _size_main
 
@@ -45,6 +50,4 @@ _memcpy:
     j _memcpy
 _memcpy_ret:
     ret
-
-    .zero 1024
-_stack:
+    

@@ -8,7 +8,7 @@ import hdl.kitchensink as ks
 from hdl.harty.soc import SOC
 
 
-with_sdram = False
+with_sdram = True
 top = SOC(with_sdram=with_sdram)
 
 
@@ -69,8 +69,8 @@ def main():
         script_after_read=""
         if not with_sdram
         else "add_files ../mig/mig.srcs/sources_1/ip/mig_7series_0/mig_7series_0.xci",
-        synth_design_opts="-flatten_hierarchy none -keep_equivalent_registers -no_lc",
-        script_after_synth="write_checkpoint -force top.dcp",
+        #synth_design_opts="-flatten_hierarchy none -keep_equivalent_registers -no_lc",
+        #script_after_synth="write_checkpoint -force top.dcp",
     )
     
     if plan is not None:

@@ -27,12 +27,11 @@ class Cache(Elaboratable):
                 ]
         with m.Else():
             comb += self.bus_up.connect(self.bus_down)
-
-        with m.If(self.bus_down.ack):
-            sync += [
-                addr.eq(self.bus_down.addr),
-                data.eq(self.bus_down.rdata),
-                valid.eq(1),
-            ]
+            with m.If(self.bus_down.ack):
+                sync += [
+                    addr.eq(self.bus_down.addr),
+                    data.eq(self.bus_down.rdata),
+                    valid.eq(1),
+                ]
 
         return m

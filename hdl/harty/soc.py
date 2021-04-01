@@ -14,7 +14,8 @@ from .soc_info import SOCInfo
 from .vga import VGA
 from .leds import LEDs
 from .mmu import MMU
-from .blockram import BlockRAM
+from .block_ram import BlockRAM
+from .block_rom import BlockROM
 
 
 class SOC(Elaboratable):
@@ -26,9 +27,9 @@ class SOC(Elaboratable):
 
         domain = "hart"
         m.submodules.pll = pll = PLL(
-            mult=8,
+            mult=16,
             div=1,
-            cd_specs={domain: PLL.cd_spec(div=128, local=False)},
+            cd_specs={domain: PLL.cd_spec(div=48, local=False)},
         )
         hart_freq = pll.get_frequency_ratio(domain) * platform.default_clk_frequency
 
@@ -45,9 +46,9 @@ class SOC(Elaboratable):
             assert file_size % 4 == 0
             firmware.fromfile(f, file_size // 4)
 
-        m.submodules.ram = ram = RAM(domain=domain, init=firmware)
-        mmu.plug(8, ram.dbus, True, ram.ibus)
-        
+        m.submodules.brom = brom = BlockROM(domain=domain, init=firmware)
+        mmu.plug(8, brom.bus, True)
+
         m.submodules.console = console = Console(domain=domain, freq=hart_freq)
         mmu.plug(1, console.bus)
 
@@ -58,14 +59,17 @@ class SOC(Elaboratable):
             m.submodules.sdram = sdram = SDRAM(domain=domain)
             mmu.plug(0, sdram.bus, True)
         else:
-            m.submodules.bram = bram = BlockRAM(domain=domain, size=32 * 1024)
+            m.submodules.bram = bram = BlockRAM(
+                domain=domain,
+                init=[0] * (32 * 1024 // 4),  # 32K
+            )
             mmu.plug(0, bram.bus, True)
 
         # m.submodules.leds = leds = LEDs(domain=domain)
-        # comb += d_interconnect.get_bus(6, "leds").connect(leds.bus)
+        # mmu.plug(6, leds.bus)
 
         # m.submodules.vga = vga = VGA()
-        # comb += d_interconnect.get_bus(9, "vga").connect(vga.bus)
+        # mmu.plug(9, vga.bus)
 
         comb += [
             hart.ibus.connect(mmu.ibus),

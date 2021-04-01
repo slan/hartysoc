@@ -9,7 +9,7 @@ from nmigen import *
 
 class MIG(Elaboratable):
     def __init__(self):
-        self.ui_domain = "mig_ui"
+        self._domain = "mig_ui"
         # IN
         self.app_en = Signal(1)
         self.app_cmd = Signal(3)
@@ -41,7 +41,7 @@ class MIG(Elaboratable):
                 "ref": PLL.cd_spec(div=5, local=False),
             },
         )
-        m.domains += ClockDomain(self.ui_domain)
+        m.domains += ClockDomain(self._domain)
 
         comb += self.pll_locked.eq(pll.locked)
 
@@ -49,9 +49,9 @@ class MIG(Elaboratable):
             platform.add_resources(
                 [
                     Resource(
-                        self.ui_domain,
+                        self._domain,
                         0,
-                        Pins(self.ui_domain, dir="i"),
+                        Pins(self._domain, dir="i"),
                         Clock(
                             pll.get_frequency_ratio("sys")
                             * platform.default_clk_frequency
@@ -64,7 +64,7 @@ class MIG(Elaboratable):
             mem = Memory(width=128, depth=8)
             m.submodules.mem_rp = mem_rp = mem.read_port(domain="comb")
             m.submodules.mem_wp = mem_wp = mem.write_port(
-                domain=self.ui_domain, granularity=8
+                domain=self._domain, granularity=8
             )
 
             def process():
@@ -131,7 +131,7 @@ class MIG(Elaboratable):
 
                     yield
 
-            platform.add_sync_process(process, domain=self.ui_domain)
+            platform.add_sync_process(process, domain=self._domain)
 
         else:
             ddr3 = platform.request(
@@ -188,8 +188,8 @@ class MIG(Elaboratable):
                 o_app_sr_active=Signal(1, name="app_sr_active"),
                 o_app_ref_ack=Signal(1, name="app_ref_ack"),
                 o_app_zq_ack=Signal(1, name="app_zq_ack"),
-                o_ui_clk=ClockSignal(self.ui_domain),
-                o_ui_clk_sync_rst=ResetSignal(self.ui_domain),
+                o_ui_clk=ClockSignal(self._domain),
+                o_ui_clk_sync_rst=ResetSignal(self._domain),
                 i_app_wdf_mask=self.app_wdf_mask,
                 i_sys_clk_i=ClockSignal("sys"),
                 i_clk_ref_i=ClockSignal("ref"),

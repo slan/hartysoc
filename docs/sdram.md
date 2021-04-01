@@ -1,6 +1,6 @@
 # Notes - SDRAM
 
-- with bufg: 4m41s -3.235
+- with BUFG after PLL: 4m41s -3.235
 - without: 5m13s -1.897
 
 - MIG UI  address space?
@@ -77,7 +77,9 @@ Note that time between `en` and `valid` is constant 23 cycles. There is a good c
 1111BBBB 4444EEEE EEEE4444 8888DDDD
 ```
 Bingo
-- Let's use `word_select` instead. For that we need to keep the part of the address to select the word from the mig response. Fortunately, the bus is locked when a read request is in flight so we can (ab)use this to register the selection bits in `read_in_flight`.
+- Let's use `word_select` instead. For that we need to keep the part of the address to select the word from the mig response. Fortunately, the bus is locked when a read request is in flight so we can (ab)use this to register the selection bits in `read_in_flight`
+- Thanks to the learnings from [toysoc](toysoc.md), the ad-hoc flag has been replaced by a FSM
+
 ```
 hart   00000 00100 01000 01100 10000
 mig    00000 00000 00000 00000 01000
