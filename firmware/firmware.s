@@ -1,12 +1,7 @@
     la a0, _addr_main
     la a2, _size_main
-_copy:
-    lw t0, 0(a0)
-    sw t0, 0(a1)
-    addi a0, a0, 4
-    addi a1, a1, 4
-    addi a2, a2, -4
-    bnez a2, _copy
+
+    call _memcpy
 
     la a0, 0x10000000
     la a1, 0x20000010  # Greetings (SOCInfo)
@@ -30,12 +25,26 @@ _puts:
     lb t0, 0(a0)
     beqz t0, _puts  # Active wait for UART to get accurate CPI
     lbu t0, 0(a1)
-    beqz t0, _end_puts
+    beqz t0, _puts_ret
     sb t0,0(a0)
     addi a1, a1, 1
     j _puts
-_end_puts:
+_puts_ret:
     ret
     
+    # IN: a0: src
+    # IN: a1: dst
+    # IN: a2: size
+_memcpy:
+    beqz a2, _memcpy_ret
+    lw t0, 0(a0)
+    sw t0, 0(a1)
+    addi a0, a0, 4
+    addi a1, a1, 4
+    addi a2, a2, -4
+    j _memcpy
+_memcpy_ret:
+    ret
+
     .zero 1024
 _stack:

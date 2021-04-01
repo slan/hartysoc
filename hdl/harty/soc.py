@@ -13,8 +13,7 @@ from .sdram import SDRAM
 from .soc_info import SOCInfo
 from .vga import VGA
 from .leds import LEDs
-from .interconnect import Interconnect
-from .cache import Cache
+from .mmu import MMU
 from .blockram import BlockRAM
 
 
@@ -37,10 +36,7 @@ class SOC(Elaboratable):
 
         comb = m.d.comb
 
-        m.submodules.i_interconnect = i_interconnect = Interconnect(name="ibus")
-        m.submodules.d_interconnect = d_interconnect = Interconnect(name="dbus")
-
-        m.submodules.icache = icache = Cache(domain=domain)
+        m.submodules.mmu = mmu = MMU(domain=domain)
 
         with open("build/firmware.bin", mode="rb") as f:
             firmware = array("I")
@@ -50,16 +46,20 @@ class SOC(Elaboratable):
             firmware.fromfile(f, file_size // 4)
 
         m.submodules.ram = ram = RAM(domain=domain, init=firmware)
+        mmu.plug(8, ram.dbus, True, ram.ibus)
         
         m.submodules.console = console = Console(domain=domain, freq=hart_freq)
-        comb += d_interconnect.get_bus(1, "console").connect(console.bus)
+        mmu.plug(1, console.bus)
 
         m.submodules.soc_info = soc_info = SOCInfo(version="0.3.0", freq=hart_freq)
-        comb += d_interconnect.get_bus(2, "soc_info").connect(soc_info.bus)
+        mmu.plug(2, soc_info.bus)
 
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=domain)
-            comb += d_interconnect.get_bus(0, "sdram").connect(sdram.bus)
+            mmu.plug(0, sdram.bus, True)
+        else:
+            m.submodules.bram = bram = BlockRAM(domain=domain, size=32 * 1024)
+            mmu.plug(0, bram.bus, True)
 
         # m.submodules.leds = leds = LEDs(domain=domain)
         # comb += d_interconnect.get_bus(6, "leds").connect(leds.bus)
@@ -67,23 +67,10 @@ class SOC(Elaboratable):
         # m.submodules.vga = vga = VGA()
         # comb += d_interconnect.get_bus(9, "vga").connect(vga.bus)
 
-        m.submodules.bram = bram = BlockRAM(domain=domain, size=32 * 1024)
-
         comb += [
-            hart.ibus.connect(icache.bus_up),
-            icache.bus_down.connect(i_interconnect.bus),
-            i_interconnect.get_bus(8, "ram").connect(ram.ibus),
-            #
-            hart.dbus.connect(d_interconnect.bus),
-            d_interconnect.get_bus(8, "ram").connect(ram.dbus),
+            hart.ibus.connect(mmu.ibus),
+            hart.dbus.connect(mmu.dbus),
         ]
-
-        ibus0 = i_interconnect.get_bus(0, "bram")
-        dbus0 = d_interconnect.get_bus(0, "bram")
-        with m.If(ibus0.rmask.any()):
-            comb += ibus0.connect(bram.bus)
-        with m.Else():
-            comb += dbus0.connect(bram.bus)
 
         if isinstance(platform, SimPlatform):
 
