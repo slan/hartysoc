@@ -15,7 +15,6 @@ class BlockROM(Elaboratable):
         m = Module()
 
         comb = m.d.comb
-        sync = m.d[self._domain]
 
         if isinstance(platform, SimPlatform):
             rp = Record([("addr", 32), ("data", 32)])
@@ -39,10 +38,11 @@ class BlockROM(Elaboratable):
             mem = Memory(width=32, depth=len(self._init), init=self._init)
             m.submodules.rp = rp = mem.read_port(domain=self._domain)
 
+        comb += rp.addr.eq(self.bus.addr[2:-4])
+
         with m.FSM(domain=self._domain):
             with m.State("WAIT"):
                 with m.If(self.bus.rmask.any()):
-                    comb += rp.addr.eq(self.bus.addr[2:-4])
                     m.next = "ACK"
             with m.State("ACK"):
                 comb += [

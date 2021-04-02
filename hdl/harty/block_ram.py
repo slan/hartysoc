@@ -15,7 +15,6 @@ class BlockRAM(Elaboratable):
         m = Module()
 
         comb = m.d.comb
-        sync = m.d[self._domain]
 
         if isinstance(platform, SimPlatform):
             rp = Record([("addr", 32), ("data", 32)])
@@ -61,17 +60,18 @@ class BlockRAM(Elaboratable):
         else:
             mem = Memory(width=32, depth=len(self._init), init=self._init)
             m.submodules.rp = rp = mem.read_port(domain=self._domain)
-            m.submodules.wp = wp = mem.write_port(domain=self._domain)
+            m.submodules.wp = wp = mem.write_port(domain=self._domain, granularity=8)
+
+        comb += [
+            rp.addr.eq(self.bus.addr[2:-4]),
+            wp.addr.eq(self.bus.addr[2:-4]),
+            wp.en.eq(self.bus.wmask),
+            wp.data.eq(self.bus.wdata),
+        ]
 
         with m.FSM(domain=self._domain):
             with m.State("WAIT"):
-                with m.If(self.bus.rmask.any()|self.bus.wmask.any()):
-                    comb += [
-                        rp.addr.eq(self.bus.addr[2:-4]),
-                        wp.addr.eq(self.bus.addr[2:-4]),
-                        wp.en.eq(self.bus.wmask),
-                        wp.data.eq(self.bus.wdata),
-                    ]
+                with m.If(self.bus.rmask.any() | self.bus.wmask.any()):
                     m.next = "ACK"
             with m.State("ACK"):
                 comb += [

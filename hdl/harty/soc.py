@@ -27,9 +27,9 @@ class SOC(Elaboratable):
 
         domain = "hart"
         m.submodules.pll = pll = PLL(
-            mult=16,
+            mult=8,
             div=1,
-            cd_specs={domain: PLL.cd_spec(div=48, local=False)},
+            cd_specs={domain: PLL.cd_spec(div=128, local=False)},
         )
         hart_freq = pll.get_frequency_ratio(domain) * platform.default_clk_frequency
 

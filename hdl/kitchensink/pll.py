@@ -33,14 +33,13 @@ class PLL(Elaboratable):
             o_clkout = {}
             for i, (cd_name, cd_spec) in enumerate(self._cd_specs.items()):
                 p_clkout_divide[f"p_CLKOUT{i}_DIVIDE"] = cd_spec._div
-                # o_clkout[f"o_CLKOUT{i}"] = clk_out
-                clk_out = Signal(name=f"pll_clk_{cd_name}")
+                clk_out = Signal(name=f"clk_{cd_name}")
                 o_clkout[f"o_CLKOUT{i}"] = clk_out
-                m.submodules[f"pll_bufg_{cd_name}"] = Instance(
+                m.submodules[f"bufg_{cd_name}"] = Instance(
                     "BUFG", i_I=clk_out, o_O=ClockSignal(cd_name)
                 )
 
-            fb = Signal()
+            feedback = Signal()
             m.submodules.pll = Instance(
                 "PLLE2_BASE",
                 p_BANDWIDTH="OPTIMIZED",  # OPTIMIZED, HIGH, LOW
@@ -60,14 +59,14 @@ class PLL(Elaboratable):
                 # Clock Outputs: 1-bit (each) output: User configurable clock outputs
                 **o_clkout,
                 # Feedback Clocks: 1-bit (each) output: Clock feedback ports
-                o_CLKFBOUT=fb,  # 1-bit output: Feedback clock
+                o_CLKFBOUT=feedback,  # 1-bit output: Feedback clock
                 o_LOCKED=self.locked,  # 1-bit output: LOCK
                 i_CLKIN1=ClockSignal(),  # 1-bit input: Input clock
                 # Control Ports: 1-bit (each) input: PLL control ports
                 i_PWRDWN=Const(0),  # 1-bit input: Power-down
                 i_RST=ResetSignal(),  # 1-bit input: Reset
                 # Feedback Clocks: 1-bit (each) input: Clock feedback ports
-                i_CLKFBIN=fb,  # 1-bit input: Feedback clock
+                i_CLKFBIN=feedback,  # 1-bit input: Feedback clock
             )
         else:
             m.d.sync += self.locked.eq(1)

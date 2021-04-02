@@ -25,7 +25,7 @@ class Console(Elaboratable):
                 self.bus.ack.eq(1),
                 self.bus.rdata.eq(uart.tx_ack),
             ]
-        with m.If(self.bus.wmask.any()):
+        with m.Elif(self.bus.wmask.any()):
             comb += [
                 self.bus.ack.eq(uart.tx_ack),
                 uart.tx_rdy.eq(1),
