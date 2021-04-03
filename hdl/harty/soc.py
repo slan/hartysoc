@@ -16,7 +16,7 @@ from .leds import LEDs
 from .mmu import MMU
 from .block_ram import BlockRAM
 from .block_rom import BlockROM
-
+from .spi import  SPI
 
 class SOC(Elaboratable):
     def __init__(self, *, with_sdram=False):
@@ -54,6 +54,9 @@ class SOC(Elaboratable):
 
         m.submodules.soc_info = soc_info = SOCInfo(version="0.3.0", freq=hart_freq)
         mmu.plug(2, soc_info.bus)
+
+        m.submodules.spi = spi = SPI(domain=domain)
+        mmu.plug(3, spi.bus)
 
         if self._with_sdram:
             m.submodules.sdram = sdram = SDRAM(domain=domain)

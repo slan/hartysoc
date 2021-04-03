@@ -8,7 +8,7 @@ import hdl.kitchensink as ks
 from hdl.harty.soc import SOC
 
 
-with_sdram = True
+with_sdram = False
 top = SOC(with_sdram=with_sdram)
 
 

@@ -19,6 +19,26 @@
 
     #####
 
+_printx:
+    lb t0, 0(a0)
+    beqz t0, _printx
+    li t1, 10
+    srli t0, a1, 4
+    bltu t0, t1, _lt10_high
+    addi t0, t0, 'a'-'0'-10
+_lt10_high:
+    addi t0, t0, '0'
+    sb t0, 0(a0)
+    andi t0, a1, 0x0f
+    bltu t0, t1, _lt10_low
+    addi t0, t0, 'a'-'0'-10
+_lt10_low:
+    addi t0, t0, '0'
+    sb t0, 0(a0)
+    li t0, '\n'
+    sb t0, 0(a0)
+    ret
+
     # IN: a0 uart addr
     # IN: a1 message addr
 _puts:
