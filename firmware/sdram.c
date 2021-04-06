@@ -52,9 +52,10 @@ void pretty_print_hex_1(uint8_t byte)
     printf("%x", byte);
 }
 
+uint32_t *sdram_addr = 0x00000000;
+
 void dump_memory_words(unsigned int n, unsigned int col)
 {
-    uint32_t *sdram_addr = 0x30000000;
     for (unsigned int i = 0; i < n; ++i)
     {
         uint32_t *addr_r = ((uint32_t *)sdram_addr) + i;
@@ -67,7 +68,6 @@ void dump_memory_words(unsigned int n, unsigned int col)
 
 void dump_memory_bytes(unsigned int n, unsigned int col)
 {
-    uint32_t *sdram_addr = 0x30000000;
     for (unsigned int i = 0; i < n; ++i)
     {
         pretty_print_hex_1(*((uint8_t *)sdram_addr + i));
@@ -84,12 +84,6 @@ void dump_memory()
 
 int main()
 {
-    volatile uint32_t *info_addr = 0x10000100;
-    const uint32_t CYCLES_PER_SECOND = *info_addr;
-
-    volatile uint32_t *sdram_ctrl = 0x20000000;
-    uint32_t *sdram_addr = 0x30000000;
-
     printf("-----------------------------------------------\n");
 
     dump_memory();

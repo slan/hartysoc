@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Thu Apr  1 18:16:43 2021
+[*] Tue Apr  6 04:28:38 2021
 [*]
 [dumpfile] "/home/slan/src/hartysoc/build/sim/top.vcd"
-[dumpfile_mtime] "Thu Apr  1 18:15:32 2021"
-[dumpfile_size] 568419
+[dumpfile_mtime] "Tue Apr  6 04:28:38 2021"
+[dumpfile_size] 37790895
 [savefile] "/home/slan/src/hartysoc/platform/sim/sim.gtkw"
-[timestart] 80319000
+[timestart] 721698000
 [size] 2560 1377
 [pos] -1 -1
-*-18.014513 80726000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.026487 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.console.
 [treeopen] top.hart.
@@ -114,13 +114,23 @@ top.hart.registers.wp.mem_w_data[31:0]
 top.hart.registers.wp.memory(10)[31:0]
 @200
 -BRAM
+@23
+top.bram.bram__rmask[3:0]
+@28
+top.bram.bram__ack
+@200
 -UART
 @22
+top.console.console__addr[31:0]
 top.console.console__rmask[3:0]
+top.console.console__rdata[31:0]
+@28
+top.console.console__ack
 @200
 -INTERCONNECT
 @28
 top.mmu.dic.console__ack
 top.mmu.dic.dic__ack
+top.leds.led_clk
 [pattern_trace] 1
 [pattern_trace] 0

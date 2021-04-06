@@ -7,7 +7,7 @@ MEMORY
 SECTIONS
 {
     .firmware : {
-        KEEP(build/firmware/firmware.s.o(*));
+        KEEP(build/firmware/firmware.s.o(.text));
         . = ALIGN(4);
     } > rom
     .main : {
@@ -19,7 +19,7 @@ SECTIONS
         *(.bss*);
         *(.sbss*);
         . = ALIGN(4);
-   } > ram AT> rom                          /* Run in RAM, include in ROM */
+   } > rom AT> rom                          /* Run in RAM, include in ROM */
     
     _addr_main = LOADADDR(.main);           /* LOADADDR gives the LMA, i.e the offset from rom start */
     _size_main = SIZEOF(.main);

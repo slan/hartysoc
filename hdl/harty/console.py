@@ -21,10 +21,16 @@ class Console(Elaboratable):
         m.submodules.uart = uart = UART(self._domain, round(self._freq / 115200))
 
         with m.If(self.bus.rmask.any()):
-            comb += [
-                self.bus.ack.eq(1),
-                self.bus.rdata.eq(uart.tx_ack),
-            ]
+            with m.If(self.bus.addr == 0):
+                comb += [
+                    self.bus.ack.eq(uart.rx_rdy),
+                    self.bus.rdata.eq(uart.rx_data),
+                ]
+            with m.Else():
+                comb += [
+                    self.bus.ack.eq(1),
+                    self.bus.rdata.eq(uart.tx_ack),
+                ]
         with m.Elif(self.bus.wmask.any()):
             comb += [
                 self.bus.ack.eq(uart.tx_ack),
@@ -40,7 +46,7 @@ class Console(Elaboratable):
                 self.bus.rdata.eq(1),
             ]
 
-            def uart_sim_process():
+            def uart_tx_process():
                 yield Passive()
                 while True:
                     yield
@@ -50,8 +56,14 @@ class Console(Elaboratable):
                         self.last_output = chr(uart_tx_data & 0xFF)
                         print(self.last_output, end="")
 
-            platform.add_sync_process(uart_sim_process, domain=self._domain)
+            platform.add_sync_process(uart_tx_process, domain=self._domain)
+
         else:
-            comb += platform.request("uart").tx.eq(uart.tx_o)
+            platform_uart = platform.request("uart")
+            comb += [
+                platform_uart.tx.eq(uart.tx_o),
+                uart.rx_i.eq(platform_uart.rx.i),
+            ]
 
         return m
+        

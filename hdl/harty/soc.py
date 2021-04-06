@@ -16,11 +16,13 @@ from .leds import LEDs
 from .mmu import MMU
 from .block_ram import BlockRAM
 from .block_rom import BlockROM
-from .spi import  SPI
+from .spi import SPI
+
 
 class SOC(Elaboratable):
-    def __init__(self, *, with_sdram=False):
+    def __init__(self, *, with_sdram=False, with_rom=False):
         self._with_sdram = with_sdram
+        self._with_rom = with_rom
 
     def elaborate(self, platform):
         m = Module()
@@ -46,13 +48,18 @@ class SOC(Elaboratable):
             assert file_size % 4 == 0
             firmware.fromfile(f, file_size // 4)
 
-        m.submodules.brom = brom = BlockROM(domain=domain, init=firmware)
-        mmu.plug(8, brom.bus, True)
+        if self._with_rom:
+            m.submodules.boot = brom = BlockROM(domain=domain, init=firmware)
+            mmu.plug(8, brom.bus, True)
+        else:
+            firmware.extend([0] * 256)
+            m.submodules.boot = ram = RAM(domain=domain, init=firmware)
+            mmu.plug(8, ram.dbus, True, ram.ibus)
 
         m.submodules.console = console = Console(domain=domain, freq=hart_freq)
         mmu.plug(1, console.bus)
 
-        m.submodules.soc_info = soc_info = SOCInfo(version="0.3.0", freq=hart_freq)
+        m.submodules.soc_info = soc_info = SOCInfo(version="0.3.1", freq=hart_freq)
         mmu.plug(2, soc_info.bus)
 
         m.submodules.spi = spi = SPI(domain=domain)
@@ -68,8 +75,11 @@ class SOC(Elaboratable):
             )
             mmu.plug(0, bram.bus, True)
 
-        # m.submodules.leds = leds = LEDs(domain=domain)
-        # mmu.plug(6, leds.bus)
+        m.submodules.leds = leds = LEDs(
+            domain=domain,
+            divisor=round(hart_freq / 10_000),  # 10KHz
+        )
+        mmu.plug(6, leds.bus)
 
         # m.submodules.vga = vga = VGA()
         # mmu.plug(9, vga.bus)
